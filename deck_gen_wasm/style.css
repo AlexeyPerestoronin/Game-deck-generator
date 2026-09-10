@@ -62,8 +62,9 @@ body {
   top: 50%;
   transform: translateY(-50%);
   z-index: 20;
-  max-width: 240px;
-  padding: 6px 10px;
+  width: max-content;
+  max-width: 50vw;
+  padding: 4px 12px;
   background: #1e1e1e;
   border: 1px solid #454545;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
@@ -71,6 +72,7 @@ body {
   font-size: 12px;
   line-height: 1.35;
   white-space: normal;
+  overflow-wrap: anywhere;
   pointer-events: none;
 }
 
@@ -283,4 +285,35 @@ body {
 
 .modal-btn.danger:hover {
   background: #6e2424;
+}
+
+.context-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.context-menu {
+  position: fixed;
+  min-width: 160px;
+  padding: 4px 0;
+  background: #252526;
+  border: 1px solid #454545;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.context-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  padding: 6px 14px;
+  font: inherit;
+}
+
+.context-item:hover {
+  background: var(--hover);
 }

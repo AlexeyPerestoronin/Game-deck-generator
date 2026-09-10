@@ -1,10 +1,10 @@
-//! Tooltip that appears only after the pointer stays on the control for 3s.
+//! Tooltip that appears after the pointer stays on the control for 1.5s.
 
 use gloo_timers::future::TimeoutFuture;
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-const HOVER_DELAY_MS: u32 = 3000;
+const HOVER_DELAY_MS: u32 = 1500;
 
 #[component]
 pub fn DelayedTooltip(text: &'static str, children: Children) -> impl IntoView {

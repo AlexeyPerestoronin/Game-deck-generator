@@ -13,8 +13,12 @@
     },
     "cards": [
         {
-            "name": "Card 1",
-            "description": "Replace this text with the card's effect."
+            "name": "Literal card",
+            "description": "This card uses no placeholders. Edit the text as-is."
+        },
+        {
+            "name": "Sized card",
+            "description": "This card reads only card.json5: ${card:width_mm}×${card:height_mm} mm, label ${card:sample_label}."
         }
     ]
 }

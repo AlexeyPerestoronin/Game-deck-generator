@@ -36,6 +36,18 @@ pub fn split_path(path: &str) -> Result<Vec<&str>, String> {
     Ok(parts)
 }
 
+/// If `path` is `old` or lives under it, rewrite the prefix to `new`.
+pub fn rewrite_prefix(path: &str, old: &str, new: &str) -> String {
+    if path == old {
+        return new.to_string();
+    }
+    let prefix = format!("{old}/");
+    match path.strip_prefix(&prefix) {
+        Some(rest) => format!("{new}/{rest}"),
+        None => path.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -59,5 +71,12 @@ mod tests {
         assert!(split_path("../x").is_err());
         assert!(split_path("a//b").is_err());
         assert!(split_path("/abs").is_err());
+    }
+
+    #[test]
+    fn rewrite_prefix_file_and_children() {
+        assert_eq!(rewrite_prefix("a/b", "a/b", "a/c"), "a/c");
+        assert_eq!(rewrite_prefix("a/b/d", "a/b", "a/c"), "a/c/d");
+        assert_eq!(rewrite_prefix("a/x", "a/b", "a/c"), "a/x");
     }
 }

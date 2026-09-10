@@ -1,4 +1,5 @@
 mod activity_bar;
+mod context_menu;
 mod editor;
 mod explorer;
 mod icons;

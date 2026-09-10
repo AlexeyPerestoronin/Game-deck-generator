@@ -14,8 +14,9 @@ const CONF_PATH: &str = "conf.json5";
 
 const FALLBACK_PATHS: &[&str] = &[
     CONF_PATH,
-    "games/new-game/vars/game.json",
-    "games/new-game/vars/card.json",
+    "games/new-game/help.md",
+    "games/new-game/vars/game.json5",
+    "games/new-game/vars/card.json5",
     "games/new-game/decks/deck-1st/data.json5",
     "games/new-game/decks/deck-2nd/data.json5",
     "games/new-game/views/simple-front.html",

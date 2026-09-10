@@ -2,11 +2,14 @@ use std::collections::HashSet;
 
 use leptos::prelude::*;
 
+use super::context_menu::{ChosenCommand, ContextMenu, EntryKind, MenuState};
 use crate::fs::{join_path, Vfs};
 use crate::workspace::Workspace;
 
 #[component]
 pub fn Explorer(workspace: Workspace) -> impl IntoView {
+    let menu = RwSignal::new(None::<MenuState>);
+
     view! {
         <aside class="explorer">
             <div class="explorer-title-row">
@@ -18,16 +21,29 @@ pub fn Explorer(workspace: Workspace) -> impl IntoView {
                     <button class="text-btn" title="New Folder" on:click=move |_| workspace.create_folder()>"+ Folder"</button>
                 </div>
             </header>
-            <div class="tree" role="tree">
-                <TreeRows workspace=workspace />
+            <div class="tree" role="tree" on:click=move |_| menu.set(None)>
+                <TreeRows workspace=workspace menu=menu />
             </div>
             <footer class="status">{move || workspace.status.get()}</footer>
+            <Show when=move || menu.get().is_some()>
+                {move || menu.get().map(|state| {
+                    view! {
+                        <ContextMenu
+                            state=state
+                            on_dismiss=move |_| menu.set(None)
+                            on_command=move |chosen: ChosenCommand| {
+                                workspace.run_entry_command(chosen.id, &chosen.path);
+                            }
+                        />
+                    }
+                })}
+            </Show>
         </aside>
     }
 }
 
 #[component]
-fn TreeRows(workspace: Workspace) -> impl IntoView {
+fn TreeRows(workspace: Workspace, menu: RwSignal<Option<MenuState>>) -> impl IntoView {
     view! {
         <For
             each=move || flatten_tree(&workspace.vfs.get(), &workspace.expanded.get())
@@ -35,7 +51,9 @@ fn TreeRows(workspace: Workspace) -> impl IntoView {
             children=move |row| {
                 let path_for_selected = row.path.clone();
                 let path_for_click = row.path.clone();
+                let path_for_menu = row.path.clone();
                 let is_dir = row.is_dir;
+                let kind = if is_dir { EntryKind::Folder } else { EntryKind::File };
                 let selected = move || workspace.selected.get().as_deref() == Some(path_for_selected.as_str());
                 view! {
                     <button
@@ -45,6 +63,17 @@ fn TreeRows(workspace: Workspace) -> impl IntoView {
                         style=format!("padding-left: {}px", 8 + row.depth * 14)
                         role="treeitem"
                         on:click=move |_| workspace.select(path_for_click.clone(), is_dir)
+                        on:contextmenu=move |ev| {
+                            ev.prevent_default();
+                            ev.stop_propagation();
+                            workspace.select(path_for_menu.clone(), is_dir);
+                            menu.set(Some(MenuState {
+                                path: path_for_menu.clone(),
+                                kind,
+                                x: f64::from(ev.client_x()),
+                                y: f64::from(ev.client_y()),
+                            }));
+                        }
                     >
                         <span class="chevron">{if is_dir { if row.expanded { "▾" } else { "▸" } } else { " " }}</span>
                         <span class="tree-name">{row.name.clone()}</span>

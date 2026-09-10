@@ -13,8 +13,20 @@
     },
     "cards": [
         {
-            "name": "Card 1",
-            "description": "Replace this text with the card's effect."
+            "name": "Plain text",
+            "description": "Four cards live here. This one has no variables."
+        },
+        {
+            "name": "Cost card",
+            "description": "Only card.json5: costs ${card:sample_cost}."
+        },
+        {
+            "name": "Title card",
+            "description": "Only game.json5: ${game:name} v${game:version}, paid in ${game:currency}."
+        },
+        {
+            "name": "Mixed card",
+            "description": "${game:name} prints a ${card:sample_label} card (${card:width_mm} mm) worth ${card:sample_cost} ${game:currency}."
         }
     ]
 }

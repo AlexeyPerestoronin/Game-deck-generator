@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 mod path;
 
-pub use path::{file_name, join_path, parent_path, split_path};
+pub use path::{file_name, join_path, parent_path, rewrite_prefix, split_path};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Node {
@@ -119,6 +119,62 @@ impl Vfs {
         collect_entries("", &self.root, &mut dirs, &mut files);
         (dirs, files)
     }
+
+    pub fn remove(&mut self, path: &str) -> Result<(), String> {
+        let parts = split_path(path)?;
+        let Some((name, parent_parts)) = parts.split_last() else {
+            return Err("Cannot delete the workspace root".into());
+        };
+        let parent = parent_map_mut(&mut self.root, parent_parts)?;
+        parent
+            .remove(*name)
+            .ok_or_else(|| format!("'{path}' not found"))?;
+        Ok(())
+    }
+
+    pub fn rename(&mut self, path: &str, new_name: &str) -> Result<String, String> {
+        let new_name = new_name.trim();
+        if !is_single_segment_name(new_name) {
+            return Err("Name must be a single path segment".into());
+        }
+        let parts = split_path(path)?;
+        let Some((old_name, parent_parts)) = parts.split_last() else {
+            return Err("Cannot rename the workspace root".into());
+        };
+        if *old_name == new_name {
+            return Ok(path.to_string());
+        }
+        let parent = parent_map_mut(&mut self.root, parent_parts)?;
+        if parent.contains_key(new_name) {
+            return Err(format!("'{new_name}' already exists"));
+        }
+        let node = parent
+            .remove(*old_name)
+            .ok_or_else(|| format!("'{path}' not found"))?;
+        parent.insert(new_name.to_string(), node);
+        Ok(join_path(&parent_path(path), new_name))
+    }
+}
+
+fn is_single_segment_name(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains('/')
+        && !name.contains('\\')
+}
+
+fn parent_map_mut<'a>(
+    root: &'a mut BTreeMap<String, Node>,
+    parent_parts: &[&str],
+) -> Result<&'a mut BTreeMap<String, Node>, String> {
+    if parent_parts.is_empty() {
+        return Ok(root);
+    }
+    match node_at_mut(root, parent_parts)? {
+        Node::Dir { children } => Ok(children),
+        Node::File { .. } => Err("parent is a file".into()),
+    }
 }
 
 fn dir_children<'a>(
@@ -185,6 +241,22 @@ fn node_at_mut<'a>(
     match node {
         Node::Dir { children } => node_at_mut(children, rest),
         Node::File { .. } => Err(format!("'{first}' is a file")),
+    }
+}
+
+#[cfg(test)]
+mod vfs_tests {
+    use super::*;
+
+    #[test]
+    fn remove_file_and_rename_folder() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/data.json5", "x".into()).unwrap();
+        vfs.rename("games/a", "b").unwrap();
+        assert!(vfs.is_file("games/b/data.json5"));
+        assert!(!vfs.exists("games/a"));
+        vfs.remove("games/b").unwrap();
+        assert!(!vfs.exists("games/b"));
     }
 }
 

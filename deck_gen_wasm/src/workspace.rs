@@ -6,7 +6,7 @@ use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
-use crate::fs::{join_path, parent_path, Vfs};
+use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs};
 use crate::persist::{save_session, Session};
 use crate::template::install_new_game;
 
@@ -144,6 +144,67 @@ impl Workspace {
             }
             Err(err) => self.status.set(err),
         }
+    }
+
+    pub fn run_entry_command(&self, id: &str, path: &str) {
+        match id {
+            "delete" => self.delete_entry(path),
+            "rename" => self.rename_entry(path),
+            other => self.status.set(format!("Unknown command {other}")),
+        }
+    }
+
+    fn delete_entry(&self, path: &str) {
+        match self.vfs.try_update(|vfs| vfs.remove(path)) {
+            Some(Ok(())) => {
+                self.forget_path(path);
+                self.status.set(format!("Deleted {path}"));
+            }
+            Some(Err(err)) => self.status.set(err),
+            None => self.status.set("Could not update workspace".into()),
+        }
+    }
+
+    fn rename_entry(&self, path: &str) {
+        let Some(name) = ask_name("New name") else {
+            return;
+        };
+        match self.vfs.try_update(|vfs| vfs.rename(path, &name)) {
+            Some(Ok(new_path)) => {
+                self.rewrite_paths(path, &new_path);
+                self.status.set(format!("Renamed to {new_path}"));
+            }
+            Some(Err(err)) => self.status.set(err),
+            None => self.status.set("Could not update workspace".into()),
+        }
+    }
+
+    fn forget_path(&self, path: &str) {
+        self.selected.update(|selected| {
+            if selected
+                .as_ref()
+                .is_some_and(|current| current == path || current.starts_with(&format!("{path}/")))
+            {
+                *selected = None;
+            }
+        });
+        self.expanded.update(|set| {
+            set.retain(|current| current != path && !current.starts_with(&format!("{path}/")));
+        });
+    }
+
+    fn rewrite_paths(&self, old: &str, new: &str) {
+        self.selected.update(|selected| {
+            if let Some(current) = selected.as_ref() {
+                *selected = Some(rewrite_prefix(current, old, new));
+            }
+        });
+        self.expanded.update(|set| {
+            *set = set
+                .iter()
+                .map(|current| rewrite_prefix(current, old, new))
+                .collect();
+        });
     }
 
     fn creation_parent(&self) -> String {
