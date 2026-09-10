@@ -19,6 +19,16 @@ pub fn file_name(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
 }
 
+pub fn file_ext(path: &str) -> Option<&str> {
+    let name = file_name(path);
+    let (stem, ext) = name.rsplit_once('.')?;
+    if stem.is_empty() || ext.is_empty() {
+        None
+    } else {
+        Some(ext)
+    }
+}
+
 pub fn split_path(path: &str) -> Result<Vec<&str>, String> {
     if path.is_empty() {
         return Ok(Vec::new());
@@ -58,6 +68,10 @@ mod tests {
         assert_eq!(path, "src/main.rs");
         assert_eq!(parent_path(&path), "src");
         assert_eq!(file_name(&path), "main.rs");
+        assert_eq!(file_ext(&path), Some("rs"));
+        assert_eq!(file_ext("help.md"), Some("md"));
+        assert_eq!(file_ext("data.json5"), Some("json5"));
+        assert_eq!(file_ext(".gitignore"), None);
     }
 
     #[test]

@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use leptos::prelude::*;
 
 use super::context_menu::{ChosenCommand, ContextMenu, EntryKind, MenuState};
+use super::icons::FileTypeIcon;
 use crate::fs::{join_path, Vfs};
 use crate::workspace::Workspace;
 
@@ -76,6 +77,11 @@ fn TreeRows(workspace: Workspace, menu: RwSignal<Option<MenuState>>) -> impl Int
                         }
                     >
                         <span class="chevron">{if is_dir { if row.expanded { "▾" } else { "▸" } } else { " " }}</span>
+                        {if is_dir {
+                            view! { <span class="file-icon-slot" aria-hidden="true"></span> }.into_any()
+                        } else {
+                            view! { <FileTypeIcon name=row.name.clone() /> }.into_any()
+                        }}
                         <span class="tree-name">{row.name.clone()}</span>
                     </button>
                 }

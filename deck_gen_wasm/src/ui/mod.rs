@@ -2,6 +2,7 @@ mod activity_bar;
 mod context_menu;
 mod editor;
 mod explorer;
+mod highlight;
 mod icons;
 mod modal;
 mod tooltip;

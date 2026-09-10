@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 mod path;
 
-pub use path::{file_name, join_path, parent_path, rewrite_prefix, split_path};
+pub use path::{file_ext, file_name, join_path, parent_path, rewrite_prefix, split_path};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Node {
