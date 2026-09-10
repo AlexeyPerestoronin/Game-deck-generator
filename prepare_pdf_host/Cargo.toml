@@ -1,0 +1,11 @@
+[package]
+name = "prepare_pdf_host"
+version.workspace = true
+edition.workspace = true
+description = "Host-only HTML→PDF (Chromium) and A4 duplex imposition. Not for wasm."
+
+[dependencies]
+anyhow = "1"
+headless_chrome = "1"
+lopdf = "0.34"
+thiserror = "2"

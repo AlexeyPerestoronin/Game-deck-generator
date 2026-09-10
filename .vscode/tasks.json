@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+    },
+    "problemMatcher": [],
+    "tasks": [
+        {
+            "label": "YAPF",
+            "type": "shell",
+            "group": "none",
+            "command": "${workspaceFolder}/.venv/Scripts/yapf.exe",
+            "args": [
+                "--style",
+                "${workspaceFolder}/.style.yapf",
+                "--recursive",
+                "--in-place",
+                "--parallel",
+                "${workspaceFolder}",
+                "--exclude",
+                "${workspaceFolder}/.venv/**"
+            ],
+        }
+    ]
+}

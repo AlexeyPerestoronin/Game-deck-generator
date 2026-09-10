@@ -1,0 +1,107 @@
+{
+    "name": "monopoly.professions.tracking.businessman",
+    "view": {
+        "face": "profession-face.html",
+        "back": "career-back.html"
+    },
+    "vars": {
+        "level-names": {
+            "l-1": "самозанятый",
+            "l-2": "индивидуальный предприниматель",
+            "l-3": "владелец малого бизнеса",
+            "l-4": "директор компании",
+            "l-5": "владелец холдинга",
+            "l-6": "инвестор",
+            "l-7": "магнат",
+            "l-8": "глава торгово-промышленной палаты"
+        }
+    },
+    "deck": {
+        "game_name": "Монополия ${game:game-version}",
+        "title": "Карьерный путь",
+        "category": "«Предприниматель»",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": ${vars.level-names.l-1},
+            "level": 1,
+            "entrance": 11,
+            "description": "вы работаете на себя: заказы, чеки и свои риски",
+            "life-effects": [
+                "доход = $s{5 * ${game:liters.step-quantity}}/ход"
+            ]
+        },
+        {
+            "name": ${vars.level-names.l-2},
+            "level": 2,
+            "entrance": 94,
+            "description": "у вас своё дело: точка, клиенты и касса",
+            "life-effects": [
+                "доход = $s{10 * ${game:liters.step-quantity}}/ход",
+                "можно совмещать с любой профессией на полставки"
+            ]
+        },
+        {
+            "name": ${vars.level-names.l-3},
+            "level": 3,
+            "entrance": 125,
+            "description": "вы держите небольшую фирму и нанимаете людей",
+            "life-effects": [
+                "доход = $s{20 * ${game:liters.step-quantity}}/ход",
+                "можно совмещать с любой профессией на полставки"
+            ]
+        },
+        {
+            "name": ${vars.level-names.l-4},
+            "level": 4,
+            "entrance": 161,
+            "description": "вы управляете компанией и отвечаете за прибыль",
+            "life-effects": [
+                "доход = $s{250 + 30 * ${game:liters.step-quantity}}/ход",
+                "можно совмещать с любой профессией на полставки"
+            ]
+        },
+        {
+            "name": ${vars.level-names.l-5},
+            "level": 5,
+            "entrance": 242,
+            "description": "вам принадлежат несколько предприятий",
+            "life-effects": [
+                "доход = $s{500 + 50 * ${game:liters.step-quantity}}/ход",
+                "можно совмещать с любой профессией на полставки"
+            ]
+        },
+        {
+            "name": ${vars.level-names.l-6},
+            "level": 6,
+            "entrance": 257,
+            "description": "вы вкладываете деньги в чужие дела и живёте с доли",
+            "life-effects": [
+                "доход = $s{1000 + 100 * ${game:liters.step-quantity}}/ход",
+                "можно совмещать с любой профессией"
+            ]
+        },
+        {
+            "name": ${vars.level-names.l-7},
+            "level": 7,
+            "entrance": 374,
+            "description": "ваш капитал определяет целые отрасли",
+            "life-effects": [
+                "доход = $s{1000 + 200 * ${game:liters.step-quantity}}/ход",
+                "можно совмещать с любой профессией"
+            ]
+        },
+        {
+            "name": ${vars.level-names.l-8},
+            "level": 8,
+            "entrance": 483,
+            "description": "вы представляете весь деловой мир страны",
+            "life-effects": [
+                "доход = $s{1000 + 500 * ${game:liters.step-quantity}}/ход",
+                "можно совмещать с любой профессией"
+            ]
+        }
+    ]
+}

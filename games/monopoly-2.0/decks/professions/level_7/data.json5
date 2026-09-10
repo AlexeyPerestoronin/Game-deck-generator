@@ -1,0 +1,109 @@
+{
+    "name": "monopoly.professions.level_7",
+    "view": {
+        "face": "profession-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "title": ${game:decks.professions.level.7.title},
+        "category": "«${game:decks.professions.level.7.category}»",
+        "game_name": "Монополия ${game:game-version}",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "сенатор",
+            "level": 7,
+            "entrance": 363,
+            "description": "вы заседаете в верхней палате и принимаете законы",
+            "life-effects": [
+                "заплатите 1000 за назначение",
+                "доход = 700/ход"
+            ]
+        },
+        {
+            "name": "губернатор",
+            "level": 7,
+            "entrance": 365,
+            "description": "вы руководите регионом и его правительством",
+            "life-effects": [
+                "заплатите 1200 за назначение",
+                "доход = 850/ход",
+                "премия = $s{(10 * ${game:liters.step-quantity})}/ход"
+            ]
+        },
+        {
+            "name": "академик",
+            "level": 7,
+            "entrance": 377,
+            "description": "вас избрали в академию наук",
+            "life-effects": [
+                "заплатите 1300 за назначение",
+                "доход = 850/ход"
+            ]
+        },
+        {
+            "name": "глава госкорпорации",
+            "level": 7,
+            "entrance": 396,
+            "description": "вы управляете крупной государственной компанией",
+            "life-effects": [
+                "заплатите 1150 за назначение",
+                "доход = 900/ход"
+            ]
+        },
+        {
+            "name": "посол",
+            "level": 7,
+            "entrance": 398,
+            "description": "вы представляете страну за границей",
+            "life-effects": [
+                "заплатите 1100 за назначение",
+                "доход = 820/ход"
+            ]
+        },
+        {
+            "name": "советник министра",
+            "level": 7,
+            "entrance": 368,
+            "description": "вы готовите решения для министерства",
+            "life-effects": [
+                "заплатите 1050 за назначение",
+                "доход = 700/ход",
+                "премия = $s{(8 * ${game:liters.step-quantity})}/ход"
+            ]
+        },
+        {
+            "name": "главный редактор",
+            "level": 7,
+            "entrance": 376,
+            "description": "вы определяете политику научного журнала",
+            "life-effects": [
+                "заплатите 980 за назначение",
+                "доход = 680/ход"
+            ]
+        },
+        {
+            "name": "лауреат",
+            "level": 7,
+            "entrance": 356,
+            "description": "вас отметили государственной премией",
+            "life-effects": [
+                "заплатите 900 за назначение",
+                "доход = 720/ход"
+            ]
+        },
+        {
+            "name": "народный артист",
+            "level": 7,
+            "entrance": 353,
+            "description": "вас знают по ролям, концертам и премиям",
+            "life-effects": [
+                "заплатите 950 за назначение",
+                "доход = 720/ход",
+                "данную профессию можно совмещать с любой другой"
+            ]
+        }
+    ]
+}

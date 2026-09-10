@@ -1,0 +1,107 @@
+{
+    "name": "monopoly.professions.level_5",
+    "view": {
+        "face": "profession-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "title": ${game:decks.professions.level.5.title},
+        "category": "«${game:decks.professions.level.5.category}»",
+        "game_name": "Монополия ${game:game-version}",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "астроном",
+            "level": 5,
+            "entrance": 216,
+            "description": "вы наблюдаете за звёздами и считаете орбиты",
+            "life-effects": [
+                "заплатите 580 за защиту диссертации",
+                "доход = 330/ход"
+            ]
+        },
+        {
+            "name": "физик",
+            "level": 5,
+            "entrance": 213,
+            "description": "вы изучаете законы природы и ставите опыты",
+            "life-effects": [
+                "заплатите 600 за защиту диссертации",
+                "доход = 350/ход"
+            ]
+        },
+        {
+            "name": "металлург",
+            "level": 5,
+            "entrance": 223,
+            "description": "вы исследуете сплавы и режимы плавки металла",
+            "life-effects": [
+                "заплатите 590 за защиту диссертации",
+                "доход = 345/ход"
+            ]
+        },
+        {
+            "name": "биолог",
+            "level": 5,
+            "entrance": 209,
+            "description": "вы исследуете живые организмы и экосистемы",
+            "life-effects": [
+                "заплатите 570 за защиту диссертации",
+                "доход = 330/ход"
+            ]
+        },
+        {
+            "name": "статистик",
+            "level": 5,
+            "entrance": 249,
+            "description": "вы собираете данные и ищете в них закономерности",
+            "life-effects": [
+                "заплатите 560 за защиту диссертации",
+                "доход = 355/ход"
+            ]
+        },
+        {
+            "name": "историк",
+            "level": 5,
+            "entrance": 241,
+            "description": "вы изучаете прошлое и пишете научные труды",
+            "life-effects": [
+                "заплатите 540 за защиту диссертации",
+                "доход = 300/ход"
+            ]
+        },
+        {
+            "name": "социолог",
+            "level": 5,
+            "entrance": 230,
+            "description": "вы исследуете общество и опрашиваете людей",
+            "life-effects": [
+                "заплатите 530 за защиту диссертации",
+                "доход = 310/ход"
+            ]
+        },
+        {
+            "name": "вирусолог",
+            "level": 5,
+            "entrance": 248,
+            "description": "вы изучаете вирусы и ищете способы защиты",
+            "life-effects": [
+                "заплатите 650 за защиту диссертации",
+                "доход = 380/ход",
+                "если вы заболели, вы ничего не платите"
+            ]
+        },
+        {
+            "name": "зоолог",
+            "level": 5,
+            "entrance": 217,
+            "description": "вы изучаете животных и их поведение в природе",
+            "life-effects": [
+                "заплатите 570 за защиту диссертации",
+                "доход = 325/ход"
+            ]
+        }
+    ]
+}

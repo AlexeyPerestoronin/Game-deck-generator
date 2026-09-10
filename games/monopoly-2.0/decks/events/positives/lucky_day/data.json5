@@ -1,0 +1,25 @@
+{
+    "name": "monopoly.events.positives.lucky_day",
+    "view": {
+        "face": "event-face.html",
+        "back": "event-back.html"
+    },
+    "deck": {
+        "game_name": "Монополия ${game:game-version}",
+        "title": "Позитивное событие",
+        "category": "«Счастливый день»",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "счастливый день",
+            "from": 0,
+            "to": ${game:life-time},
+            "description": "сегодня вам улыбнулась удача",
+            "life-effects": [
+                "todo"
+            ]
+        }
+    ]
+}

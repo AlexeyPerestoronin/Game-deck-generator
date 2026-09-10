@@ -1,0 +1,98 @@
+{
+    "name": "monopoly.professions.level_0",
+    "view": {
+        "face": "profession-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "title": ${game:decks.professions.level.0.title},
+        "category": "«${game:decks.professions.level.0.category}»",
+        "game_name": "Монополия ${game:game-version}",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "кассир",
+            "level": 0,
+            "entrance": 3,
+            "description": "вы работаете на кассе в продуктовом магазине возле дома",
+            "life-effects": [
+                "доход = 30/ход"
+            ]
+        },
+        {
+            "name": "грузчик",
+            "level": 0,
+            "entrance": 8,
+            "description": "вы работаете грузчиком на складе",
+            "life-effects": [
+                "доход = 50/ход"
+            ]
+        },
+        {
+            "name": "сортировщик",
+            "level": 0,
+            "entrance": 2,
+            "description": "вы сортируете почту в почтовом отделении",
+            "life-effects": [
+                "доход = 40/ход"
+            ]
+        },
+        {
+            "name": "дворник",
+            "level": 0,
+            "entrance": 1,
+            "description": "вы метёте улицы и дворы вашего района",
+            "life-effects": [
+                "доход = 25/ход"
+            ]
+        },
+        {
+            "name": "курьер",
+            "level": 0,
+            "entrance": 5,
+            "description": "вы развозите заказы по городу на велосипеде",
+            "life-effects": [
+                "доход = 35/ход"
+            ]
+        },
+        {
+            "name": "официант",
+            "level": 0,
+            "entrance": 7,
+            "description": "вы обслуживаете столики в небольшом кафе",
+            "life-effects": [
+                "доход = 30/ход",
+                "чаевые = 10/ход"
+            ]
+        },
+        {
+            "name": "продавец",
+            "level": 0,
+            "entrance": 4,
+            "description": "вы стоите за прилавком в магазине одежды",
+            "life-effects": [
+                "доход = 35/ход"
+            ]
+        },
+        {
+            "name": "охранник",
+            "level": 0,
+            "entrance": 6,
+            "description": "вы дежурите на проходной торгового центра",
+            "life-effects": [
+                "доход = 30/ход"
+            ]
+        },
+        {
+            "name": "уборщик",
+            "level": 0,
+            "entrance": 0,
+            "description": "вы убираете офисы вечером после рабочего дня",
+            "life-effects": [
+                "доход = 25/ход"
+            ]
+        }
+    ]
+}

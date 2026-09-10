@@ -1,0 +1,12 @@
+{% include 'face-layout.j2' %}
+
+.header {
+  .level {
+    justify-content: flex-end;
+    border-right: 0.5mm solid #000;
+  }
+
+  .entrance {
+    justify-content: flex-start;
+  }
+}

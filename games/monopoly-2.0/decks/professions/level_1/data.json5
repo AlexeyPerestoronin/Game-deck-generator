@@ -1,0 +1,101 @@
+{
+    "name": "monopoly.professions.level_1",
+    "view": {
+        "face": "profession-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "title": ${game:decks.professions.level.1.title},
+        "category": "«${game:decks.professions.level.1.category}»",
+        "game_name": "Монополия ${game:game-version}",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "секретарь",
+            "level": 1,
+            "entrance": 20,
+            "description": "вы ведёте документы и приём в офисе компании",
+            "life-effects": [
+                "доход = 65/ход"
+            ]
+        },
+        {
+            "name": "диспетчер",
+            "level": 1,
+            "entrance": 39,
+            "description": "вы принимаете заявки и координируете выезды бригад",
+            "life-effects": [
+                "доход = 70/ход"
+            ]
+        },
+        {
+            "name": "администратор",
+            "level": 1,
+            "entrance": 16,
+            "description": "вы встречаете посетителей и ведёте запись в гостинице",
+            "life-effects": [
+                "доход = 70/ход"
+            ]
+        },
+        {
+            "name": "оператор колл-центра",
+            "level": 1,
+            "entrance": 41,
+            "description": "вы отвечаете на звонки клиентов и оформляете заявки",
+            "life-effects": [
+                "доход = 60/ход"
+            ]
+        },
+        {
+            "name": "делопроизводитель",
+            "level": 1,
+            "entrance": 22,
+            "description": "вы регистрируете письма и ведёте архив организации",
+            "life-effects": [
+                "доход = 65/ход"
+            ]
+        },
+        {
+            "name": "кладовщик",
+            "level": 1,
+            "entrance": 35,
+            "description": "вы принимаете товар и ведёте учёт на складе",
+            "life-effects": [
+                "доход = 70/ход"
+            ]
+        },
+        {
+            "name": "экспедитор",
+            "level": 1,
+            "entrance": 36,
+            "description": "вы сопровождаете грузы и сдаёте документы по накладным",
+            "life-effects": [
+                "доход = 75/ход"
+            ]
+        },
+        {
+            "name": "таксист",
+            "level": 1,
+            "entrance": 21,
+            "description": "вы таксуете по городу",
+            "life-effects": [
+                "заплатите 100 за получение прав категории B",
+                "доход = (10 * ${game:liters.step-quantity})/ход",
+                "данную профессию можно совмещать с любой другой, но в этом случае доход = (5 * ${game:liters.step-quantity})/ход"
+            ]
+        },
+        {
+            "name": "агент по недвижимости",
+            "level": 1,
+            "entrance": 23,
+            "description": "вы занимаетесь продажей недвижимости",
+            "life-effects": [
+                "заплатите 50 за прохождение курсов",
+                "доход = (15 * ${game:liters.step-quantity})/ход",
+                "данную профессию можно совмещать с любой другой, но в этом случае доход = (5 * ${game:liters.step-quantity})/ход"
+            ]
+        }
+    ]
+}

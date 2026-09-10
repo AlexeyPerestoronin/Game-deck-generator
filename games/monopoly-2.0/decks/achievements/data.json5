@@ -1,0 +1,58 @@
+{
+    "name": "monopoly.achievements",
+    "view": {
+        "face": "achievement-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "game_name": "Монополия ${game:game-version}",
+        "title": "Достижения",
+        "card_width_mm": 56.0,
+        "card_height_mm": 87.0
+    },
+    "cards": [
+        {
+            "status": "${achieves:FP}",
+            "description": "вы решили сложнейшую математическую задачу",
+            "life-effects": [
+                "получите 20.000"
+            ]
+        },
+        {
+            "status": "${achieves:first-clone}",
+            "description": "невероятно, вы смогли создать клона самого себя",
+            "life-effects": [
+                "получите 10.000",
+                "у вас постоянно берут интервью: +300/ход"
+            ]
+        },
+        {
+            "status": "${achieves:NP-in-genetics}",
+            "description": "вы расширили горизонты человеческого знания о том, как устроен геном человека",
+            "life-effects": [
+                "получите 10.000"
+            ]
+        },
+        {
+            "status": "${achieves:full-dossier}",
+            "description": "у вас на руках досье на всех, кто имеет значение",
+            "life-effects": [
+                "заберите 5.000 у выбранного игрока"
+            ]
+        },
+        {
+            "status": "${achieves:new-compound}",
+            "description": "вы синтезировали вещество, которого ещё не было в природе",
+            "life-effects": [
+                "получите 6.000"
+            ]
+        },
+        {
+            "status": "${achieves:NP-in-chemistry}",
+            "description": "вас наградили Нобелевской премией по химии",
+            "life-effects": [
+                "получите 15.000"
+            ]
+        }
+    ]
+}

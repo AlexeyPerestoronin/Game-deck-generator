@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Превью — {{ deck.title }}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 12mm;
+      background: #d8d8d8;
+      font-family: "Times New Roman", Times, serif;
+    }
+    h1 {
+      font-size: 18pt;
+      margin: 0 0 6mm;
+    }
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8mm;
+      align-items: flex-start;
+    }
+    iframe {
+      border: 0;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .faces {
+      width: {{ deck.card_width_mm }}mm;
+      height: {{ cards|length * deck.card_height_mm }}mm;
+    }
+    .back {
+      width: {{ deck.card_width_mm }}mm;
+      height: {{ deck.card_height_mm }}mm;
+    }
+  </style>
+</head>
+<body>
+  <h1>{{ deck.category }} — {{ deck.title }} ({{ cards|length }})</h1>
+  <div class="gallery">
+    <iframe class="faces" src="face.html" title="Лицо"></iframe>
+    <iframe class="back" src="back.html" title="Рубашка"></iframe>
+  </div>
+</body>
+</html>

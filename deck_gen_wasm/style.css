@@ -1,0 +1,213 @@
+:root {
+  --activity: #333333;
+  --sidebar: #252526;
+  --editor: #1e1e1e;
+  --fg: #cccccc;
+  --fg-dim: #858585;
+  --accent: #007acc;
+  --border: #1b1b1b;
+  --hover: #2a2d2e;
+  --selected: #37373d;
+  --tab: #2d2d2d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--editor);
+  color: var(--fg);
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 13px;
+}
+
+.ide {
+  display: grid;
+  grid-template-columns: 48px 260px 1fr;
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.activity-bar {
+  background: var(--activity);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  border-right: 1px solid var(--border);
+}
+
+.tooltip-host {
+  position: relative;
+  display: flex;
+}
+
+.tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  max-width: 240px;
+  padding: 6px 10px;
+  background: #1e1e1e;
+  border: 1px solid #454545;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  color: var(--fg);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  pointer-events: none;
+}
+
+.activity-btn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 2px solid transparent;
+}
+
+.activity-btn:hover,
+.activity-btn:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.activity-btn:focus-visible {
+  border-left-color: var(--accent);
+}
+
+.explorer {
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+
+.explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 6px;
+}
+
+.explorer-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+}
+
+.explorer-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.text-btn {
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.text-btn:hover {
+  background: var(--hover);
+}
+
+.tree {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0 8px;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  padding: 3px 8px;
+  font: inherit;
+}
+
+.tree-row:hover {
+  background: var(--hover);
+}
+
+.tree-row.selected {
+  background: var(--selected);
+}
+
+.chevron {
+  width: 12px;
+  color: var(--fg-dim);
+  flex: 0 0 12px;
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  min-height: 22px;
+  padding: 4px 10px;
+  border-top: 1px solid var(--border);
+  color: var(--fg-dim);
+  font-size: 11px;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--editor);
+}
+
+.editor-tab {
+  background: var(--tab);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg);
+}
+
+.editor-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-dim);
+}
+
+.editor-area {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  resize: none;
+  padding: 12px 14px;
+  background: var(--editor);
+  color: var(--fg);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  outline: none;
+}

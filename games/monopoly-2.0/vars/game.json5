@@ -1,0 +1,104 @@
+{
+    "game-version": "2.0",
+    "life-time": 50,
+    "liters": {
+        "game-time": "Q",
+        "step-quantity": "X"
+    },
+    "decks": {
+        "events": {
+            "negative": {
+                "pandemic": {
+                    "category": "Пандемия"
+                },
+                "financial-crisis": {
+                    "category": "Финансовый кризис"
+                },
+                "real-estate-crisis": {
+                    "category": "Кризис на рынке недвижимости"
+                },
+                "prison": {
+                    "category": "Тюрьма"
+                }
+            }
+        },
+        "professions": {
+            "card-width": 56.0,
+            "card-height": 87.0,
+            "level": {
+                "0": {
+                    "title": "Профессии L0",
+                    "category": "Без образования",
+                    "entrance": {
+                        "min": 0,
+                        "max": 8
+                    }
+                },
+                "1": {
+                    "title": "Профессии L1",
+                    "category": "Базовое среднее образование",
+                    "entrance": {
+                        "min": 9,
+                        "max": 50
+                    }
+                },
+                "2": {
+                    "title": "Профессии L2",
+                    "category": "Специальное среднее образование",
+                    "entrance": {
+                        "min": 51,
+                        "max": 100
+                    }
+                },
+                "3": {
+                    "title": "Профессии L3",
+                    "category": "Общее высшее образование",
+                    "entrance": {
+                        "min": 101,
+                        "max": 150
+                    }
+                },
+                "4": {
+                    "title": "Профессии L4",
+                    "category": "Специальное высшее образование",
+                    "entrance": {
+                        "min": 151,
+                        "max": 200
+                    }
+                },
+                "5": {
+                    "title": "Профессии L5",
+                    "category": "Кандидат наук",
+                    "entrance": {
+                        "min": 201,
+                        "max": 250
+                    }
+                },
+                "6": {
+                    "title": "Профессии L6",
+                    "category": "Доктор наук",
+                    "entrance": {
+                        "min": 251,
+                        "max": 300
+                    }
+                },
+                "7": {
+                    "title": "Профессии L7",
+                    "category": "Профессор",
+                    "entrance": {
+                        "min": 351,
+                        "max": 400
+                    }
+                },
+                "8": {
+                    "title": "Профессии L8",
+                    "category": "Философ",
+                    "entrance": {
+                        "min": 451,
+                        "max": 500
+                    }
+                }
+            }
+        }
+    }
+}

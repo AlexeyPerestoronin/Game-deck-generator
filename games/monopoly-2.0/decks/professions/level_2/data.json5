@@ -1,0 +1,120 @@
+{
+    "name": "monopoly.professions.level_2",
+    "view": {
+        "face": "profession-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "title": ${game:decks.professions.level.2.title},
+        "category": "«${game:decks.professions.level.2.category}»",
+        "game_name": "Монополия ${game:game-version}",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "водитель автобуса",
+            "level": 2,
+            "entrance": 99,
+            "description": "вы водитель муниципального транспорта",
+            "life-effects": [
+                "заплатите 100 за получение прав категории D",
+                "доход = 110/ход"
+            ]
+        },
+        {
+            "name": "повар",
+            "level": 2,
+            "entrance": 77,
+            "description": "вы готовите блюда на кухне городской столовой",
+            "life-effects": [
+                "заплатите 50 за прохождение курсов",
+                "доход = 90/ход"
+            ]
+        },
+        {
+            "name": "парикмахер",
+            "level": 2,
+            "entrance": 96,
+            "description": "вы стрижёте клиентов в районной парикмахерской",
+            "life-effects": [
+                "заплатите 30 за прохождение курсов",
+                "доход = 80/ход"
+            ]
+        },
+        {
+            "name": "сантехник",
+            "level": 2,
+            "entrance": 100,
+            "description": "вы чините трубы и краны в жилых домах",
+            "life-effects": [
+                "заплатите 200 за прохождение обучения",
+                "доход = 120/ход",
+                "подработка = (10*${game:liters.step-quantity})/ход"
+            ]
+        },
+        {
+            "name": "электрик",
+            "level": 2,
+            "entrance": 68,
+            "description": "вы обсуживаете городскую энергосистему",
+            "life-effects": [
+                "заплатите 220 за прохождение обучения",
+                "доход = 220/ход"
+            ]
+        },
+        {
+            "name": "слесарь",
+            "level": 2,
+            "entrance": 76,
+            "description": "вы ремонтируете станки и механизмы на предприятии",
+            "life-effects": [
+                "заплатите за обучения на уровень Y:",
+                "  L1 = 50",
+                "  L2 = +50",
+                "  L3 = +50",
+                "  L4 = +50",
+                "  L5 = +50 (250)",
+                "доход = (60*Y)/ход"
+            ]
+        },
+        {
+            "name": "сварщик",
+            "level": 2,
+            "entrance": 56,
+            "description": "вы варите металлоконструкции на стройке",
+            "life-effects": [
+                "заплатите за обучения на уровень Y:",
+                "  L1 = 40",
+                "  L2 = +50",
+                "  L3 = +60",
+                "  L4 = +70",
+                "  L5 = +80 (300)",
+                "доход = (70*Y)/ход"
+            ]
+        },
+        {
+            "name": "автомеханик",
+            "level": 2,
+            "entrance": 53,
+            "description": "вы чините машины в автосервисе",
+            "life-effects": [
+                "заплатите C1 за прохождение курсов и получайте C2 доход/ход",
+                "C1 = 150 → C2 = 80/ход (GAZ, VAZ, ZAZ)",
+                "C1 = 300 → C2 = 100/ход (Toyota, Mazda, Nissan)",
+                "C1 = 500 → C2 = 180/ход (Lexus, Infinity, Aston Martin)",
+                "C1 = 1000 → C2 = 250/ход (Maserati, AMG, Ferrari)"
+            ]
+        },
+        {
+            "name": "токарь",
+            "level": 2,
+            "entrance": 97,
+            "description": "вы точите детали на станке в цехе",
+            "life-effects": [
+                "заплатите 180 за прохождение обучения",
+                "доход = 110/ход"
+            ]
+        }
+    ]
+}

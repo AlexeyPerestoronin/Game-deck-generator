@@ -1,0 +1,111 @@
+{
+    "name": "monopoly.professions.level_8",
+    "view": {
+        "face": "profession-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "title": ${game:decks.professions.level.8.title},
+        "category": "«${game:decks.professions.level.8.category}»",
+        "game_name": "Монополия ${game:game-version}",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "философ",
+            "level": 8,
+            "entrance": 497,
+            "description": "вы осмысляете устройство мира и общества",
+            "life-effects": [
+                "заплатите 1500 за признание",
+                "доход = 900/ход",
+                "бонус к броску 2.5"
+            ]
+        },
+        {
+            "name": "мыслитель",
+            "level": 8,
+            "entrance": 477,
+            "description": "ваши идеи формируют взгляды эпохи",
+            "life-effects": [
+                "заплатите 1400 за признание",
+                "доход = 850/ход"
+            ]
+        },
+        {
+            "name": "мудрец",
+            "level": 8,
+            "entrance": 498,
+            "description": "к вам приходят за советом в трудных вопросах",
+            "life-effects": [
+                "заплатите 1600 за признание",
+                "доход = 800/ход",
+                "данную профессию можно совмещать с любой другой"
+            ]
+        },
+        {
+            "name": "наставник",
+            "level": 8,
+            "entrance": 455,
+            "description": "вы готовите тех, кто придёт вам на смену",
+            "life-effects": [
+                "заплатите 1300 за признание",
+                "доход = 820/ход",
+                "бонус к броску 2"
+            ]
+        },
+        {
+            "name": "энциклопедист",
+            "level": 8,
+            "entrance": 468,
+            "description": "вы связываете знания разных областей",
+            "life-effects": [
+                "заплатите 1450 за признание",
+                "доход = 880/ход"
+            ]
+        },
+        {
+            "name": "гуманист",
+            "level": 8,
+            "entrance": 482,
+            "description": "вы защищаете достоинство человека в обществе",
+            "life-effects": [
+                "заплатите 1350 за признание",
+                "доход = 840/ход"
+            ]
+        },
+        {
+            "name": "идеолог",
+            "level": 8,
+            "entrance": 462,
+            "description": "вы формулируете идеи, которыми живут другие",
+            "life-effects": [
+                "заплатите 1550 за признание",
+                "доход = 950/ход",
+                "премия = $s{(15 * ${game:liters.step-quantity})}/ход"
+            ]
+        },
+        {
+            "name": "старейшина",
+            "level": 8,
+            "entrance": 483,
+            "description": "ваш голос весит больше любого титула",
+            "life-effects": [
+                "заплатите 1250 за признание",
+                "доход = 780/ход",
+                "на вас не действуют эффекты массовых увольнений"
+            ]
+        },
+        {
+            "name": "классик",
+            "level": 8,
+            "entrance": 467,
+            "description": "ваши труды уже считают наследием",
+            "life-effects": [
+                "заплатите 1700 за признание",
+                "доход = 1000/ход"
+            ]
+        }
+    ]
+}

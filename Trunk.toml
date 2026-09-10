@@ -1,0 +1,12 @@
+[build]
+target = "deck_gen_wasm/index.html"
+dist = "deck_gen_wasm/dist"
+
+[watch]
+watch = ["deck_gen_wasm/src", "deck_gen_wasm/style.css", "deck_gen_wasm/index.html", "deck_gen_wasm/Cargo.toml"]
+ignore = ["deck_gen_wasm/dist", "target"]
+
+[serve]
+addresses = ["127.0.0.1"]
+port = 8080
+open = false

@@ -1,0 +1,28 @@
+<mxfile host="65bd71144e">
+    <diagram id="EtSBOjVkz-0KkZTOqH8C" name="Page-1">
+        <mxGraphModel dx="790" dy="1459" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=7;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="365" width="240" height="370" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="{ card.name }" style="rounded=1;whiteSpace=wrap;html=1;arcSize=42;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="365" width="180" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="0" style="rounded=1;whiteSpace=wrap;html=1;arcSize=42;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="365" width="55" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="50" style="rounded=1;whiteSpace=wrap;html=1;arcSize=42;" parent="1" vertex="1">
+                    <mxGeometry x="490" y="365" width="55" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="{ card.life-effects }" style="rounded=1;whiteSpace=wrap;html=1;arcSize=4;align=left;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="480" width="210" height="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="{ card.description }" style="rounded=1;whiteSpace=wrap;html=1;arcSize=13;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="420" width="210" height="50" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

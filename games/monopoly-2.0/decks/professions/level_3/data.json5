@@ -1,0 +1,111 @@
+{
+    "name": "monopoly.professions.level_3",
+    "view": {
+        "face": "profession-face.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "title": ${game:decks.professions.level.3.title},
+        "category": "«${game:decks.professions.level.3.category}»",
+        "game_name": "Монополия ${game:game-version}",
+        "card_width_mm": ${game:decks.professions.card-width},
+        "card_height_mm": ${game:decks.professions.card-height}
+    },
+    "cards": [
+        {
+            "name": "дизайнер",
+            "level": 3,
+            "entrance": 148,
+            "description": "вы придумываете внешний вид вещей, сайтов и рекламы",
+            "life-effects": [
+                "заплатите 200 за получение диплома",
+                "доход = 150/ход",
+                "подработка = $s{(8 * ${game:liters.step-quantity})}/ход"
+            ]
+        },
+        {
+            "name": "бухгалтер",
+            "level": 3,
+            "entrance": 105,
+            "description": "вы ведёте учёт денег и сдаёте отчётность компании",
+            "life-effects": [
+                "заплатите 250 за получение диплома",
+                "доход = 180/ход"
+            ]
+        },
+        {
+            "name": "экономист",
+            "level": 3,
+            "entrance": 118,
+            "description": "вы считаете бюджеты и оцениваете выгодность проектов",
+            "life-effects": [
+                "заплатите 280 за получение диплома",
+                "доход = 200/ход"
+            ]
+        },
+        {
+            "name": "менеджер",
+            "level": 3,
+            "entrance": 132,
+            "description": "вы руководите отделом и отвечаете за результат команды",
+            "life-effects": [
+                "заплатите 260 за получение диплома",
+                "доход = 190/ход",
+                "премия = (5 * ${game:liters.step-quantity})/ход"
+            ]
+        },
+        {
+            "name": "журналист",
+            "level": 3,
+            "entrance": 112,
+            "description": "вы пишете статьи и берёте интервью для газеты",
+            "life-effects": [
+                "заплатите 220 за получение диплома",
+                "доход = 140/ход",
+                "подработка = (8 * ${game:liters.step-quantity})/ход"
+            ]
+        },
+        {
+            "name": "переводчик",
+            "level": 3,
+            "entrance": 133,
+            "description": "вы переводите документы и переговоры с иностранцами",
+            "life-effects": [
+                "заплатите 240 за получение диплома",
+                "доход = (12 * ${game:liters.step-quantity})/ход",
+                "данную профессию можно совмещать с любой другой"
+            ]
+        },
+        {
+            "name": "маркетолог",
+            "level": 3,
+            "entrance": 117,
+            "description": "вы продвигаете товары и придумываете рекламные кампании",
+            "life-effects": [
+                "заплатите 270 за получение диплома",
+                "доход = 170/ход",
+                "премия = (10 * ${game:liters.step-quantity})/ход"
+            ]
+        },
+        {
+            "name": "кадровик",
+            "level": 3,
+            "entrance": 104,
+            "description": "вы нанимаете сотрудников и ведёте их личные дела",
+            "life-effects": [
+                "заплатите 230 за получение диплома",
+                "доход = 160/ход"
+            ]
+        },
+        {
+            "name": "аналитик",
+            "level": 3,
+            "entrance": 106,
+            "description": "вы собираете данные и готовите отчёты для руководства",
+            "life-effects": [
+                "заплатите 320 за получение диплома",
+                "доход = 220/ход"
+            ]
+        }
+    ]
+}

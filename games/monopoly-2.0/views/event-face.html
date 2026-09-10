@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>{{ deck.title }}</title>
+  <style>
+    {% include 'event-face.scss' %}
+  </style>
+</head>
+<body>
+{% for card in cards %}
+  <article class="card" style="width: {{ card.card_width_mm }}mm; height: {{ card.card_height_mm }}mm;">
+    <header class="header">
+      <div class="cell from">{{ card.from }}</div>
+      <div class="cell name"><span>{{ card.name }}</span></div>
+      <div class="cell to">{{ card.to }}</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">{{ card.description }}</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      {% if card.life_effects %}
+      <ul>
+        {% for effect in card.life_effects %}
+        <li>{{ effect }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </article>
+{% endfor %}
+<script>
+{% autoescape false %}
+{% include 'fit-header-name.js' %}
+{% endautoescape %}
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{% include 'face-layout.j2' %}
+
+.header {
+  grid-template-columns: 1fr;
+
+  .name {
+    border-right: 0;
+  }
+}

@@ -1,0 +1,84 @@
+@page {
+  size: {{ card_width_mm }}mm {{ card_height_mm }}mm;
+  margin: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: {{ card_width_mm }}mm;
+  height: {{ card_height_mm }}mm;
+  background: #fff;
+}
+
+.card-back {
+  position: relative;
+  box-sizing: border-box;
+  width: {{ card_width_mm }}mm;
+  height: {{ card_height_mm }}mm;
+  overflow: hidden;
+  color: #000;
+  background: #fff;
+  font-family: "Times New Roman", Times, serif;
+  border: 1mm solid #000;
+  border-radius: 3mm;
+  break-after: page;
+  page-break-after: always;
+
+  &:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .inner {
+    position: absolute;
+    left: 4mm;
+    top: 4mm;
+    right: 4mm;
+    bottom: 4mm;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3mm 3mm 2.5mm;
+    text-align: center;
+    border: 0.5mm solid #000;
+    border-radius: 2mm;
+
+    .game {
+      font-size: 11pt;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .title {
+      margin-top: 0.6mm;
+      font-size: 14pt;
+      font-weight: bold;
+    }
+
+    .category {
+      margin-top: 0.3mm;
+      font-size: 11pt;
+    }
+
+    .career-path {
+      list-style: none;
+      flex: 1 1 auto;
+      margin: 2mm 0 0;
+      padding: 0;
+      width: 100%;
+
+      li {
+        padding: 0.35mm 0;
+        font-size: 10pt;
+        line-height: 1.15;
+
+        &.current {
+          font-weight: bold;
+        }
+      }
+    }
+  }
+}
