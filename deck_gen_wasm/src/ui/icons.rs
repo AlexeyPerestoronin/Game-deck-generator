@@ -23,3 +23,27 @@ pub fn DownloadIcon() -> impl IntoView {
         </svg>
     }
 }
+
+#[component]
+pub fn NewGameIcon() -> impl IntoView {
+    view! {
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+                fill="currentColor"
+                d="M2.5 2A1.5 1.5 0 0 0 1 3.5v9A1.5 1.5 0 0 0 2.5 14H8v-1H2.5a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5H9v3.5A.5.5 0 0 0 9.5 7H13v1h1V6.5a.5.5 0 0 0-.15-.35l-3-3A.5.5 0 0 0 10.5 3H2.5zM10 4.21 12.79 7H10V4.21zM12 10v2h2v1h-2v2h-1v-2h-2v-1h2v-2h1z"
+            />
+        </svg>
+    }
+}
+
+#[component]
+pub fn ClearIcon() -> impl IntoView {
+    view! {
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+                fill="currentColor"
+                d="M6.5 1.75A.75.75 0 0 1 7.25 1h1.5a.75.75 0 0 1 .75.75V3h3.75a.75.75 0 0 1 0 1.5h-.34l-.7 8.38A1.75 1.75 0 0 1 10.47 14.5H5.53a1.75 1.75 0 0 1-1.74-1.62l-.7-8.38h-.34a.75.75 0 0 1 0-1.5H6.5V1.75zm1 1.5V3h1V3.25h-1zM4.62 4.5l.68 8.2a.25.25 0 0 0 .25.22h4.9a.25.25 0 0 0 .25-.22l.68-8.2H4.62z"
+            />
+        </svg>
+    }
+}

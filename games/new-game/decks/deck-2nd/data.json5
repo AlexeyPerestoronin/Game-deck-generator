@@ -1,0 +1,20 @@
+{
+    "name": "new-game.deck-2nd",
+    "view": {
+        "face": "simple-front.html",
+        "back": "simple-back.html"
+    },
+    "deck": {
+        "game_name": "${game:name}",
+        "title": "Second deck",
+        "category": "Deck 2",
+        "card_width_mm": ${card:width_mm},
+        "card_height_mm": ${card:height_mm}
+    },
+    "cards": [
+        {
+            "name": "Card 1",
+            "description": "Replace this text with the card's effect."
+        }
+    ]
+}

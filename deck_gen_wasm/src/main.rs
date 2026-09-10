@@ -4,6 +4,7 @@ mod app;
 mod export;
 mod fs;
 mod persist;
+mod template;
 mod ui;
 mod workspace;
 

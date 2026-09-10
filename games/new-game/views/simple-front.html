@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ deck.title }}</title>
+  <style>
+    {% include 'simple-front.scss' %}
+  </style>
+</head>
+<body>
+{% for card in cards %}
+  <article class="card" style="width: {{ deck.card_width_mm }}mm; height: {{ deck.card_height_mm }}mm;">
+    <header class="header">
+      <div class="name">{{ card.name }}</div>
+    </header>
+    <div class="body">
+      <p class="description">{{ card.description }}</p>
+    </div>
+    <footer class="footer">{{ game_name }}</footer>
+  </article>
+{% endfor %}
+</body>
+</html>

@@ -8,6 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
 use crate::fs::{join_path, parent_path, Vfs};
 use crate::persist::{save_session, Session};
+use crate::template::install_new_game;
 
 #[derive(Clone, Copy)]
 pub struct Workspace {
@@ -15,6 +16,7 @@ pub struct Workspace {
     pub selected: RwSignal<Option<String>>,
     pub expanded: RwSignal<HashSet<String>>,
     pub status: RwSignal<String>,
+    pub loading: RwSignal<bool>,
 }
 
 impl Workspace {
@@ -25,6 +27,7 @@ impl Workspace {
             selected: RwSignal::new(session.selected),
             expanded: RwSignal::new(expanded),
             status: RwSignal::new(String::new()),
+            loading: RwSignal::new(false),
         }
     }
 
@@ -89,6 +92,41 @@ impl Workspace {
             Ok(()) => self.status.set("Saved in this browser".into()),
             Err(err) => self.status.set(err),
         }
+    }
+
+    pub fn clear(&self) {
+        self.vfs.set(Vfs::default());
+        self.selected.set(None);
+        self.expanded.set(HashSet::new());
+        self.status.set("Workspace cleared".into());
+        let _ = save_session(&self.snapshot());
+    }
+
+    pub fn add_new_game(&self) {
+        if self.loading.get() {
+            return;
+        }
+        self.loading.set(true);
+        self.status.set("Loading new-game template…".into());
+        let workspace = *self;
+        spawn_local(async move {
+            let mut vfs = workspace.vfs.get_untracked();
+            let result = install_new_game(&mut vfs).await;
+            match result {
+                Ok(installed) => {
+                    workspace.vfs.set(vfs);
+                    let path = format!("games/{}", installed.folder);
+                    workspace.expand_ancestors(&path);
+                    workspace.selected.set(Some(path.clone()));
+                    workspace.status.set(format!(
+                        "Added {path} from {}",
+                        installed.source
+                    ));
+                }
+                Err(err) => workspace.status.set(err),
+            }
+            workspace.loading.set(false);
+        });
     }
 
     pub fn download(&self) {

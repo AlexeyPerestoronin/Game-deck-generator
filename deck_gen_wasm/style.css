@@ -42,6 +42,15 @@ body {
   border-right: 1px solid var(--border);
 }
 
+.activity-spacer {
+  flex: 1;
+}
+
+.activity-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .tooltip-host {
   position: relative;
   display: flex;
@@ -96,18 +105,23 @@ body {
   min-width: 0;
 }
 
-.explorer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px 6px;
+.explorer-title-row {
+  padding: 10px 12px 4px;
 }
 
 .explorer-title {
   font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--fg-dim);
+}
+
+.explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 10px 6px;
 }
 
 .explorer-actions {
@@ -210,4 +224,63 @@ body {
   font-size: 13px;
   line-height: 1.45;
   outline: none;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal {
+  width: min(420px, calc(100vw - 32px));
+  padding: 18px 20px 16px;
+  background: #252526;
+  border: 1px solid #454545;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  color: var(--fg);
+}
+
+.modal-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modal-body {
+  margin: 0 0 16px;
+  color: var(--fg);
+  line-height: 1.45;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-btn {
+  border: 1px solid #3c3c3c;
+  background: #2d2d2d;
+  color: var(--fg);
+  cursor: pointer;
+  padding: 6px 14px;
+  font: inherit;
+}
+
+.modal-btn:hover {
+  background: var(--hover);
+}
+
+.modal-btn.danger {
+  background: #5a1d1d;
+  border-color: #a12626;
+}
+
+.modal-btn.danger:hover {
+  background: #6e2424;
 }

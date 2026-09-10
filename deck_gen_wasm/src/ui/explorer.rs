@@ -9,8 +9,10 @@ use crate::workspace::Workspace;
 pub fn Explorer(workspace: Workspace) -> impl IntoView {
     view! {
         <aside class="explorer">
+            <div class="explorer-title-row">
+                <span class="explorer-title">"Games"</span>
+            </div>
             <header class="explorer-header">
-                <span class="explorer-title">"EXPLORER"</span>
                 <div class="explorer-actions">
                     <button class="text-btn" title="New File" on:click=move |_| workspace.create_file()>"+ File"</button>
                     <button class="text-btn" title="New Folder" on:click=move |_| workspace.create_folder()>"+ Folder"</button>

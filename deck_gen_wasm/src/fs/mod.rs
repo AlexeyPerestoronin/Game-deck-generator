@@ -58,6 +58,30 @@ impl Vfs {
         }
     }
 
+    /// Create or replace a file, creating parent folders as needed.
+    pub fn put_file(&mut self, path: &str, content: String) -> Result<(), String> {
+        let parts = split_path(path)?;
+        let Some((name, parent_parts)) = parts.split_last() else {
+            return Err("Cannot write a file at the workspace root".into());
+        };
+        let parent = ensure_dir(&mut self.root, parent_parts)?;
+        if matches!(parent.get(*name), Some(Node::Dir { .. })) {
+            return Err(format!("'{path}' is a folder"));
+        }
+        parent.insert(name.to_string(), Node::File { content });
+        Ok(())
+    }
+
+    pub fn exists(&self, path: &str) -> bool {
+        if path.is_empty() {
+            return true;
+        }
+        let Ok(parts) = split_path(path) else {
+            return false;
+        };
+        node_at(&self.root, &parts).is_ok()
+    }
+
     pub fn read_file(&self, path: &str) -> Option<&str> {
         let parts = split_path(path).ok()?;
         match node_at(&self.root, &parts) {

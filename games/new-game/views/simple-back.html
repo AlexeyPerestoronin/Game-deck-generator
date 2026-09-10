@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ deck.title }} — back</title>
+  <style>
+    {% include 'simple-back.scss' %}
+  </style>
+</head>
+<body>
+  <article class="card-back" style="width: {{ deck.card_width_mm }}mm; height: {{ deck.card_height_mm }}mm;">
+    <div class="inner">
+      <div class="game">{{ game_name }}</div>
+      <div class="title">{{ deck.title }}</div>
+      <div class="category">{{ deck.category }}</div>
+    </div>
+  </article>
+</body>
+</html>
