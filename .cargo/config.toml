@@ -1,0 +1,5 @@
+# Host build scripts (proc-macros, cc) still link with the GNU toolchain.
+# WASM crates need the getrandom JS backend; the feature flag alone is not enough
+# on every getrandom version in the tree.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]

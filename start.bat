@@ -34,8 +34,8 @@ echo   deck_gen.exe html --name monopoly.events.positives.lucky_day
 echo   deck_gen.exe pdf --name monopoly.events.positives.lucky_day
 echo   deck_gen.exe html --name events.positives.lucky_day
 echo.
-echo Web editor (from this repo root):
-echo   trunk serve
+echo Web editor (from this repo root, WinLibs gcc must be ahead of LLVM-MinGW):
+echo   serve.bat
 echo   then open http://127.0.0.1:8080
 goto :success
 
@@ -60,14 +60,26 @@ goto :eof
 
 :persist_user_path
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$bin = Join-Path $env:USERPROFILE '.cargo\bin';" ^
-  "if (-not (Test-Path -LiteralPath $bin)) { exit 0 };" ^
+  "$toAdd = @();" ^
+  "$cargo = Join-Path $env:USERPROFILE '.cargo\bin';" ^
+  "if (Test-Path -LiteralPath $cargo) { $toAdd += $cargo };" ^
+  "$winget = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages';" ^
+  "if (Test-Path -LiteralPath $winget) {" ^
+  "  Get-ChildItem -LiteralPath $winget -Directory -Filter 'BrechtSanders.WinLibs*' -ErrorAction SilentlyContinue |" ^
+  "    ForEach-Object { $gcc = Join-Path $_.FullName 'mingw64\bin'; if (Test-Path (Join-Path $gcc 'gcc.exe')) { $toAdd += $gcc } }" ^
+  "};" ^
   "$user = [Environment]::GetEnvironmentVariable('Path', 'User');" ^
   "if ($null -eq $user) { $user = '' };" ^
-  "$parts = @($user -split ';' | Where-Object { $_ -ne '' });" ^
-  "if ($parts -contains $bin) { exit 0 };" ^
-  "[Environment]::SetEnvironmentVariable('Path', ($bin + ';' + $user).TrimEnd(';'), 'User');" ^
-  "Write-Host '[ok] added cargo bin to the user PATH (new terminals will see it)'"
+  "$parts = [System.Collections.Generic.List[string]]::new();" ^
+  "foreach ($p in @($user -split ';' | Where-Object { $_ -ne '' })) { if (-not $parts.Contains($p)) { [void]$parts.Add($p) } };" ^
+  "$changed = $false;" ^
+  "foreach ($p in $toAdd) {" ^
+  "  if ($parts.Contains($p)) { [void]$parts.Remove($p) };" ^
+  "  $parts.Insert(0, $p); $changed = $true" ^
+  "};" ^
+  "if (-not $changed) { exit 0 };" ^
+  "[Environment]::SetEnvironmentVariable('Path', (($parts -join ';').TrimEnd(';')), 'User');" ^
+  "Write-Host '[ok] user PATH now prepends cargo bin and WinLibs gcc'"
 exit /b 0
 
 :ensure_cargo

@@ -1,0 +1,33 @@
+[package]
+name = "deck_gen"
+version.workspace = true
+edition.workspace = true
+description = "Load Monopoly 2.0 deck JSON5 and render card HTML (CLI PDF on native hosts)"
+
+[lib]
+name = "deck_gen"
+path = "src/lib.rs"
+
+[[bin]]
+name = "deck_gen"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli"]
+# Native CLI only. wasm builds must use --no-default-features so Chromium
+# PDF code is not compiled or linked.
+cli = ["dep:clap", "dep:prepare_pdf_host"]
+
+[dependencies]
+clap = { version = "4", features = ["derive"], optional = true }
+grass = "0.13"
+json5 = "0.4"
+minijinja = { version = "2", features = ["loader"] }
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+thiserror = "2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+prepare_pdf_host = { path = "../prepare_pdf_host", optional = true }
