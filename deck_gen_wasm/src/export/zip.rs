@@ -24,7 +24,7 @@ pub fn vfs_to_zip(vfs: &Vfs) -> Result<Vec<u8>, String> {
     for (path, content) in files {
         zip.start_file(path, options)
             .map_err(|err| err.to_string())?;
-        zip.write_all(content.as_bytes())
+        zip.write_all(&content)
             .map_err(|err| err.to_string())?;
     }
     zip.finish().map_err(|err| err.to_string())?;

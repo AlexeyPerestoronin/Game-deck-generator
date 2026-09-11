@@ -22,6 +22,8 @@ pub use vfs_fs::VfsFs;
 pub enum Node {
     /// UTF-8 file contents.
     File { content: String },
+    /// Raw bytes (PDF and other non-text artifacts). Not persisted.
+    Binary { data: Vec<u8> },
     /// Directory keyed by a single path segment.
     Dir { children: BTreeMap<String, Node> },
 }
@@ -63,19 +65,29 @@ impl Vfs {
         }
     }
 
-    /// Replace the body of an existing file.
+    /// Replace the body of an existing UTF-8 file.
     pub fn write_file(&mut self, path: &str, content: String) -> Result<(), String> {
         match node_at_mut(&mut self.root, &split_path(path)?)? {
             Node::File { content: slot } => {
                 *slot = content;
                 Ok(())
             }
+            Node::Binary { .. } => Err(format!("'{path}' is a binary file")),
             Node::Dir { .. } => Err(format!("'{path}' is a folder")),
         }
     }
 
-    /// Create or replace a file, creating parent folders as needed.
+    /// Create or replace a UTF-8 file, creating parent folders as needed.
     pub fn put_file(&mut self, path: &str, content: String) -> Result<(), String> {
+        self.put_node(path, Node::File { content })
+    }
+
+    /// Create or replace a binary file, creating parent folders as needed.
+    pub fn put_bytes(&mut self, path: &str, data: Vec<u8>) -> Result<(), String> {
+        self.put_node(path, Node::Binary { data })
+    }
+
+    fn put_node(&mut self, path: &str, node: Node) -> Result<(), String> {
         let parts = split_path(path)?;
         let Some((name, parent_parts)) = parts.split_last() else {
             return Err("Cannot write a file at the workspace root".into());
@@ -84,7 +96,7 @@ impl Vfs {
         if matches!(parent.get(*name), Some(Node::Dir { .. })) {
             return Err(format!("'{path}' is a folder"));
         }
-        parent.insert(name.to_string(), Node::File { content });
+        parent.insert(name.to_string(), node);
         Ok(())
     }
 
@@ -99,12 +111,37 @@ impl Vfs {
         node_at(&self.root, &parts).is_ok()
     }
 
-    /// File body, or `None` if missing or a directory.
+    /// UTF-8 file body, or `None` if missing, binary, or a directory.
     pub fn read_file(&self, path: &str) -> Option<&str> {
         let parts = split_path(path).ok()?;
         match node_at(&self.root, &parts) {
             Ok(Node::File { content }) => Some(content.as_str()),
             _ => None,
+        }
+    }
+
+    /// File bytes (text as UTF-8, or binary), or `None` if missing/directory.
+    pub fn read_bytes(&self, path: &str) -> Option<&[u8]> {
+        let parts = split_path(path).ok()?;
+        match node_at(&self.root, &parts) {
+            Ok(Node::File { content }) => Some(content.as_bytes()),
+            Ok(Node::Binary { data }) => Some(data.as_slice()),
+            _ => None,
+        }
+    }
+
+    /// Whether `path` is a binary file.
+    pub fn is_binary(&self, path: &str) -> bool {
+        let Ok(parts) = split_path(path) else {
+            return false;
+        };
+        matches!(node_at(&self.root, &parts), Ok(Node::Binary { .. }))
+    }
+
+    /// Snapshot without binary files (localStorage must not hold PDFs).
+    pub fn without_binaries(&self) -> Self {
+        Self {
+            root: strip_binaries(&self.root),
         }
     }
 
@@ -121,7 +158,13 @@ impl Vfs {
 
     /// Whether `path` is an existing file.
     pub fn is_file(&self, path: &str) -> bool {
-        self.read_file(path).is_some()
+        let Ok(parts) = split_path(path) else {
+            return false;
+        };
+        matches!(
+            node_at(&self.root, &parts),
+            Ok(Node::File { .. } | Node::Binary { .. })
+        )
     }
 
     /// Immediate children as `(name, is_dir)`, sorted by [`BTreeMap`] order.
@@ -134,8 +177,8 @@ impl Vfs {
             .collect()
     }
 
-    /// Depth-first listing: directory paths, then `(path, content)` files.
-    pub fn files_and_dirs(&self) -> (Vec<String>, Vec<(String, String)>) {
+    /// Depth-first listing: directory paths, then `(path, bytes)` files.
+    pub fn files_and_dirs(&self) -> (Vec<String>, Vec<(String, Vec<u8>)>) {
         let mut dirs = Vec::new();
         let mut files = Vec::new();
         collect_entries("", &self.root, &mut dirs, &mut files);
@@ -197,7 +240,7 @@ fn parent_map_mut<'a>(
     }
     match node_at_mut(root, parent_parts)? {
         Node::Dir { children } => Ok(children),
-        Node::File { .. } => Err("parent is a file".into()),
+        Node::File { .. } | Node::Binary { .. } => Err("parent is a file".into()),
     }
 }
 
@@ -229,7 +272,7 @@ fn ensure_dir<'a>(
     });
     match node {
         Node::Dir { children } => ensure_dir(children, rest),
-        Node::File { .. } => Err(format!("'{name}' is a file")),
+        Node::File { .. } | Node::Binary { .. } => Err(format!("'{name}' is a file")),
     }
 }
 
@@ -245,7 +288,7 @@ fn node_at<'a>(children: &'a BTreeMap<String, Node>, parts: &[&str]) -> Result<&
     }
     match node {
         Node::Dir { children } => node_at(children, rest),
-        Node::File { .. } => Err(format!("'{first}' is a file")),
+        Node::File { .. } | Node::Binary { .. } => Err(format!("'{first}' is a file")),
     }
 }
 
@@ -264,7 +307,7 @@ fn node_at_mut<'a>(
     }
     match node {
         Node::Dir { children } => node_at_mut(children, rest),
-        Node::File { .. } => Err(format!("'{first}' is a file")),
+        Node::File { .. } | Node::Binary { .. } => Err(format!("'{first}' is a file")),
     }
 }
 
@@ -282,13 +325,26 @@ mod vfs_tests {
         vfs.remove("games/b").unwrap();
         assert!(!vfs.exists("games/b"));
     }
+
+    #[test]
+    fn binary_files_round_trip_and_strip() {
+        let mut vfs = Vfs::default();
+        vfs.put_bytes("games/a/face.pdf", vec![0x25, 0x50, 0x44, 0x46]).unwrap();
+        assert!(vfs.is_file("games/a/face.pdf"));
+        assert!(vfs.is_binary("games/a/face.pdf"));
+        assert!(vfs.read_file("games/a/face.pdf").is_none());
+        assert_eq!(vfs.read_bytes("games/a/face.pdf"), Some(&[0x25, 0x50, 0x44, 0x46][..]));
+        let stripped = vfs.without_binaries();
+        assert!(!stripped.exists("games/a/face.pdf"));
+        assert!(stripped.is_dir("games/a"));
+    }
 }
 
 fn collect_entries(
     prefix: &str,
     children: &BTreeMap<String, Node>,
     dirs: &mut Vec<String>,
-    files: &mut Vec<(String, String)>,
+    files: &mut Vec<(String, Vec<u8>)>,
 ) {
     for (name, node) in children {
         let path = join_path(prefix, name);
@@ -297,7 +353,24 @@ fn collect_entries(
                 dirs.push(path.clone());
                 collect_entries(&path, children, dirs, files);
             }
-            Node::File { content } => files.push((path, content.clone())),
+            Node::File { content } => files.push((path, content.as_bytes().to_vec())),
+            Node::Binary { data } => files.push((path, data.clone())),
         }
     }
+}
+
+fn strip_binaries(children: &BTreeMap<String, Node>) -> BTreeMap<String, Node> {
+    children
+        .iter()
+        .filter_map(|(name, node)| match node {
+            Node::Binary { .. } => None,
+            Node::File { .. } => Some((name.clone(), node.clone())),
+            Node::Dir { children } => Some((
+                name.clone(),
+                Node::Dir {
+                    children: strip_binaries(children),
+                },
+            )),
+        })
+        .collect()
 }

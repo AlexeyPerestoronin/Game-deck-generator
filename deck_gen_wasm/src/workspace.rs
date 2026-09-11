@@ -3,8 +3,8 @@
 //! [`Workspace`] is a cheap `Copy` handle to Leptos signals (VFS, selection,
 //! expanded folders, status, loading). Explorer, editor, and the activity bar
 //! all clone it. Mutations go through the VFS; async work (`prepare_html`,
-//! folder pick, template fetch, ZIP) uses `spawn_local` and the `loading` flag
-//! so two long actions cannot overlap.
+//! `prepare_pdf`, folder pick, template fetch, ZIP) uses `spawn_local` and the
+//! `loading` flag so two long actions cannot overlap.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -51,7 +51,7 @@ pub struct Workspace {
     pub expanded: RwSignal<HashSet<String>>,
     /// Footer status line.
     pub status: RwSignal<String>,
-    /// True while an async action (load / template / HTML / ZIP) is running.
+    /// True while an async action (load / template / HTML / PDF / ZIP) is running.
     pub loading: RwSignal<bool>,
 }
 
@@ -246,6 +246,32 @@ impl Workspace {
                 Ok(n) => {
                     workspace.vfs.set(take_vfs(fs));
                     workspace.status.set(format!("Prepared HTML for {n} decks"));
+                }
+                Err(err) => {
+                    warning.set(Some(err.to_string()));
+                    workspace.status.set(String::new());
+                }
+            }
+            workspace.loading.set(false);
+        });
+    }
+
+    /// Run [`deck_gen::prepare_pdf`] with the browser engine after a 0ms yield.
+    pub fn prepare_pdf(&self, warning: RwSignal<Option<String>>) {
+        if self.loading.get() {
+            return;
+        }
+        self.loading.set(true);
+        self.status.set("Preparing PDF…".into());
+        let workspace = *self;
+        spawn_local(async move {
+            gloo_timers::future::TimeoutFuture::new(0).await;
+            let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
+            let engine = prepare_pdf_web::WebPdfEngine;
+            match deck_gen::prepare_pdf(fs.clone(), &engine).await {
+                Ok(n) => {
+                    workspace.vfs.set(take_vfs(fs));
+                    workspace.status.set(format!("Prepared PDF for {n} decks"));
                 }
                 Err(err) => {
                     warning.set(Some(err.to_string()));

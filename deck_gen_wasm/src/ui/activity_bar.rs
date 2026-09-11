@@ -1,4 +1,4 @@
-//! Left icon strip: save, ZIP, new/load game, prepare HTML, clear.
+//! Left icon strip: save, ZIP, new/load game, prepare HTML, prepare PDF, clear.
 //!
 //! Each button is a delayed tooltip plus a click that calls into
 //! [`Workspace`](crate::workspace::Workspace). Destructive / warning flows
@@ -7,7 +7,7 @@
 use leptos::prelude::*;
 
 use super::icons::{
-    ClearIcon, DownloadIcon, LoadGameIcon, NewGameIcon, PrepareHtmlIcon, SaveIcon,
+    ClearIcon, DownloadIcon, LoadGameIcon, NewGameIcon, PrepareHtmlIcon, PreparePdfIcon, SaveIcon,
 };
 use super::modal::{AlertModal, ConfirmModal};
 use super::tooltip::DelayedTooltip;
@@ -72,6 +72,19 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
                     }
                 >
                     <PrepareHtmlIcon />
+                </button>
+            </DelayedTooltip>
+            <DelayedTooltip text="Generate card PDFs and A4 duplex sheets for every deck in this workspace.">
+                <button
+                    class="activity-btn"
+                    aria-label="prepare_pdf"
+                    disabled=move || workspace.loading.get()
+                    on:click=move |_| {
+                        warning_title.set("Cannot prepare PDF".into());
+                        workspace.prepare_pdf(warning);
+                    }
+                >
+                    <PreparePdfIcon />
                 </button>
             </DelayedTooltip>
             <div class="activity-spacer"></div>

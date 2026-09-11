@@ -30,6 +30,9 @@ pub enum Error {
     /// MiniJinja load or render.
     #[error(transparent)]
     Template(#[from] minijinja::Error),
+    /// PDF parse, impose, or image embedding (`lopdf`).
+    #[error(transparent)]
+    Pdf(#[from] lopdf::Error),
 }
 
 impl Error {

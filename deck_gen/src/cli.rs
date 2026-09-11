@@ -1,20 +1,19 @@
 //! Native CLI: list / html / pdf. Compiled only with `--features cli`.
 //!
 //! `list` and `html` stay inside this crate. `pdf` launches Chrome through
-//! `prepare_pdf_host` after the same HTML render. The process filesystem is
-//! [`crate::fs::OsFs`]; conf is the cached native discovery in [`crate::conf`].
+//! `prepare_pdf_host` (via [`crate::pdf_engine::HostPdfEngine`]) after the same
+//! HTML render. The process filesystem is [`crate::fs::OsFs`].
 
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 
 use crate::catalog;
-use crate::conf::{conf, ChromeSettings, PrintSettings};
+use crate::conf::{conf, ChromeSettings};
 use crate::fs::OsFs;
-use crate::render;
-use prepare_pdf_host::{CardSize, Chrome, ChromeLocator, Duplex, PdfJob, SheetLayout};
+use crate::pdf_engine::HostPdfEngine;
+use prepare_pdf_host::{Chrome, ChromeLocator};
 
 #[derive(Parser)]
 #[command(name = "deck_gen", about = "Generate card decks from JSON5 + templates")]
@@ -73,7 +72,7 @@ fn list_command(json: bool, name: Option<&str>) -> Result<(), Box<dyn std::error
 fn html_command(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
     for (label, artifacts) in crate::prepare_html_named(fs, name)? {
-        print_html_logs(&label, &artifacts);
+        print_html_logs(&label, artifacts.card_count, &artifacts.preview, &artifacts.face_html, &artifacts.back_html);
     }
     Ok(())
 }
@@ -82,56 +81,45 @@ fn pdf_command(name: Option<&str>, duplex_override: Option<&str>) -> Result<(), 
     let fs = Arc::new(OsFs);
     let loaded = conf()?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
-
-    for deck in catalog::find_decks(fs.as_ref(), &loaded, name)? {
-        let game = loaded.game_for_deck_name(&deck.name)?;
-        let duplex_label = duplex_override.unwrap_or(&game.print.default_duplex);
-        let duplex = Duplex::parse(duplex_label).map_err(|err| -> Box<dyn std::error::Error> { err.into() })?;
-        fs::create_dir_all(&game.duplex)?;
-        let html_artifacts = render::prepare_html(&fs, &loaded, &deck)?;
-        print_html_logs(&deck.name, &html_artifacts);
-        let job = PdfJob {
-            card: CardSize {
-                width_mm: deck.card_width_mm(),
-                height_mm: deck.card_height_mm(),
-            },
-            output_dir: deck.output_dir(&loaded)?,
-            face_html: html_artifacts.face_html,
-            back_html: html_artifacts.back_html,
-            face_pdf_name: game.output.face_pdf.clone(),
-            back_pdf_name: game.output.back_pdf.clone(),
-            duplex_pdf_name: game.output.duplex_pdf.clone(),
-            sheet: sheet_from_print(&game.print),
-        };
-        let pdf = chrome.render_job(&job, duplex)?;
-        let collected_pdf = game.duplex.join(format!("{}.pdf", deck.name));
-        fs::copy(&pdf.duplex, &collected_pdf)?;
-        println!("[{}] {}: {}", deck.name, game.output.face_pdf, pdf.face_pdf.display());
-        println!("[{}] {}: {}", deck.name, game.output.back_pdf, pdf.back_pdf.display());
-        println!("[{}] {}: {}", deck.name, game.output.duplex_pdf, pdf.duplex.display());
+    let engine = HostPdfEngine::new(chrome);
+    let artifacts = pollster::block_on(crate::prepare_pdf_named(
+        fs,
+        &engine,
+        name,
+        duplex_override,
+    ))?;
+    for (label, pdf) in artifacts {
+        print_html_logs(
+            &label,
+            pdf.card_count,
+            &pdf.preview,
+            &pdf.face_html,
+            &pdf.back_html,
+        );
+        println!("[{label}] {}: {}", file_name(&pdf.face_pdf), pdf.face_pdf.display());
+        println!("[{label}] {}: {}", file_name(&pdf.back_pdf), pdf.back_pdf.display());
+        println!("[{label}] {}: {}", file_name(&pdf.duplex), pdf.duplex.display());
     }
     Ok(())
 }
 
-fn print_html_logs(label: &str, artifacts: &render::HtmlArtifacts) {
-    println!("[{label}] карточек: {}", artifacts.card_count);
-    println!("[{label}] preview: {}", artifacts.preview.display());
-    println!("[{label}] face.html: {}", artifacts.face_html.display());
-    println!("[{label}] back.html: {}", artifacts.back_html.display());
+fn print_html_logs(
+    label: &str,
+    card_count: usize,
+    preview: &std::path::Path,
+    face_html: &std::path::Path,
+    back_html: &std::path::Path,
+) {
+    println!("[{label}] карточек: {card_count}");
+    println!("[{label}] preview: {}", preview.display());
+    println!("[{label}] face.html: {}", face_html.display());
+    println!("[{label}] back.html: {}", back_html.display());
 }
 
-fn sheet_from_print(print: &PrintSettings) -> SheetLayout {
-    SheetLayout {
-        page_width_mm: print.page_width_mm,
-        page_height_mm: print.page_height_mm,
-        cols: print.cols,
-        rows: print.rows,
-        gap_x_mm: print.gap_x_mm,
-        gap_y_mm: print.gap_y_mm,
-        crop_mark_mm: print.crop_mark_mm,
-        crop_mark_gap_mm: print.crop_mark_gap_mm,
-        crop_mark_thickness_pt: print.crop_mark_thickness_pt,
-    }
+fn file_name(path: &std::path::Path) -> String {
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 fn chrome_locator(settings: &ChromeSettings, conf_root: &std::path::Path) -> ChromeLocator {

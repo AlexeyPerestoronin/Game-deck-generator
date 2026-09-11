@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["deck_gen", "prepare_pdf_host", "deck_gen_wasm"]
+members = ["deck_gen", "prepare_pdf_host", "prepare_pdf_web", "deck_gen_wasm"]
 default-members = ["deck_gen", "prepare_pdf_host"]
 
 [workspace.package]

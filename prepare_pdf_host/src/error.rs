@@ -11,8 +11,6 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
-    Pdf(#[from] lopdf::Error),
-    #[error(transparent)]
     Chrome(#[from] anyhow::Error),
 }
 

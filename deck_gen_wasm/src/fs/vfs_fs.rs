@@ -52,6 +52,21 @@ impl FileSystem for VfsFs {
             .map_err(|err| Error::file(path, err))
     }
 
+    fn write_bytes(&self, path: &Path, contents: &[u8]) -> Result<()> {
+        let key = vfs_key(path);
+        self.lock()
+            .put_bytes(&key, contents.to_vec())
+            .map_err(|err| Error::file(path, err))
+    }
+
+    fn read_bytes(&self, path: &Path) -> Result<Vec<u8>> {
+        let key = vfs_key(path);
+        self.lock()
+            .read_bytes(&key)
+            .map(Vec::from)
+            .ok_or_else(|| Error::file(path, "not found"))
+    }
+
     fn create_dir_all(&self, path: &Path) -> Result<()> {
         let key = vfs_key(path);
         if key.is_empty() {

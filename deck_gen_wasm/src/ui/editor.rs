@@ -38,6 +38,15 @@ pub fn Editor(workspace: Workspace) -> impl IntoView {
                     <div class="editor-empty">"Select a file to edit, or create one in the explorer."</div>
                 }
                 .into_any(),
+                Some(tab) if workspace.vfs.get().is_binary(&tab.path) => view! {
+                    <div class="editor-empty">
+                        {format!(
+                            "Binary file ({} bytes).",
+                            workspace.vfs.get().read_bytes(&tab.path).map(|b| b.len()).unwrap_or(0)
+                        )}
+                    </div>
+                }
+                .into_any(),
                 Some(tab) if tab.kind == TabKind::Preview => view! {
                     <PreviewPane workspace=workspace path=tab.path />
                 }

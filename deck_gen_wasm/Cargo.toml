@@ -9,6 +9,8 @@ description = "Browser WASM app: virtual workspace editor"
 console_error_panic_hook = "0.1"
 # Shared JSON5 → HTML pipeline; wasm builds omit the native CLI/PDF feature.
 deck_gen = { path = "../deck_gen", default-features = false }
+# Browser HTML→PDF engine for `deck_gen::prepare_pdf`.
+prepare_pdf_web = { path = "../prepare_pdf_web" }
 # Enable the JS entropy backend for transitive `getrandom` (see `.cargo/config.toml`).
 getrandom = { version = "0.3", features = ["wasm_js"] }
 # HTTP fetch of the `new-game` template from GitHub / the Trunk local copy.

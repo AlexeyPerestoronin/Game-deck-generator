@@ -7,7 +7,6 @@ use headless_chrome::types::PrintToPdfOptions;
 use headless_chrome::{Browser, LaunchOptions};
 
 use crate::error::{Error, Result};
-use crate::layout::CardSize;
 
 mod locate;
 
@@ -32,7 +31,23 @@ impl Chrome {
         })
     }
 
-    pub fn html_file_to_pdf(&self, html: &Path, pdf: &Path, card: CardSize) -> Result<()> {
+    pub fn html_to_pdf_bytes(&self, html: &str, width_mm: f64, height_mm: f64) -> Result<Vec<u8>> {
+        let html_path = unique_temp("html");
+        fs::write(&html_path, html)?;
+        let _guard = DeleteOnDrop(html_path.clone());
+        self.html_file_to_pdf_bytes(&html_path, width_mm, height_mm)
+    }
+
+    pub fn html_file_to_pdf(&self, html: &Path, pdf: &Path, width_mm: f64, height_mm: f64) -> Result<()> {
+        let bytes = self.html_file_to_pdf_bytes(html, width_mm, height_mm)?;
+        if let Some(parent) = pdf.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(pdf, bytes)?;
+        Ok(())
+    }
+
+    fn html_file_to_pdf_bytes(&self, html: &Path, width_mm: f64, height_mm: f64) -> Result<Vec<u8>> {
         if !html.is_file() {
             return Err(Error::file(html, "HTML file does not exist"));
         }
@@ -40,21 +55,16 @@ impl Chrome {
         tab.navigate_to(&path_to_file_url(html)?)?;
         tab.wait_until_navigated()?;
         let _ = tab.evaluate("window.__fitHeaderNames || document.fonts.ready", true);
-        let bytes = tab.print_to_pdf(Some(pdf_options(card)))?;
-        if let Some(parent) = pdf.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(pdf, bytes)?;
-        Ok(())
+        Ok(tab.print_to_pdf(Some(pdf_options(width_mm, height_mm)))?)
     }
 }
 
-fn pdf_options(card: CardSize) -> PrintToPdfOptions {
+fn pdf_options(width_mm: f64, height_mm: f64) -> PrintToPdfOptions {
     PrintToPdfOptions {
         print_background: Some(true),
         prefer_css_page_size: Some(true),
-        paper_width: Some(card.width_mm / 25.4),
-        paper_height: Some(card.height_mm / 25.4),
+        paper_width: Some(width_mm / 25.4),
+        paper_height: Some(height_mm / 25.4),
         margin_top: Some(0.0),
         margin_bottom: Some(0.0),
         margin_left: Some(0.0),
@@ -79,5 +89,21 @@ fn strip_verbatim(path: PathBuf) -> PathBuf {
         PathBuf::from(rest)
     } else {
         path
+    }
+}
+
+fn unique_temp(ext: &str) -> PathBuf {
+    let n = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    std::env::temp_dir().join(format!("deck_gen_{n}.{ext}"))
+}
+
+struct DeleteOnDrop(PathBuf);
+
+impl Drop for DeleteOnDrop {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
     }
 }

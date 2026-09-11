@@ -17,11 +17,15 @@ required-features = ["cli"]
 default = ["cli"]
 # Native CLI only. wasm builds must use --no-default-features so Chromium
 # PDF code is not compiled or linked.
-cli = ["dep:clap", "dep:prepare_pdf_host"]
+cli = ["dep:clap", "dep:prepare_pdf_host", "dep:pollster"]
 
 [dependencies]
 # Subcommands (`list` / `html` / `pdf`) and flag parsing for the native binary.
 clap = { version = "4", features = ["derive"], optional = true }
+# Block on `prepare_pdf` in the native `pdf` subcommand.
+pollster = { version = "0.4", optional = true }
+# A4 duplex imposition and JPEG-page PDFs (wasm + native).
+lopdf = "0.34"
 # Compile `.scss` templates to CSS inside the Jinja loader.
 grass = "0.13"
 # Parse `conf.json5`, deck `data.json5`, and vars files (comments + trailing commas).

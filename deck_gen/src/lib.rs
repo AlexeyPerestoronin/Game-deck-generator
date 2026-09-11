@@ -1,8 +1,7 @@
 //! JSON5 deck data plus Jinja/SCSS views, rendered to card HTML.
 //!
-//! Native builds with `--features cli` also print PDFs through Chromium.
-//! WASM builds disable that path and run the same HTML pipeline against any
-//! [`FileSystem`] — typically the in-memory workspace of `deck_gen_wasm`.
+//! Native builds with `--features cli` also print PDFs through Chromium
+//! (`pdf_engine::HostPdfEngine`). WASM uses `prepare_pdf_web` as the engine.
 //!
 //! Pipeline: load [`conf`] → [`catalog`] matching decks → [`load`] / [`subst`]
 //! expand placeholders → [`model::Deck`] + [`card`] rows → [`render`] HTML.
@@ -14,6 +13,7 @@ pub mod error;
 pub mod fs;
 pub mod load;
 pub mod model;
+pub mod pdf_engine;
 pub mod render;
 pub mod subst;
 
@@ -25,6 +25,7 @@ use std::sync::Arc;
 pub use error::{Error, Result};
 pub use fs::FileSystem;
 pub use model::Deck;
+pub use pdf_engine::{prepare_pdf, prepare_pdf_named, PdfEngineGenerator};
 
 /// Render face / back / preview HTML for every deck visible through `fs`.
 ///

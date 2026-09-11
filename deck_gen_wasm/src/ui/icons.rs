@@ -75,6 +75,21 @@ pub fn NewGameIcon() -> impl IntoView {
     }
 }
 
+/// Activity-bar `prepare_pdf` glyph.
+#[component]
+pub fn PreparePdfIcon() -> impl IntoView {
+    view! {
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+                fill="currentColor"
+                d="M3 1.5A1.5 1.5 0 0 1 4.5 0H9l4 4v10.5A1.5 1.5 0 0 1 11.5 16h-7A1.5 1.5 0 0 1 3 14.5v-13z"
+            />
+            <path fill="#1e1e1e" d="M9 0v4h4L9 0z"/>
+            <text x="8" y="12.2" text-anchor="middle" fill="#1e1e1e" font-size="4.4" font-family="Segoe UI, sans-serif" font-weight="700">PDF</text>
+        </svg>
+    }
+}
+
 /// Activity-bar `prepare_html` glyph.
 #[component]
 pub fn PrepareHtmlIcon() -> impl IntoView {

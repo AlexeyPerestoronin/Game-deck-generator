@@ -70,7 +70,7 @@ pub struct OutputNames {
     pub duplex_pdf: String,
 }
 
-/// Duplex sheet geometry, copied into `prepare_pdf_host::SheetLayout`.
+/// Duplex sheet geometry, copied into `pdf_engine::SheetLayout`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PrintSettings {
     /// Default duplex mode name (`long` / `short`).

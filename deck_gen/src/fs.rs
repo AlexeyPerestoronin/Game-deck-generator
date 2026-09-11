@@ -10,12 +10,16 @@ use std::path::{Path, PathBuf};
 
 use crate::error::Result;
 
-/// Read, write, and listing operations required to load games and emit HTML.
+/// Read, write, and listing operations required to load games and emit HTML/PDF.
 pub trait FileSystem: Send + Sync {
     /// Read an entire UTF-8 file.
     fn read_to_string(&self, path: &Path) -> Result<String>;
     /// Create or replace a UTF-8 file.
     fn write(&self, path: &Path, contents: &str) -> Result<()>;
+    /// Create or replace a file with raw bytes (PDF and other binaries).
+    fn write_bytes(&self, path: &Path, contents: &[u8]) -> Result<()>;
+    /// Read an entire file as bytes.
+    fn read_bytes(&self, path: &Path) -> Result<Vec<u8>>;
     /// Create `path` and any missing parents.
     fn create_dir_all(&self, path: &Path) -> Result<()>;
     /// Whether `path` is an existing file.
@@ -43,6 +47,14 @@ impl FileSystem for OsFs {
 
     fn write(&self, path: &Path, contents: &str) -> Result<()> {
         Ok(std::fs::write(path, contents)?)
+    }
+
+    fn write_bytes(&self, path: &Path, contents: &[u8]) -> Result<()> {
+        Ok(std::fs::write(path, contents)?)
+    }
+
+    fn read_bytes(&self, path: &Path) -> Result<Vec<u8>> {
+        Ok(std::fs::read(path)?)
     }
 
     fn create_dir_all(&self, path: &Path) -> Result<()> {

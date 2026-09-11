@@ -30,7 +30,7 @@ impl Session {
         let mut dirs: Vec<String> = expanded.iter().cloned().collect();
         dirs.sort();
         Self {
-            vfs,
+            vfs: vfs.without_binaries(),
             selected,
             expanded: dirs,
         }
