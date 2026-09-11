@@ -55,7 +55,7 @@ fn locate_all() -> Result<Vec<LocatedDeck>> {
     let mut by_dir: BTreeMap<PathBuf, LocatedDeck> = BTreeMap::new();
     for game in loaded.games.values() {
         if game.decks.is_dir() {
-            collect_data_files(game, &game.decks, &loaded.deck_data_files, &mut by_dir)?;
+            collect_data_files(game, &game.decks, &mut by_dir)?;
         }
     }
     Ok(by_dir.into_values().collect())
@@ -64,35 +64,18 @@ fn locate_all() -> Result<Vec<LocatedDeck>> {
 fn collect_data_files(
     game: &GamePaths,
     dir: &Path,
-    data_filenames: &[String],
     by_dir: &mut BTreeMap<PathBuf, LocatedDeck>,
 ) -> Result<()> {
     for entry in dir.read_dir()? {
-        let entry = entry?;
-        let path = entry.path();
+        let path = entry?.path();
         if path.is_dir() {
-            collect_data_files(game, &path, data_filenames, by_dir)?;
-            continue;
+            collect_data_files(game, &path, by_dir)?;
         }
-        let file_name = match path.file_name().and_then(|name| name.to_str()) {
-            Some(name) => name,
-            None => continue,
-        };
-        if !data_filenames.iter().any(|allowed| allowed == file_name) {
-            continue;
-        }
-        if let Some(previous) = by_dir.get(dir) {
-            if previous.path != path {
-                return Err(Error::msg(format!(
-                    "Both '{}' and '{}' exist in {}",
-                    previous.path.file_name().unwrap().to_string_lossy(),
-                    file_name,
-                    dir.display()
-                )));
-            }
-        }
-        let name = dotted_name(game, &path)?;
-        by_dir.insert(dir.to_path_buf(), LocatedDeck { path, name });
+    }
+    let data = dir.join("data.json5");
+    if data.is_file() {
+        let name = dotted_name(game, &data)?;
+        by_dir.insert(dir.to_path_buf(), LocatedDeck { path: data, name });
     }
     Ok(())
 }

@@ -12,8 +12,6 @@ pub struct RootFile {
 /// `conf.json5` in the games folder.
 #[derive(Debug, Deserialize)]
 pub struct GamesRootFile {
-    pub deck_data_files: Vec<String>,
-    pub vars_file_extensions: Vec<String>,
     pub default_game: String,
 }
 

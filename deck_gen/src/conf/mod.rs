@@ -18,8 +18,6 @@ use locate::{canonicalize_or_abs, find_conf_file};
 use schema::{GameFile, GamesRootFile, RootFile};
 
 const CONF_FILE_NAME: &str = "conf.json5";
-const PREVIEW_TEMPLATE: &str = "preview.html";
-const MANIFEST_FILE: &str = "manifest.json";
 
 static CONF: OnceLock<Arc<Conf>> = OnceLock::new();
 
@@ -28,8 +26,6 @@ pub struct Conf {
     pub root: PathBuf,
     pub games_root: PathBuf,
     pub default_game: String,
-    pub deck_data_files: Vec<String>,
-    pub vars_file_extensions: Vec<String>,
     pub chrome: ChromeSettings,
     pub games: HashMap<String, GamePaths>,
 }
@@ -59,14 +55,6 @@ pub fn conf() -> Result<Arc<Conf>> {
     }
     let loaded = Arc::new(load_from_disk()?);
     Ok(CONF.get_or_init(|| loaded).clone())
-}
-
-pub fn preview_template_name() -> &'static str {
-    PREVIEW_TEMPLATE
-}
-
-pub fn manifest_file_name() -> &'static str {
-    MANIFEST_FILE
 }
 
 impl Conf {
@@ -151,8 +139,6 @@ fn build_conf(conf_path: PathBuf, raw: RootFile) -> Result<Conf> {
         root,
         games_root,
         default_game: games_raw.default_game,
-        deck_data_files: games_raw.deck_data_files,
-        vars_file_extensions: games_raw.vars_file_extensions,
         chrome: raw.chrome,
         games,
     })

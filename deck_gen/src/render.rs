@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use minijinja::value::Value as JinjaValue;
 use minijinja::{context, AutoEscape, Environment};
-use serde_json::{json, Value};
+use serde_json::Value;
 
-use crate::conf::{conf, manifest_file_name, preview_template_name, views_for_deck_name};
+use crate::conf::{conf, views_for_deck_name};
 use crate::error::Result;
 use crate::model::Deck;
 
@@ -20,10 +20,7 @@ pub struct HtmlArtifacts {
 }
 
 pub fn prepare_html(deck: &Deck) -> Result<HtmlArtifacts> {
-    let cards = deck.cards();
-    let artifacts = render_html(deck, &cards)?;
-    write_manifest(deck, &artifacts)?;
-    Ok(artifacts)
+    render_html(deck, &deck.cards())
 }
 
 fn render_html(deck: &Deck, cards: &[Value]) -> Result<HtmlArtifacts> {
@@ -44,7 +41,7 @@ fn render_html(deck: &Deck, cards: &[Value]) -> Result<HtmlArtifacts> {
     fs::write(&back_path, env.get_template(&back_template)?.render(&ctx)?)?;
     fs::write(
         &preview_path,
-        env.get_template(preview_template_name())?.render(&ctx)?,
+        env.get_template(&game.output.preview_html)?.render(&ctx)?,
     )?;
 
     Ok(HtmlArtifacts {
@@ -129,18 +126,4 @@ fn read_template(name: &str, search: &[PathBuf]) -> Option<String> {
     None
 }
 
-fn write_manifest(deck: &Deck, artifacts: &HtmlArtifacts) -> Result<()> {
-    let out = deck.output_dir()?;
-    let payload = json!({
-        "name": deck.name,
-        "card_width_mm": deck.card_width_mm(),
-        "card_height_mm": deck.card_height_mm(),
-        "card_count": artifacts.card_count,
-        "output_dir": out,
-        "preview": artifacts.preview,
-        "face_html": artifacts.face_html,
-        "back_html": artifacts.back_html,
-    });
-    fs::write(out.join(manifest_file_name()), serde_json::to_vec_pretty(&payload)?)?;
-    Ok(())
-}
+

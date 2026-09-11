@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use crate::conf::conf;
 use crate::error::{Error, Result};
 use crate::subst::{
     expand_sticky_spans, extract_json_object_for_key, lookup_var, substitute_placeholders, Resolve,
@@ -107,29 +106,14 @@ impl DataManager {
         if !is_vars_stem(name) {
             return Err(Error::msg(format!("Invalid vars file name {name:?}")));
         }
-        let loaded = conf()?;
-        let mut searched = Vec::new();
-        for directory in self.vars_search_dirs() {
-            for suffix in &loaded.vars_file_extensions {
-                let path = directory.join(format!("{name}{suffix}"));
-                if path.is_file() {
-                    return Ok(path);
-                }
-                searched.push(path);
-            }
+        let path = self.game_vars_dir.join(format!("{name}.json5"));
+        if path.is_file() {
+            return Ok(path);
         }
-        let locations = searched
-            .iter()
-            .map(|path| path.display().to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
         Err(Error::msg(format!(
-            "Vars file '{name}' not found in: {locations}"
+            "Vars file '{name}' not found in: {}",
+            path.display()
         )))
-    }
-
-    fn vars_search_dirs(&self) -> Vec<PathBuf> {
-        vec![self.game_vars_dir.clone()]
     }
 }
 
