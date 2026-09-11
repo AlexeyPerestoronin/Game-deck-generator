@@ -6,6 +6,7 @@ pub fn ConfirmModal(
     title: &'static str,
     message: &'static str,
     confirm_label: &'static str,
+    #[prop(optional)] danger: bool,
     #[prop(into)] on_cancel: Callback<()>,
     #[prop(into)] on_confirm: Callback<()>,
 ) -> impl IntoView {
@@ -29,8 +30,46 @@ pub fn ConfirmModal(
                         <button class="modal-btn" on:click=move |_| on_cancel.run(())>
                             "Cancel"
                         </button>
-                        <button class="modal-btn danger" on:click=move |_| on_confirm.run(())>
+                        <button
+                            class="modal-btn"
+                            class:danger=danger
+                            on:click=move |_| on_confirm.run(())
+                        >
                             {confirm_label}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Show>
+    }
+}
+
+#[component]
+pub fn AlertModal(
+    #[prop(into)] open: Signal<bool>,
+    #[prop(into)] title: Signal<String>,
+    #[prop(into)] message: Signal<String>,
+    #[prop(into)] on_close: Callback<()>,
+) -> impl IntoView {
+    view! {
+        <Show when=move || open.get()>
+            <div
+                class="modal-backdrop"
+                role="presentation"
+                on:click=move |_| on_close.run(())
+            >
+                <div
+                    class="modal"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="alert-title"
+                    on:click=move |ev| ev.stop_propagation()
+                >
+                    <h2 id="alert-title" class="modal-title">{move || title.get()}</h2>
+                    <p class="modal-body modal-pre">{move || message.get()}</p>
+                    <div class="modal-actions">
+                        <button class="modal-btn" on:click=move |_| on_close.run(())>
+                            "OK"
                         </button>
                     </div>
                 </div>

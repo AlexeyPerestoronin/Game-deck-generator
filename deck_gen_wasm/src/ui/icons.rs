@@ -40,6 +40,19 @@ pub fn DownloadIcon() -> impl IntoView {
 }
 
 #[component]
+pub fn LoadGameIcon() -> impl IntoView {
+    view! {
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+                fill="currentColor"
+                d="M1.5 3.5A1.5 1.5 0 0 1 3 2h3.2c.3 0 .58.16.74.42L7.7 3.5H13A1.5 1.5 0 0 1 14.5 5v7A1.5 1.5 0 0 1 13 13.5H3A1.5 1.5 0 0 1 1.5 12V3.5z"
+            />
+            <path fill="#1e1e1e" d="M8 6.2v3.2h1.6L8 11.2 6.4 9.4H8V6.2z"/>
+        </svg>
+    }
+}
+
+#[component]
 pub fn NewGameIcon() -> impl IntoView {
     view! {
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">

@@ -7,6 +7,7 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
 use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs};
+use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
 use crate::persist::{save_session, Session};
 use crate::template::install_new_game;
 
@@ -100,6 +101,41 @@ impl Workspace {
         self.expanded.set(HashSet::new());
         self.status.set("Workspace cleared".into());
         let _ = save_session(&self.snapshot());
+    }
+
+    pub fn load_game_from_disk(&self, warning: RwSignal<Option<String>>) {
+        if self.loading.get() {
+            return;
+        }
+        self.loading.set(true);
+        self.status.set("Select a folder…".into());
+        let workspace = *self;
+        spawn_local(async move {
+            match pick_and_read_folder().await {
+                PickResult::Cancelled => {
+                    workspace.status.set(String::new());
+                }
+                PickResult::Rejected(reason) => {
+                    warning.set(Some(reason));
+                    workspace.status.set(String::new());
+                }
+                PickResult::Ready { name, files, dirs } => {
+                    workspace.status.set("Loading folder…".into());
+                    let mut vfs = workspace.vfs.get_untracked();
+                    match install_folder(&mut vfs, &name, &dirs, &files) {
+                        Ok(folder) => {
+                            workspace.vfs.set(vfs);
+                            let path = format!("games/{folder}");
+                            workspace.expand_ancestors(&path);
+                            workspace.selected.set(Some(path.clone()));
+                            workspace.status.set(format!("Loaded {path}"));
+                        }
+                        Err(err) => workspace.status.set(err),
+                    }
+                }
+            }
+            workspace.loading.set(false);
+        });
     }
 
     pub fn add_new_game(&self) {

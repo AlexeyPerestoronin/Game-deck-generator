@@ -3,6 +3,7 @@ use leptos::prelude::*;
 mod app;
 mod export;
 mod fs;
+mod load_folder;
 mod persist;
 mod template;
 mod ui;

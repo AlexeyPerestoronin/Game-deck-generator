@@ -317,6 +317,10 @@ body {
   line-height: 1.45;
 }
 
+.modal-pre {
+  white-space: pre-wrap;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
