@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 
-use super::icons::{ClearIcon, DownloadIcon, LoadGameIcon, NewGameIcon, SaveIcon};
+use super::icons::{
+    ClearIcon, DownloadIcon, LoadGameIcon, NewGameIcon, PrepareHtmlIcon, SaveIcon,
+};
 use super::modal::{AlertModal, ConfirmModal};
 use super::tooltip::DelayedTooltip;
 use crate::workspace::Workspace;
@@ -10,6 +12,7 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
     let show_clear = RwSignal::new(false);
     let show_load = RwSignal::new(false);
     let warning = RwSignal::new(None::<String>);
+    let warning_title = RwSignal::new("Error".to_string());
 
     view! {
         <nav class="activity-bar" aria-label="Actions">
@@ -51,6 +54,19 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
                     <LoadGameIcon />
                 </button>
             </DelayedTooltip>
+            <DelayedTooltip text="Generate HTML preview for every deck in this workspace.">
+                <button
+                    class="activity-btn"
+                    aria-label="prepare_html"
+                    disabled=move || workspace.loading.get()
+                    on:click=move |_| {
+                        warning_title.set("Cannot prepare HTML".into());
+                        workspace.prepare_html(warning);
+                    }
+                >
+                    <PrepareHtmlIcon />
+                </button>
+            </DelayedTooltip>
             <div class="activity-spacer"></div>
             <DelayedTooltip text="Clear the workspace in this browser.">
                 <button
@@ -81,12 +97,13 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
                 on_cancel=move |_| show_load.set(false)
                 on_confirm=move |_| {
                     show_load.set(false);
+                    warning_title.set("Cannot load folder".into());
                     workspace.load_game_from_disk(warning);
                 }
             />
             <AlertModal
                 open=Signal::derive(move || warning.get().is_some())
-                title=Signal::derive(|| "Cannot load folder".to_string())
+                title=Signal::derive(move || warning_title.get())
                 message=Signal::derive(move || warning.get().unwrap_or_default())
                 on_close=move |_| warning.set(None)
             />

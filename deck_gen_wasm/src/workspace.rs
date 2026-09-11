@@ -9,6 +9,7 @@ use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
 use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs};
 use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
 use crate::persist::{save_session, Session};
+use crate::prepare::prepare_all_html;
 use crate::template::install_new_game;
 
 #[derive(Clone, Copy)]
@@ -132,6 +133,30 @@ impl Workspace {
                         }
                         Err(err) => workspace.status.set(err),
                     }
+                }
+            }
+            workspace.loading.set(false);
+        });
+    }
+
+    pub fn prepare_html(&self, warning: RwSignal<Option<String>>) {
+        if self.loading.get() {
+            return;
+        }
+        self.loading.set(true);
+        self.status.set("Preparing HTML…".into());
+        let workspace = *self;
+        spawn_local(async move {
+            gloo_timers::future::TimeoutFuture::new(0).await;
+            let mut vfs = workspace.vfs.get_untracked();
+            match prepare_all_html(&mut vfs) {
+                Ok(n) => {
+                    workspace.vfs.set(vfs);
+                    workspace.status.set(format!("Prepared HTML for {n} decks"));
+                }
+                Err(err) => {
+                    warning.set(Some(err));
+                    workspace.status.set(String::new());
                 }
             }
             workspace.loading.set(false);

@@ -2,7 +2,6 @@
 
 use gloo_net::http::Request;
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 use crate::fs::Vfs;
 
@@ -10,21 +9,7 @@ const GITHUB_REPO: &str = "AlexeyPerestoronin/Game-deck-generator";
 const GITHUB_BRANCH: &str = "master";
 const TEMPLATE_GAME: &str = "new-game";
 const TEMPLATE_PREFIX: &str = "games/new-game/";
-const CONF_PATH: &str = "conf.json5";
-
-const FALLBACK_PATHS: &[&str] = &[
-    CONF_PATH,
-    "games/new-game/help.md",
-    "games/new-game/vars/game.json5",
-    "games/new-game/vars/card.json5",
-    "games/new-game/decks/deck-1st/data.json5",
-    "games/new-game/decks/deck-2nd/data.json5",
-    "games/new-game/views/simple-front.html",
-    "games/new-game/views/simple-front.scss",
-    "games/new-game/views/simple-back.html",
-    "games/new-game/views/simple-back.scss",
-    "games/new-game/views/preview.html",
-];
+const GAMES_CONF: &str = "games/conf.json5";
 
 #[derive(Deserialize)]
 struct GithubTree {
@@ -46,12 +31,12 @@ pub struct InstalledGame {
 pub async fn install_new_game(vfs: &mut Vfs) -> Result<InstalledGame, String> {
     let (source, files) = load_template_files().await?;
     let folder = unique_game_folder(|name| vfs.exists(&format!("games/{name}")));
-    let mut fetched_conf = None;
-    let mut copied = 0usize;
 
     for (path, content) in files {
-        if path == CONF_PATH {
-            fetched_conf = Some(content);
+        if path == GAMES_CONF {
+            if !vfs.exists(GAMES_CONF) {
+                vfs.put_file(GAMES_CONF, content)?;
+            }
             continue;
         }
         let Some(rest) = path.strip_prefix(TEMPLATE_PREFIX) else {
@@ -63,14 +48,8 @@ pub async fn install_new_game(vfs: &mut Vfs) -> Result<InstalledGame, String> {
         let dest = format!("games/{folder}/{rest}");
         let content = retarget_game_id(&content, TEMPLATE_GAME, &folder);
         vfs.put_file(&dest, content)?;
-        copied += 1;
     }
 
-    if copied == 0 {
-        return Err("The new-game template had no files to copy".into());
-    }
-
-    merge_conf(vfs, fetched_conf.as_deref(), &folder)?;
     Ok(InstalledGame { folder, source })
 }
 
@@ -96,10 +75,11 @@ fn retarget_game_id(content: &str, from: &str, to: &str) -> String {
 }
 
 async fn load_template_files() -> Result<(&'static str, Vec<(String, String)>), String> {
-    match load_from_github().await {
-        Ok(files) if has_template_files(&files) => Ok(("GitHub master", files)),
-        github_result => match load_from_local().await {
-            Ok(files) if has_template_files(&files) => Ok(("local template", files)),
+    let listed = list_github_template_paths().await;
+    match load_from_github(&listed).await {
+        Ok(files) => Ok(("GitHub master", files)),
+        github_result => match load_from_local(&listed).await {
+            Ok(files) => Ok(("local template", files)),
             local_result => Err(format!(
                 "Could not load new-game from GitHub ({}) or local copy ({})",
                 describe(github_result),
@@ -109,57 +89,85 @@ async fn load_template_files() -> Result<(&'static str, Vec<(String, String)>), 
     }
 }
 
-fn has_template_files(files: &[(String, String)]) -> bool {
-    files
-        .iter()
-        .any(|(path, _)| path.starts_with(TEMPLATE_PREFIX))
+fn github_raw_url(path: &str) -> String {
+    format!("https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/{path}")
+}
+
+fn local_template_url(path: &str) -> String {
+    format!("/template/{path}")
+}
+
+fn has_both_components(files: &[(String, String)]) -> bool {
+    let conf = files.iter().any(|(path, _)| path == GAMES_CONF);
+    let game = files.iter().any(|(path, _)| path.starts_with(TEMPLATE_PREFIX));
+    conf && game
 }
 
 fn describe(result: Result<Vec<(String, String)>, String>) -> String {
     match result {
-        Ok(files) => format!("{} files, no new-game tree", files.len()),
+        Ok(files) => format!("{} files, missing games/new-game or games/conf.json5", files.len()),
         Err(err) => err,
     }
 }
 
-async fn load_from_github() -> Result<Vec<(String, String)>, String> {
+async fn list_github_template_paths() -> Result<Vec<String>, String> {
     let tree_url = format!(
         "https://api.github.com/repos/{GITHUB_REPO}/git/trees/{GITHUB_BRANCH}?recursive=1"
     );
     let body = fetch_text(&tree_url).await?;
     let parsed: GithubTree = serde_json::from_str(&body).map_err(|err| err.to_string())?;
-    let mut paths: Vec<String> = parsed
+    Ok(parsed
         .tree
         .into_iter()
         .filter(|item| item.kind == "blob")
         .map(|item| item.path)
-        .filter(|path| path == CONF_PATH || path.starts_with(TEMPLATE_PREFIX))
-        .collect();
-    if paths.is_empty() {
-        paths = FALLBACK_PATHS.iter().map(|path| (*path).to_string()).collect();
-    }
-    let mut files = Vec::new();
-    for path in paths {
-        let url = format!(
-            "https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/{path}"
-        );
-        match fetch_text(&url).await {
-            Ok(content) => files.push((path, content)),
-            Err(err) if path == CONF_PATH => {
-                return Err(err);
-            }
-            Err(_) => {}
-        }
-    }
-    Ok(files)
+        .filter(|path| path == GAMES_CONF || path.starts_with(TEMPLATE_PREFIX))
+        .collect())
 }
 
-async fn load_from_local() -> Result<Vec<(String, String)>, String> {
+async fn load_from_github(
+    listed: &Result<Vec<String>, String>,
+) -> Result<Vec<(String, String)>, String> {
+    let paths = listed.as_ref().map_err(|err| err.clone())?;
+    fetch_paths(paths, github_raw_url).await
+}
+
+async fn load_from_local(
+    listed: &Result<Vec<String>, String>,
+) -> Result<Vec<(String, String)>, String> {
     let mut files = Vec::new();
-    for path in FALLBACK_PATHS {
-        let url = format!("/template/{path}");
-        let content = fetch_text(&url).await?;
-        files.push(((*path).to_string(), content));
+    if let Ok(content) = fetch_text(&local_template_url(GAMES_CONF)).await {
+        files.push((GAMES_CONF.to_string(), content));
+    }
+    if let Ok(paths) = listed {
+        for path in paths {
+            if !path.starts_with(TEMPLATE_PREFIX) {
+                continue;
+            }
+            if let Ok(content) = fetch_text(&local_template_url(path)).await {
+                files.push((path.clone(), content));
+            }
+        }
+    }
+    finish_files(files)
+}
+
+async fn fetch_paths(
+    paths: &[String],
+    url: impl Fn(&str) -> String,
+) -> Result<Vec<(String, String)>, String> {
+    let mut files = Vec::new();
+    for path in paths {
+        if let Ok(content) = fetch_text(&url(path)).await {
+            files.push((path.clone(), content));
+        }
+    }
+    finish_files(files)
+}
+
+fn finish_files(files: Vec<(String, String)>) -> Result<Vec<(String, String)>, String> {
+    if !has_both_components(&files) {
+        return Err("missing games/new-game or games/conf.json5".into());
     }
     Ok(files)
 }
@@ -176,56 +184,6 @@ async fn fetch_text(url: &str) -> Result<String, String> {
         .text()
         .await
         .map_err(|err| format!("{url}: {err}"))
-}
-
-fn merge_conf(vfs: &mut Vfs, fetched: Option<&str>, game_id: &str) -> Result<(), String> {
-    let existing = vfs.read_file(CONF_PATH).map(str::to_string);
-    let base = existing
-        .as_deref()
-        .or(fetched)
-        .ok_or_else(|| "Template did not include conf.json5".to_string())?;
-    let mut value: Value = json5::from_str(base).map_err(|err| format!("conf.json5: {err}"))?;
-    let obj = value
-        .as_object_mut()
-        .ok_or_else(|| "conf.json5 must be an object".to_string())?;
-    let replace_games = existing.is_none();
-    if replace_games {
-        obj.insert("default_game".into(), json!(game_id));
-    }
-
-    let games = obj.entry("games").or_insert_with(|| json!({}));
-    let games_obj = games
-        .as_object_mut()
-        .ok_or_else(|| "conf.json5 games must be an object".to_string())?;
-
-    let mut spec = games_obj
-        .get(TEMPLATE_GAME)
-        .cloned()
-        .unwrap_or_else(default_game_spec);
-    if let Some(map) = spec.as_object_mut() {
-        map.insert("dir".into(), json!(game_id));
-    }
-    if replace_games {
-        games_obj.clear();
-    }
-    games_obj.insert(game_id.to_string(), spec);
-
-    vfs.put_file(
-        CONF_PATH,
-        serde_json::to_string_pretty(&value).map_err(|err| err.to_string())?,
-    )
-}
-
-fn default_game_spec() -> Value {
-    json!({
-        "dir": TEMPLATE_GAME,
-        "decks": "decks",
-        "views": "views",
-        "vars": "vars",
-        "rules": "rules",
-        "autogenerated": "_autogenerated",
-        "duplex": "_autogenerated/a4-duplex"
-    })
 }
 
 #[cfg(test)]
@@ -250,5 +208,22 @@ mod tests {
             retarget_game_id(src, "new-game", "new-game-1"),
             r#""name": "new-game-1.deck-1st""#
         );
+    }
+
+    #[test]
+    fn both_components_are_conf_and_folder() {
+        assert!(!has_both_components(&[]));
+        assert!(!has_both_components(&[(
+            GAMES_CONF.to_string(),
+            String::new()
+        )]));
+        assert!(!has_both_components(&[(
+            "games/new-game/help.md".into(),
+            String::new()
+        )]));
+        assert!(has_both_components(&[
+            (GAMES_CONF.to_string(), String::new()),
+            ("games/new-game/help.md".into(), String::new()),
+        ]));
     }
 }

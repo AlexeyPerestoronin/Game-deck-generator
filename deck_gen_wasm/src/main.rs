@@ -5,6 +5,7 @@ mod export;
 mod fs;
 mod load_folder;
 mod persist;
+mod prepare;
 mod template;
 mod ui;
 mod workspace;
