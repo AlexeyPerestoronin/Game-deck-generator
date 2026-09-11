@@ -48,14 +48,17 @@ impl Deck {
         })
     }
 
-    pub fn template_for(&self, side: &str, default: &str) -> String {
+    pub fn template_for(&self, side: &str) -> Result<String> {
         self.fields
             .get("view")
             .and_then(Value::as_object)
             .and_then(|view| view.get(side))
             .and_then(Value::as_str)
+            .filter(|name| !name.is_empty())
             .map(str::to_string)
-            .unwrap_or_else(|| default.to_string())
+            .ok_or_else(|| {
+                Error::file(&self.data_path, format!("view.{side} is required"))
+            })
     }
 
     pub fn output_dir(&self) -> Result<PathBuf> {

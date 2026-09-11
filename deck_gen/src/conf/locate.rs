@@ -1,6 +1,7 @@
-//! Find `conf.json5` without baking a repository path into the binary.
+//! Find the repository-root `conf.json5` without baking a path into the binary.
 
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
@@ -21,13 +22,13 @@ pub fn find_conf_file() -> Result<PathBuf> {
     }
 
     for start in search_roots() {
-        if let Some(found) = walk_parents_for_conf(start) {
+        if let Some(found) = walk_parents_for_root_conf(start) {
             return Ok(found);
         }
     }
 
     Err(Error::msg(format!(
-        "{CONF_FILE_NAME} not found. Run from the repository, place the binary next to {CONF_FILE_NAME}, or set {CONF_PATH_ENV}"
+        "Root {CONF_FILE_NAME} not found. Run from the repository, place the binary next to {CONF_FILE_NAME}, or set {CONF_PATH_ENV}"
     )))
 }
 
@@ -44,17 +45,29 @@ fn search_roots() -> Vec<PathBuf> {
     roots
 }
 
-fn walk_parents_for_conf(start: PathBuf) -> Option<PathBuf> {
+fn walk_parents_for_root_conf(start: PathBuf) -> Option<PathBuf> {
     let mut dir = start;
     loop {
         let candidate = dir.join(CONF_FILE_NAME);
-        if candidate.is_file() {
+        if candidate.is_file() && looks_like_root_conf(&candidate) {
             return Some(candidate);
         }
         if !dir.pop() {
             return None;
         }
     }
+}
+
+/// Root conf is the one that points at the games folder. Game and games-root
+/// conf files share the same filename, so we must not stop at the first hit.
+fn looks_like_root_conf(path: &Path) -> bool {
+    let Ok(text) = fs::read_to_string(path) else {
+        return false;
+    };
+    let Ok(value) = json5::from_str::<serde_json::Value>(&text) else {
+        return false;
+    };
+    value.get("games_root").is_some()
 }
 
 pub fn canonicalize_or_abs(path: &Path) -> PathBuf {

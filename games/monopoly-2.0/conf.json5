@@ -1,7 +1,7 @@
 {
     // all paths are relative to the folder of this file
 
-    "game-name": "monopoly-2.0",
+    "game-name": "monopoly",
 
     "folders": {
         "decks": "decks",

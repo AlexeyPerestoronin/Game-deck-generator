@@ -8,7 +8,7 @@ use minijinja::value::Value as JinjaValue;
 use minijinja::{context, AutoEscape, Environment};
 use serde_json::{json, Value};
 
-use crate::conf::{conf, views_for_deck_name};
+use crate::conf::{conf, manifest_file_name, preview_template_name, views_for_deck_name};
 use crate::error::Result;
 use crate::model::Deck;
 
@@ -28,22 +28,23 @@ pub fn prepare_html(deck: &Deck) -> Result<HtmlArtifacts> {
 
 fn render_html(deck: &Deck, cards: &[Value]) -> Result<HtmlArtifacts> {
     let loaded = conf()?;
+    let game = loaded.game_for_deck_name(&deck.name)?;
     let env = jinja_env(deck)?;
     let out = deck.output_dir()?;
     fs::create_dir_all(&out)?;
 
-    let face_template = deck.template_for("face", &loaded.templates.default_face);
-    let back_template = deck.template_for("back", &loaded.templates.default_back);
+    let face_template = deck.template_for("face")?;
+    let back_template = deck.template_for("back")?;
     let ctx = template_context(deck, cards);
 
-    let face_path = out.join(&loaded.output.face_html);
-    let back_path = out.join(&loaded.output.back_html);
-    let preview_path = out.join(&loaded.output.preview_html);
+    let face_path = out.join(&game.output.face_html);
+    let back_path = out.join(&game.output.back_html);
+    let preview_path = out.join(&game.output.preview_html);
     fs::write(&face_path, env.get_template(&face_template)?.render(&ctx)?)?;
     fs::write(&back_path, env.get_template(&back_template)?.render(&ctx)?)?;
     fs::write(
         &preview_path,
-        env.get_template(&loaded.templates.preview)?.render(&ctx)?,
+        env.get_template(preview_template_name())?.render(&ctx)?,
     )?;
 
     Ok(HtmlArtifacts {
@@ -129,7 +130,6 @@ fn read_template(name: &str, search: &[PathBuf]) -> Option<String> {
 }
 
 fn write_manifest(deck: &Deck, artifacts: &HtmlArtifacts) -> Result<()> {
-    let loaded = conf()?;
     let out = deck.output_dir()?;
     let payload = json!({
         "name": deck.name,
@@ -141,6 +141,6 @@ fn write_manifest(deck: &Deck, artifacts: &HtmlArtifacts) -> Result<()> {
         "face_html": artifacts.face_html,
         "back_html": artifacts.back_html,
     });
-    fs::write(out.join(&loaded.output.manifest), serde_json::to_vec_pretty(&payload)?)?;
+    fs::write(out.join(manifest_file_name()), serde_json::to_vec_pretty(&payload)?)?;
     Ok(())
 }

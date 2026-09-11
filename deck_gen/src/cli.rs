@@ -71,14 +71,13 @@ fn html_command(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
 
 fn pdf_command(name: Option<&str>, duplex_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let loaded = conf()?;
-    let duplex_label = duplex_override.unwrap_or(&loaded.print.default_duplex);
-    let duplex = Duplex::parse(duplex_label).map_err(|err| -> Box<dyn std::error::Error> { err.into() })?;
-    let collected = crate::conf::duplex_collection_dir()?;
-    fs::create_dir_all(&collected)?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
-    let sheet = sheet_from_print(&loaded.print);
 
     for deck in catalog::find_decks(name)? {
+        let game = loaded.game_for_deck_name(&deck.name)?;
+        let duplex_label = duplex_override.unwrap_or(&game.print.default_duplex);
+        let duplex = Duplex::parse(duplex_label).map_err(|err| -> Box<dyn std::error::Error> { err.into() })?;
+        fs::create_dir_all(&game.duplex)?;
         let html_artifacts = render::prepare_html(&deck)?;
         print_html_logs(&deck.name, &html_artifacts);
         let job = PdfJob {
@@ -89,17 +88,17 @@ fn pdf_command(name: Option<&str>, duplex_override: Option<&str>) -> Result<(), 
             output_dir: deck.output_dir()?,
             face_html: html_artifacts.face_html,
             back_html: html_artifacts.back_html,
-            face_pdf_name: loaded.output.face_pdf.clone(),
-            back_pdf_name: loaded.output.back_pdf.clone(),
-            duplex_pdf_name: loaded.output.duplex_pdf.clone(),
-            sheet,
+            face_pdf_name: game.output.face_pdf.clone(),
+            back_pdf_name: game.output.back_pdf.clone(),
+            duplex_pdf_name: game.output.duplex_pdf.clone(),
+            sheet: sheet_from_print(&game.print),
         };
         let pdf = chrome.render_job(&job, duplex)?;
-        let collected_pdf = collected.join(format!("{}.pdf", deck.name));
+        let collected_pdf = game.duplex.join(format!("{}.pdf", deck.name));
         fs::copy(&pdf.duplex, &collected_pdf)?;
-        println!("[{}] {}: {}", deck.name, loaded.output.face_pdf, pdf.face_pdf.display());
-        println!("[{}] {}: {}", deck.name, loaded.output.back_pdf, pdf.back_pdf.display());
-        println!("[{}] {}: {}", deck.name, loaded.output.duplex_pdf, pdf.duplex.display());
+        println!("[{}] {}: {}", deck.name, game.output.face_pdf, pdf.face_pdf.display());
+        println!("[{}] {}: {}", deck.name, game.output.back_pdf, pdf.back_pdf.display());
+        println!("[{}] {}: {}", deck.name, game.output.duplex_pdf, pdf.duplex.display());
     }
     Ok(())
 }

@@ -15,7 +15,6 @@ use crate::subst::{
 pub struct DataManager {
     pub path: PathBuf,
     pub directory: PathBuf,
-    local_vars_dir: PathBuf,
     game_vars_dir: PathBuf,
 }
 
@@ -29,9 +28,7 @@ impl DataManager {
             .parent()
             .ok_or_else(|| Error::file(&path, "has no parent directory"))?
             .to_path_buf();
-        let loaded = conf()?;
         Ok(Self {
-            local_vars_dir: directory.join(&loaded.local_vars_dir),
             game_vars_dir: crate::conf::vars_dir_for_data_file(&path)?,
             directory,
             path,
@@ -132,11 +129,7 @@ impl DataManager {
     }
 
     fn vars_search_dirs(&self) -> Vec<PathBuf> {
-        if self.local_vars_dir == self.game_vars_dir {
-            vec![self.game_vars_dir.clone()]
-        } else {
-            vec![self.local_vars_dir.clone(), self.game_vars_dir.clone()]
-        }
+        vec![self.game_vars_dir.clone()]
     }
 }
 
