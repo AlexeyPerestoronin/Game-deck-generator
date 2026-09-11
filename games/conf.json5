@@ -1,4 +1,4 @@
 {
     // all paths are relative to the folder of this file
-    "default_game": "monopoly",
+    "default_game": "new-game",
 }
