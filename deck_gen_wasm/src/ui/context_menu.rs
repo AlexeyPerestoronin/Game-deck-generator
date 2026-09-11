@@ -6,6 +6,8 @@
 
 use leptos::prelude::*;
 
+use crate::fs::file_ext;
+
 /// Whether the context menu was opened on a file or a folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EntryKind {
@@ -33,6 +35,21 @@ const FILE_COMMANDS: &[MenuCommand] = &[
     },
 ];
 
+const FILE_PREVIEW_COMMANDS: &[MenuCommand] = &[
+    MenuCommand {
+        id: "preview",
+        label: "Preview",
+    },
+    MenuCommand {
+        id: "rename",
+        label: "Rename",
+    },
+    MenuCommand {
+        id: "delete",
+        label: "Delete",
+    },
+];
+
 const FOLDER_COMMANDS: &[MenuCommand] = &[
     MenuCommand {
         id: "rename",
@@ -44,9 +61,17 @@ const FOLDER_COMMANDS: &[MenuCommand] = &[
     },
 ];
 
-/// Command table for `kind`.
-pub fn commands_for(kind: EntryKind) -> &'static [MenuCommand] {
+fn is_previewable(path: &str) -> bool {
+    matches!(
+        file_ext(path).map(str::to_ascii_lowercase).as_deref(),
+        Some("html" | "htm" | "md" | "markdown")
+    )
+}
+
+/// Command table for `kind` (files with html/md also get Preview).
+pub fn commands_for(kind: EntryKind, path: &str) -> &'static [MenuCommand] {
     match kind {
+        EntryKind::File if is_previewable(path) => FILE_PREVIEW_COMMANDS,
         EntryKind::File => FILE_COMMANDS,
         EntryKind::Folder => FOLDER_COMMANDS,
     }
@@ -81,7 +106,7 @@ pub fn ContextMenu(
     #[prop(into)] on_dismiss: Callback<()>,
     #[prop(into)] on_command: Callback<ChosenCommand>,
 ) -> impl IntoView {
-    let commands = commands_for(state.kind);
+    let commands = commands_for(state.kind, &state.path);
     let path = state.path.clone();
     view! {
         <div

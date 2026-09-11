@@ -1,7 +1,7 @@
 //! Leptos panes for the in-browser workspace editor.
 //!
 //! The shell is three siblings: [`ActivityBar`] (actions), [`Explorer`] (tree),
-//! and [`Editor`] (open file). Supporting widgets (context menu, modals,
+//! and [`Editor`] (open tabs). Supporting widgets (context menu, modals,
 //! tooltips, icons, syntect highlighting) stay in this module tree so `app`
 //! only wires layout.
 

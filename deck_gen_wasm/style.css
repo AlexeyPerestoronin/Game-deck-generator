@@ -209,11 +209,127 @@ body {
   background: var(--editor);
 }
 
-.editor-tab {
-  background: var(--tab);
-  padding: 8px 14px;
+.editor-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 35px;
+  overflow-x: auto;
+  background: #252526;
   border-bottom: 1px solid var(--border);
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 200px;
+  padding: 8px 8px 8px 12px;
+  background: var(--tab);
+  border-right: 1px solid var(--border);
+  color: var(--fg-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.editor-tab.active {
+  background: var(--editor);
   color: var(--fg);
+}
+
+.editor-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.editor-tab-close {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.editor-tab-close:hover {
+  background: var(--hover);
+}
+
+.preview-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+.preview-md {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 24px;
+  line-height: 1.6;
+}
+
+.preview-md h1,
+.preview-md h2,
+.preview-md h3 {
+  margin: 1.2em 0 0.5em;
+  font-weight: 600;
+}
+
+.preview-md h1 { font-size: 1.8em; }
+.preview-md h2 { font-size: 1.4em; }
+.preview-md h3 { font-size: 1.15em; }
+
+.preview-md p,
+.preview-md ul,
+.preview-md ol {
+  margin: 0 0 0.8em;
+}
+
+.preview-md a {
+  color: #3794ff;
+}
+
+.preview-md code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.92em;
+  background: #2d2d2d;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.preview-md pre {
+  background: #2d2d2d;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: 4px;
+}
+
+.preview-md pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.preview-md table {
+  border-collapse: collapse;
+  margin: 0 0 0.8em;
+}
+
+.preview-md th,
+.preview-md td {
+  border: 1px solid #454545;
+  padding: 4px 8px;
+}
+
+.preview-md blockquote {
+  margin: 0 0 0.8em;
+  padding-left: 12px;
+  border-left: 3px solid #454545;
+  color: var(--fg-dim);
 }
 
 .editor-empty {

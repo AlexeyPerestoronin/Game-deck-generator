@@ -18,6 +18,24 @@ use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
 use crate::persist::{save_session, Session};
 use crate::template::install_new_game;
 
+/// Whether an editor tab shows the source or a rendered preview.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TabKind {
+    /// Editable source.
+    Edit,
+    /// Rendered HTML / Markdown preview.
+    Preview,
+}
+
+/// One open editor tab (path + edit vs preview).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OpenTab {
+    /// Workspace path of the file.
+    pub path: String,
+    /// Source vs preview.
+    pub kind: TabKind,
+}
+
 /// Shared editor state. Cheap to copy: every field is a signal.
 #[derive(Clone, Copy)]
 pub struct Workspace {
@@ -25,6 +43,10 @@ pub struct Workspace {
     pub vfs: RwSignal<Vfs>,
     /// Explorer selection (file or folder path).
     pub selected: RwSignal<Option<String>>,
+    /// Open editor tabs, left to right.
+    pub tabs: RwSignal<Vec<OpenTab>>,
+    /// Focused tab, if any.
+    pub active_tab: RwSignal<Option<OpenTab>>,
     /// Directories currently expanded in the tree.
     pub expanded: RwSignal<HashSet<String>>,
     /// Footer status line.
@@ -37,9 +59,12 @@ impl Workspace {
     /// Restore signals from a localStorage snapshot (or an empty default).
     pub fn from_session(session: Session) -> Self {
         let expanded = session.expanded_set();
+        let (tabs, active_tab) = initial_tabs(&session.vfs, &session.selected);
         Self {
             vfs: RwSignal::new(session.vfs),
             selected: RwSignal::new(session.selected),
+            tabs: RwSignal::new(tabs),
+            active_tab: RwSignal::new(active_tab),
             expanded: RwSignal::new(expanded),
             status: RwSignal::new(String::new()),
             loading: RwSignal::new(false),
@@ -51,14 +76,7 @@ impl Workspace {
         Session::from_workspace(self.vfs.get(), self.selected.get(), &self.expanded.get())
     }
 
-    /// Selected path if it is a file (the editor’s open document).
-    pub fn open_file_path(&self) -> Option<String> {
-        self.selected
-            .get()
-            .filter(|path| self.vfs.get().is_file(path))
-    }
-
-    /// Select `path`; folders also toggle expansion.
+    /// Select `path`; folders also toggle expansion. Files open an edit tab.
     pub fn select(&self, path: String, is_dir: bool) {
         self.selected.set(Some(path.clone()));
         self.status.set(String::new());
@@ -68,6 +86,53 @@ impl Workspace {
                     set.insert(path);
                 }
             });
+        } else {
+            self.open_tab(OpenTab {
+                path,
+                kind: TabKind::Edit,
+            });
+        }
+    }
+
+    /// Focus `tab`, creating it if it is not already open.
+    pub fn open_tab(&self, tab: OpenTab) {
+        self.tabs.update({
+            let tab = tab.clone();
+            move |tabs| {
+                if !tabs.contains(&tab) {
+                    tabs.push(tab);
+                }
+            }
+        });
+        self.active_tab.set(Some(tab));
+    }
+
+    /// Make an existing tab active and select its path in the explorer.
+    pub fn activate_tab(&self, tab: OpenTab) {
+        self.active_tab.set(Some(tab.clone()));
+        self.selected.set(Some(tab.path));
+    }
+
+    /// Close `tab`. If it was active, activate the neighbor to the right (else left).
+    pub fn close_tab(&self, tab: OpenTab) {
+        let mut tabs = self.tabs.get();
+        let idx = tabs.iter().position(|open| open == &tab);
+        tabs.retain(|open| open != &tab);
+        let was_active = self.active_tab.get().as_ref() == Some(&tab);
+        self.tabs.set(tabs.clone());
+        if !was_active {
+            return;
+        }
+        let next = idx.and_then(|i| {
+            if i < tabs.len() {
+                tabs.get(i).cloned()
+            } else {
+                tabs.last().cloned()
+            }
+        });
+        self.active_tab.set(next.clone());
+        if let Some(next) = next {
+            self.selected.set(Some(next.path));
         }
     }
 
@@ -81,7 +146,11 @@ impl Workspace {
         match self.vfs.try_update(|vfs| vfs.create_file(&path)) {
             Some(Ok(())) => {
                 self.expand_ancestors(&parent);
-                self.selected.set(Some(path));
+                self.selected.set(Some(path.clone()));
+                self.open_tab(OpenTab {
+                    path,
+                    kind: TabKind::Edit,
+                });
                 self.status.set(String::new());
             }
             Some(Err(err)) => self.status.set(err),
@@ -119,6 +188,8 @@ impl Workspace {
     pub fn clear(&self) {
         self.vfs.set(Vfs::default());
         self.selected.set(None);
+        self.tabs.set(Vec::new());
+        self.active_tab.set(None);
         self.expanded.set(HashSet::new());
         self.status.set("Workspace cleared".into());
         let _ = save_session(&self.snapshot());
@@ -231,11 +302,15 @@ impl Workspace {
         }
     }
 
-    /// Context-menu command (`rename` / `delete`) on an explorer entry.
+    /// Context-menu command (`rename` / `delete` / `preview`) on an explorer entry.
     pub fn run_entry_command(&self, id: &str, path: &str) {
         match id {
             "delete" => self.delete_entry(path),
             "rename" => self.rename_entry(path),
+            "preview" => self.open_tab(OpenTab {
+                path: path.to_string(),
+                kind: TabKind::Preview,
+            }),
             other => self.status.set(format!("Unknown command {other}")),
         }
     }
@@ -266,17 +341,37 @@ impl Workspace {
     }
 
     fn forget_path(&self, path: &str) {
+        let prefix = format!("{path}/");
+        let gone = |current: &str| current == path || current.starts_with(&prefix);
         self.selected.update(|selected| {
-            if selected
-                .as_ref()
-                .is_some_and(|current| current == path || current.starts_with(&format!("{path}/")))
-            {
+            if selected.as_ref().is_some_and(|current| gone(current)) {
                 *selected = None;
             }
         });
         self.expanded.update(|set| {
-            set.retain(|current| current != path && !current.starts_with(&format!("{path}/")));
+            set.retain(|current| !gone(current));
         });
+        let tabs = self.tabs.get();
+        let active = self.active_tab.get();
+        let closing_active = active.as_ref().is_some_and(|tab| gone(&tab.path));
+        let idx = active.as_ref().and_then(|tab| tabs.iter().position(|open| open == tab));
+        let remaining: Vec<_> = tabs.into_iter().filter(|tab| !gone(&tab.path)).collect();
+        let next = if closing_active {
+            idx.and_then(|i| {
+                if remaining.is_empty() {
+                    None
+                } else {
+                    remaining.get(i.min(remaining.len() - 1)).cloned()
+                }
+            })
+        } else {
+            active.filter(|tab| remaining.contains(tab))
+        };
+        self.tabs.set(remaining);
+        self.active_tab.set(next.clone());
+        if let Some(next) = next {
+            self.selected.set(Some(next.path));
+        }
     }
 
     fn rewrite_paths(&self, old: &str, new: &str) {
@@ -290,6 +385,16 @@ impl Workspace {
                 .iter()
                 .map(|current| rewrite_prefix(current, old, new))
                 .collect();
+        });
+        self.tabs.update(|tabs| {
+            for tab in tabs.iter_mut() {
+                tab.path = rewrite_prefix(&tab.path, old, new);
+            }
+        });
+        self.active_tab.update(|active| {
+            if let Some(tab) = active {
+                tab.path = rewrite_prefix(&tab.path, old, new);
+            }
         });
     }
 
@@ -316,6 +421,19 @@ fn take_vfs(fs: Arc<VfsFs>) -> crate::fs::Vfs {
     match Arc::try_unwrap(fs) {
         Ok(inner) => inner.into_vfs(),
         Err(arc) => arc.clone_vfs(),
+    }
+}
+
+fn initial_tabs(vfs: &Vfs, selected: &Option<String>) -> (Vec<OpenTab>, Option<OpenTab>) {
+    match selected {
+        Some(path) if vfs.is_file(path) => {
+            let tab = OpenTab {
+                path: path.clone(),
+                kind: TabKind::Edit,
+            };
+            (vec![tab.clone()], Some(tab))
+        }
+        _ => (Vec::new(), None),
     }
 }
 
