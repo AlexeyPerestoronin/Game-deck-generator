@@ -1,11 +1,15 @@
 //! Pick a local folder and copy it into the workspace.
 
-use js_sys::{Array, Function, Reflect};
+use std::collections::BTreeSet;
+
+use js_sys::{Array, Function, Promise, Reflect};
+use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::{File, FileList, HtmlInputElement};
 
-use crate::fs::{file_ext, join_path, Vfs};
+use crate::fs::{file_ext, join_path, parent_path, Vfs};
 
 const ALLOWED: &[&str] = &["md", "json", "json5", "html", "scss"];
 
@@ -56,28 +60,41 @@ pub fn install_folder(
 }
 
 pub async fn pick_and_read_folder() -> PickResult {
-    let handle = match pick_directory().await {
-        PickDir::Unsupported => {
-            return PickResult::Rejected(
-                "This browser cannot open a folder picker. Use Chrome or Edge.".into(),
-            );
+    match pick_directory().await {
+        PickDir::Cancelled => PickResult::Cancelled,
+        PickDir::Handle(handle) => {
+            let name = Reflect::get(&handle, &JsValue::from_str("name"))
+                .ok()
+                .and_then(|value| value.as_string())
+                .filter(|name| !name.is_empty())
+                .unwrap_or_else(|| "game".to_string());
+            finish_collect(name, collect_tree(&handle, "").await)
         }
-        PickDir::Cancelled => return PickResult::Cancelled,
-        PickDir::Handle(handle) => handle,
-    };
-    let name = Reflect::get(&handle, &JsValue::from_str("name"))
-        .ok()
-        .and_then(|value| value.as_string())
-        .filter(|name| !name.is_empty())
-        .unwrap_or_else(|| "game".to_string());
-    match collect_tree(&handle, "").await {
-        Ok((files, dirs, rejected)) => {
-            if !rejected.is_empty() {
-                PickResult::Rejected(reject_message(&rejected))
-            } else {
-                PickResult::Ready { name, files, dirs }
-            }
+        PickDir::FileList(list) => finish_collect_from_list(collect_from_file_list(list).await),
+    }
+}
+
+fn finish_collect(
+    name: String,
+    result: Result<(Vec<(String, String)>, Vec<String>, Vec<String>), String>,
+) -> PickResult {
+    match result {
+        Ok((files, dirs, rejected)) if rejected.is_empty() => {
+            PickResult::Ready { name, files, dirs }
         }
+        Ok((_, _, rejected)) => PickResult::Rejected(reject_message(&rejected)),
+        Err(err) => PickResult::Rejected(err),
+    }
+}
+
+fn finish_collect_from_list(
+    result: Result<(String, Vec<(String, String)>, Vec<String>, Vec<String>), String>,
+) -> PickResult {
+    match result {
+        Ok((name, files, dirs, rejected)) if rejected.is_empty() => {
+            PickResult::Ready { name, files, dirs }
+        }
+        Ok((_, _, _, rejected)) => PickResult::Rejected(reject_message(&rejected)),
         Err(err) => PickResult::Rejected(err),
     }
 }
@@ -97,32 +114,151 @@ fn reject_message(rejected: &[String]) -> String {
 }
 
 enum PickDir {
-    Unsupported,
     Cancelled,
     Handle(JsValue),
+    FileList(FileList),
 }
 
 async fn pick_directory() -> PickDir {
-    let Some(window) = web_sys::window() else {
-        return PickDir::Unsupported;
-    };
-    let has_picker = Reflect::has(&window, &JsValue::from_str("showDirectoryPicker")).unwrap_or(false);
-    if !has_picker {
-        return PickDir::Unsupported;
+    if let Some(handle) = pick_with_directory_picker().await {
+        return handle;
     }
-    let Ok(picker) = Reflect::get(&window, &JsValue::from_str("showDirectoryPicker")) else {
-        return PickDir::Unsupported;
-    };
-    let Ok(picker_fn) = picker.dyn_into::<Function>() else {
-        return PickDir::Unsupported;
-    };
-    let Ok(promise) = picker_fn.call0(&window) else {
+    pick_with_input().await
+}
+
+async fn pick_with_directory_picker() -> Option<PickDir> {
+    let window = web_sys::window()?;
+    let has_picker =
+        Reflect::has(&window, &JsValue::from_str("showDirectoryPicker")).unwrap_or(false);
+    if !has_picker {
+        return None;
+    }
+    let picker = Reflect::get(&window, &JsValue::from_str("showDirectoryPicker")).ok()?;
+    let picker_fn = picker.dyn_into::<Function>().ok()?;
+    let promise = picker_fn.call0(&window).ok()?;
+    match JsFuture::from(js_sys::Promise::from(promise)).await {
+        Ok(handle) => Some(PickDir::Handle(handle)),
+        Err(_) => Some(PickDir::Cancelled),
+    }
+}
+
+async fn pick_with_input() -> PickDir {
+    let Some(window) = web_sys::window() else {
         return PickDir::Cancelled;
     };
-    match JsFuture::from(js_sys::Promise::from(promise)).await {
-        Ok(handle) => PickDir::Handle(handle),
+    let Some(document) = window.document() else {
+        return PickDir::Cancelled;
+    };
+    let Ok(element) = document.create_element("input") else {
+        return PickDir::Cancelled;
+    };
+    let Ok(input) = element.dyn_into::<HtmlInputElement>() else {
+        return PickDir::Cancelled;
+    };
+    input.set_type("file");
+    input.set_multiple(true);
+    let _ = input.set_attribute("webkitdirectory", "");
+    let _ = input.set_attribute("directory", "");
+    let _ = input.style().set_property("display", "none");
+    if let Some(body) = document.body() {
+        let _ = body.append_child(&input);
+    }
+
+    let input_for_change = input.clone();
+    let promise = Promise::new(&mut |resolve, _reject| {
+        let input_for_change = input_for_change.clone();
+        let resolve_change = resolve.clone();
+        let on_change = Closure::<dyn FnMut()>::once(move || {
+            let files = input_for_change.files();
+            let payload = files.map_or(JsValue::NULL, JsValue::from);
+            let _ = resolve_change.call1(&JsValue::NULL, &payload);
+        });
+        let resolve_cancel = resolve.clone();
+        let on_cancel = Closure::<dyn FnMut()>::once(move || {
+            let _ = resolve_cancel.call1(&JsValue::NULL, &JsValue::NULL);
+        });
+        input.set_onchange(Some(on_change.as_ref().unchecked_ref()));
+        let _ = input
+            .add_event_listener_with_callback("cancel", on_cancel.as_ref().unchecked_ref());
+        on_change.forget();
+        on_cancel.forget();
+    });
+    input.click();
+    let result = JsFuture::from(promise).await;
+    if let Some(parent) = input.parent_node() {
+        let _ = parent.remove_child(&input);
+    }
+    match result {
+        Ok(value) if value.is_null() || value.is_undefined() => PickDir::Cancelled,
+        Ok(value) => match value.dyn_into::<FileList>() {
+            Ok(list) if list.length() == 0 => PickDir::Cancelled,
+            Ok(list) => PickDir::FileList(list),
+            Err(_) => PickDir::Cancelled,
+        },
         Err(_) => PickDir::Cancelled,
     }
+}
+
+fn split_webkit_path(path: &str) -> (Option<String>, String) {
+    let path = path.replace('\\', "/");
+    match path.split_once('/') {
+        Some((root, rest)) if !root.is_empty() && !rest.is_empty() => {
+            (Some(root.to_string()), rest.to_string())
+        }
+        _ => (None, path),
+    }
+}
+
+async fn collect_from_file_list(
+    list: FileList,
+) -> Result<(String, Vec<(String, String)>, Vec<String>, Vec<String>), String> {
+    let mut folder_name = "game".to_string();
+    let mut files = Vec::new();
+    let mut dirs = BTreeSet::new();
+    let mut rejected = Vec::new();
+    for index in 0..list.length() {
+        let Some(file) = list.item(index) else {
+            continue;
+        };
+        let relative = webkit_relative_path(&file);
+        let (root, rel) = split_webkit_path(&relative);
+        if let Some(root) = root {
+            folder_name = root;
+        }
+        let mut parent = parent_path(&rel);
+        while !parent.is_empty() {
+            dirs.insert(parent.clone());
+            parent = parent_path(&parent);
+        }
+        if extension_allowed(&rel) {
+            files.push((rel, read_file_text(&file).await?));
+        } else {
+            rejected.push(rel);
+        }
+    }
+    Ok((
+        folder_name,
+        files,
+        dirs.into_iter().collect(),
+        rejected,
+    ))
+}
+
+fn webkit_relative_path(file: &File) -> String {
+    Reflect::get(file, &JsValue::from_str("webkitRelativePath"))
+        .ok()
+        .and_then(|value| value.as_string())
+        .filter(|path| !path.is_empty())
+        .unwrap_or_else(|| file.name())
+}
+
+async fn read_file_text(file: &File) -> Result<String, String> {
+    let value = JsFuture::from(file.text())
+        .await
+        .map_err(|_| "Could not read file".to_string())?;
+    value
+        .as_string()
+        .ok_or_else(|| "Could not read file as text".to_string())
 }
 
 async fn collect_tree(
@@ -226,5 +362,14 @@ mod tests {
         let taken = |name: &str| name == "demo" || name == "demo-1";
         assert_eq!(unique_folder_name("demo", taken), "demo-2");
         assert_eq!(unique_folder_name("fresh", taken), "fresh");
+    }
+
+    #[test]
+    fn splits_webkit_relative_path() {
+        assert_eq!(
+            split_webkit_path("demo/decks/data.json5"),
+            (Some("demo".into()), "decks/data.json5".into())
+        );
+        assert_eq!(split_webkit_path("help.md"), (None, "help.md".into()));
     }
 }
