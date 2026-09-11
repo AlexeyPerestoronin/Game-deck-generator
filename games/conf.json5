@@ -1,0 +1,6 @@
+{
+    // all paths are relative to the folder of this file
+    "deck_data_files": ["data.json5", "data.json"],
+    "vars_file_extensions": [".json5", ".json"],
+    "default_game": "monopoly",
+}
