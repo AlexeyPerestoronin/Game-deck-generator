@@ -72,7 +72,8 @@ async fn load_template_files() -> Result<(&'static str, Vec<(String, String)>), 
 }
 
 fn local_template_url(path: &str) -> String {
-    format!("/template/{path}")
+    // Relative to the page URL so GitHub Pages project sites (`/repo/…`) work.
+    format!("template/{path}")
 }
 
 fn has_both_components(files: &[(String, String)]) -> bool {
