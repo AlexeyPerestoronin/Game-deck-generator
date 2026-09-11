@@ -1,3 +1,9 @@
+//! Browser entry for the in-memory game workspace editor.
+//!
+//! Installs the panic hook, then mounts [`app::App`] as a Leptos CSR root.
+//! All filesystem work stays in the VFS; HTML generation is `deck_gen` with
+//! `--no-default-features`.
+
 use leptos::prelude::*;
 
 mod app;

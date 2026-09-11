@@ -1,4 +1,8 @@
 //! Native CLI: list / html / pdf. Compiled only with `--features cli`.
+//!
+//! `list` and `html` stay inside this crate. `pdf` launches Chrome through
+//! `prepare_pdf_host` after the same HTML render. The process filesystem is
+//! [`crate::fs::OsFs`]; conf is the cached native discovery in [`crate::conf`].
 
 use std::fs;
 use std::path::PathBuf;
@@ -8,7 +12,7 @@ use clap::{Parser, Subcommand};
 
 use crate::catalog;
 use crate::conf::{conf, ChromeSettings, PrintSettings};
-use crate::fs::{FileSystem, OsFs};
+use crate::fs::OsFs;
 use crate::render;
 use prepare_pdf_host::{CardSize, Chrome, ChromeLocator, Duplex, PdfJob, SheetLayout};
 
@@ -42,6 +46,7 @@ enum Command {
     },
 }
 
+/// Parse argv and run `list`, `html`, or `pdf`.
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     match Cli::parse().command {
         Command::List { json, name } => list_command(json, name.as_deref())?,
@@ -66,7 +71,7 @@ fn list_command(json: bool, name: Option<&str>) -> Result<(), Box<dyn std::error
 }
 
 fn html_command(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    let fs: Arc<dyn FileSystem> = Arc::new(OsFs);
+    let fs = Arc::new(OsFs);
     for (label, artifacts) in crate::prepare_html_named(fs, name)? {
         print_html_logs(&label, &artifacts);
     }
@@ -74,7 +79,7 @@ fn html_command(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn pdf_command(name: Option<&str>, duplex_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    let fs: Arc<dyn FileSystem> = Arc::new(OsFs);
+    let fs = Arc::new(OsFs);
     let loaded = conf()?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
 

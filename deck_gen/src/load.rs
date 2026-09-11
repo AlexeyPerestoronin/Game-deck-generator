@@ -1,4 +1,13 @@
-//! Load one deck JSON5 file and expand its placeholders.
+//! Load one deck JSON5 file and expand its `${…}` / `$s{…}` placeholders.
+//!
+//! Expansion is two passes so `vars` can itself contain file refs:
+//! 1. resolve only `file:path` placeholders;
+//! 2. parse the local `vars` object from that text, then resolve every
+//!    placeholder (file refs and `vars.*`);
+//! 3. turn `$s{…}` spans into NBSP-joined phrases.
+//!
+//! Named vars files live in the game's `vars/` directory and are cached for
+//! the lifetime of one [`DataManager::get_data`] call.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -11,16 +20,20 @@ use crate::subst::{
     expand_sticky_spans, extract_json_object_for_key, lookup_var, substitute_placeholders, Resolve,
 };
 
-pub struct DataManager<'a> {
-    fs: &'a dyn FileSystem,
+/// Handle to a canonical deck `data.json5` and the game `vars/` directory.
+pub struct DataManager<'a, F: FileSystem + ?Sized> {
+    fs: &'a F,
+    /// Canonical path of the deck data file.
     pub path: PathBuf,
+    /// Parent directory of [`Self::path`] (Jinja search path).
     pub directory: PathBuf,
     game_vars_dir: PathBuf,
 }
 
-impl<'a> DataManager<'a> {
+impl<'a, F: FileSystem + ?Sized> DataManager<'a, F> {
+    /// Canonicalize `json_data_file` and record its parent plus `game_vars_dir`.
     pub fn new(
-        fs: &'a dyn FileSystem,
+        fs: &'a F,
         json_data_file: impl AsRef<Path>,
         game_vars_dir: PathBuf,
     ) -> Result<Self> {
@@ -40,6 +53,7 @@ impl<'a> DataManager<'a> {
         })
     }
 
+    /// Read the file, expand placeholders, and return the root JSON object.
     pub fn get_data(&self) -> Result<Map<String, Value>> {
         let raw = self.fs.read_to_string(&self.path)?;
         let expanded = self.expand_placeholders(&raw)?;
@@ -51,40 +65,40 @@ impl<'a> DataManager<'a> {
     }
 
     fn expand_placeholders(&self, raw: &str) -> Result<String> {
-        let mut file_cache: HashMap<String, Value> = HashMap::new();
-        let pass1 = self.expand_file_refs(raw, &mut file_cache)?;
+        let mut vars = VarsCache {
+            fs: self.fs,
+            game_vars_dir: &self.game_vars_dir,
+            files: HashMap::new(),
+        };
+        let pass1 = vars.expand_file_refs(raw)?;
         let local_vars = extract_json_object_for_key(&pass1, "vars")?
             .unwrap_or_else(|| Value::Object(Map::new()));
-        let pass2 = self.expand_all_refs(&pass1, &mut file_cache, &local_vars)?;
+        let pass2 = vars.expand_all_refs(&pass1, &local_vars)?;
         expand_sticky_spans(&pass2)
     }
+}
 
-    fn expand_file_refs(
-        &self,
-        raw: &str,
-        file_cache: &mut HashMap<String, Value>,
-    ) -> Result<String> {
+/// Cache of `{stem}.json5` trees under the game `vars/` folder.
+struct VarsCache<'a, F: FileSystem + ?Sized> {
+    fs: &'a F,
+    game_vars_dir: &'a Path,
+    files: HashMap<String, Value>,
+}
+
+impl<'a, F: FileSystem + ?Sized> VarsCache<'a, F> {
+    fn expand_file_refs(&mut self, raw: &str) -> Result<String> {
         substitute_placeholders(raw, |placeholder| {
             if !placeholder.contains(':') {
                 return Ok(Resolve::Keep);
             }
-            let (file_stem, path) = split_file_ref(placeholder)?;
-            let tree = self.load_named_vars(file_cache, file_stem)?;
-            Ok(Resolve::Value(lookup_var(&tree, path)?.clone()))
+            self.lookup_file_ref(placeholder)
         })
     }
 
-    fn expand_all_refs(
-        &self,
-        raw: &str,
-        file_cache: &mut HashMap<String, Value>,
-        local_vars: &Value,
-    ) -> Result<String> {
+    fn expand_all_refs(&mut self, raw: &str, local_vars: &Value) -> Result<String> {
         substitute_placeholders(raw, |placeholder| {
             if placeholder.contains(':') {
-                let (file_stem, path) = split_file_ref(placeholder)?;
-                let tree = self.load_named_vars(file_cache, file_stem)?;
-                return Ok(Resolve::Value(lookup_var(&tree, path)?.clone()));
+                return self.lookup_file_ref(placeholder);
             }
             let mut root = Map::new();
             root.insert("vars".into(), local_vars.clone());
@@ -94,17 +108,19 @@ impl<'a> DataManager<'a> {
         })
     }
 
-    fn load_named_vars(
-        &self,
-        cache: &mut HashMap<String, Value>,
-        name: &str,
-    ) -> Result<Value> {
-        if let Some(existing) = cache.get(name) {
+    fn lookup_file_ref(&mut self, placeholder: &str) -> Result<Resolve> {
+        let (file_stem, path) = split_file_ref(placeholder)?;
+        let tree = self.load_named(file_stem)?;
+        Ok(Resolve::Value(lookup_var(&tree, path)?.clone()))
+    }
+
+    fn load_named(&mut self, name: &str) -> Result<Value> {
+        if let Some(existing) = self.files.get(name) {
             return Ok(existing.clone());
         }
         let path = self.vars_file_path(name)?;
         let loaded = parse_json5(&path, &self.fs.read_to_string(&path)?)?;
-        cache.insert(name.to_string(), loaded.clone());
+        self.files.insert(name.to_string(), loaded.clone());
         Ok(loaded)
     }
 

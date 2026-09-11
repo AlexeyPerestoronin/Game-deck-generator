@@ -1,9 +1,14 @@
 //! Load the `new-game` sample from GitHub master, with a local Trunk copy as fallback.
+//!
+//! The GitHub git tree is listed, blobs under `games/new-game/` plus
+//! `games/conf.json5` are fetched, then copied into a unique `games/{folder}`.
+//! Deck `name` fields are retargeted when the folder is not literally
+//! `new-game`. If GitHub fails, Trunk's `/template/…` copy is tried.
 
 use gloo_net::http::Request;
 use serde::Deserialize;
 
-use crate::fs::Vfs;
+use crate::fs::{unique_name, Vfs};
 
 const GITHUB_REPO: &str = "AlexeyPerestoronin/Game-deck-generator";
 const GITHUB_BRANCH: &str = "master";
@@ -23,11 +28,15 @@ struct GithubTreeItem {
     kind: String,
 }
 
+/// Result of copying the template into the workspace.
 pub struct InstalledGame {
+    /// Folder name under `games/` (may be `new-game-N`).
     pub folder: String,
+    /// `"GitHub master"` or `"local template"`.
     pub source: &'static str,
 }
 
+/// Fetch the template and write it under a unique `games/` folder.
 pub async fn install_new_game(vfs: &mut Vfs) -> Result<InstalledGame, String> {
     let (source, files) = load_template_files().await?;
     let folder = unique_game_folder(|name| vfs.exists(&format!("games/{name}")));
@@ -53,18 +62,9 @@ pub async fn install_new_game(vfs: &mut Vfs) -> Result<InstalledGame, String> {
     Ok(InstalledGame { folder, source })
 }
 
+/// Unique folder under `games/`, starting at `new-game`.
 pub fn unique_game_folder(taken: impl Fn(&str) -> bool) -> String {
-    if !taken(TEMPLATE_GAME) {
-        return TEMPLATE_GAME.to_string();
-    }
-    let mut n = 1u32;
-    loop {
-        let name = format!("{TEMPLATE_GAME}-{n}");
-        if !taken(&name) {
-            return name;
-        }
-        n += 1;
-    }
+    unique_name(TEMPLATE_GAME, taken)
 }
 
 fn retarget_game_id(content: &str, from: &str, to: &str) -> String {

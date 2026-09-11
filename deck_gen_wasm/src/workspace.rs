@@ -1,4 +1,10 @@
 //! Reactive workspace: tree, selection, and the actions the UI triggers.
+//!
+//! [`Workspace`] is a cheap `Copy` handle to Leptos signals (VFS, selection,
+//! expanded folders, status, loading). Explorer, editor, and the activity bar
+//! all clone it. Mutations go through the VFS; async work (`prepare_html`,
+//! folder pick, template fetch, ZIP) uses `spawn_local` and the `loading` flag
+//! so two long actions cannot overlap.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -12,16 +18,23 @@ use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
 use crate::persist::{save_session, Session};
 use crate::template::install_new_game;
 
+/// Shared editor state. Cheap to copy: every field is a signal.
 #[derive(Clone, Copy)]
 pub struct Workspace {
+    /// In-memory file tree.
     pub vfs: RwSignal<Vfs>,
+    /// Explorer selection (file or folder path).
     pub selected: RwSignal<Option<String>>,
+    /// Directories currently expanded in the tree.
     pub expanded: RwSignal<HashSet<String>>,
+    /// Footer status line.
     pub status: RwSignal<String>,
+    /// True while an async action (load / template / HTML / ZIP) is running.
     pub loading: RwSignal<bool>,
 }
 
 impl Workspace {
+    /// Restore signals from a localStorage snapshot (or an empty default).
     pub fn from_session(session: Session) -> Self {
         let expanded = session.expanded_set();
         Self {
@@ -33,16 +46,19 @@ impl Workspace {
         }
     }
 
+    /// Serializable snapshot for localStorage.
     pub fn snapshot(&self) -> Session {
         Session::from_workspace(self.vfs.get(), self.selected.get(), &self.expanded.get())
     }
 
+    /// Selected path if it is a file (the editor’s open document).
     pub fn open_file_path(&self) -> Option<String> {
         self.selected
             .get()
             .filter(|path| self.vfs.get().is_file(path))
     }
 
+    /// Select `path`; folders also toggle expansion.
     pub fn select(&self, path: String, is_dir: bool) {
         self.selected.set(Some(path.clone()));
         self.status.set(String::new());
@@ -55,6 +71,7 @@ impl Workspace {
         }
     }
 
+    /// Prompt for a name and create an empty file under the creation parent.
     pub fn create_file(&self) {
         let Some(name) = ask_name("New file name") else {
             return;
@@ -72,6 +89,7 @@ impl Workspace {
         }
     }
 
+    /// Prompt for a name and create a folder under the creation parent.
     pub fn create_folder(&self) {
         let Some(name) = ask_name("New folder name") else {
             return;
@@ -89,6 +107,7 @@ impl Workspace {
         }
     }
 
+    /// Write the current snapshot to localStorage (manual Save).
     pub fn persist(&self) {
         match save_session(&self.snapshot()) {
             Ok(()) => self.status.set("Saved in this browser".into()),
@@ -96,6 +115,7 @@ impl Workspace {
         }
     }
 
+    /// Empty the tree and persist that empty session.
     pub fn clear(&self) {
         self.vfs.set(Vfs::default());
         self.selected.set(None);
@@ -104,6 +124,7 @@ impl Workspace {
         let _ = save_session(&self.snapshot());
     }
 
+    /// Pick a local folder and copy it under `games/` with a unique name.
     pub fn load_game_from_disk(&self, warning: RwSignal<Option<String>>) {
         if self.loading.get() {
             return;
@@ -139,6 +160,7 @@ impl Workspace {
         });
     }
 
+    /// Run [`deck_gen::prepare_html`] on the VFS after a 0ms yield so the UI can paint.
     pub fn prepare_html(&self, warning: RwSignal<Option<String>>) {
         if self.loading.get() {
             return;
@@ -163,6 +185,7 @@ impl Workspace {
         });
     }
 
+    /// Fetch the `new-game` template and install it under `games/`.
     pub fn add_new_game(&self) {
         if self.loading.get() {
             return;
@@ -190,6 +213,7 @@ impl Workspace {
         });
     }
 
+    /// Encode the tree as ZIP and offer it to the browser.
     pub fn download(&self) {
         let vfs = self.vfs.get();
         match vfs_to_zip(&vfs) {
@@ -207,6 +231,7 @@ impl Workspace {
         }
     }
 
+    /// Context-menu command (`rename` / `delete`) on an explorer entry.
     pub fn run_entry_command(&self, id: &str, path: &str) {
         match id {
             "delete" => self.delete_entry(path),

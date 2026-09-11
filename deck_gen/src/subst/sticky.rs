@@ -1,5 +1,8 @@
 //! `$s{...}` — after other placeholders, spaces become NBSP so a phrase
 //! stays on one line in the card layout.
+//!
+//! Only spans inside JSON strings are rewritten. The inner text is JSON-escaped
+//! so a quote or backslash in the phrase cannot break the surrounding string.
 
 use super::cursor::JsonText;
 use super::placeholder::escape_json_string_content;
@@ -7,6 +10,7 @@ use crate::error::{Error, Result};
 
 const NBSP: char = '\u{00a0}';
 
+/// Replace each in-string `$s{…}` with the same text, spaces → NBSP.
 pub fn expand_sticky_spans(raw: &str) -> Result<String> {
     let mut scan = JsonText::new(raw);
     let mut out = String::new();

@@ -20,14 +20,23 @@ default = ["cli"]
 cli = ["dep:clap", "dep:prepare_pdf_host"]
 
 [dependencies]
+# Subcommands (`list` / `html` / `pdf`) and flag parsing for the native binary.
 clap = { version = "4", features = ["derive"], optional = true }
+# Compile `.scss` templates to CSS inside the Jinja loader.
 grass = "0.13"
+# Parse `conf.json5`, deck `data.json5`, and vars files (comments + trailing commas).
 json5 = "0.4"
+# Face / back / preview HTML and Jinja-inside-SCSS rendering.
 minijinja = { version = "2", features = ["loader"] }
+# Split life-effects and slugify card names.
 regex = "1"
+# Deserialize the three-level `conf.json5` schema.
 serde = { version = "1", features = ["derive"] }
+# Ordered JSON maps/values for deck fields, cards, and placeholder encoding.
 serde_json = { version = "1", features = ["preserve_order"] }
+# `Error` derives for I/O, JSON, JSON5, and template failures.
 thiserror = "2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Chromium print + A4 duplex imposition; never linked into wasm builds.
 prepare_pdf_host = { path = "../prepare_pdf_host", optional = true }

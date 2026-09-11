@@ -1,5 +1,12 @@
+//! Overlay dialogs used by the activity bar.
+//!
+//! [`ConfirmModal`] is yes/no (clear workspace, load-game warning).
+//! [`AlertModal`] is a single OK for prepare-html / import errors. Both sit
+//! on a click-to-dismiss backdrop; the dialog itself stops propagation.
+
 use leptos::prelude::*;
 
+/// Yes/no dialog. `danger` styles the confirm button as destructive.
 #[component]
 pub fn ConfirmModal(
     #[prop(into)] open: Signal<bool>,
@@ -44,6 +51,7 @@ pub fn ConfirmModal(
     }
 }
 
+/// Single-button error/info dialog with reactive title and message.
 #[component]
 pub fn AlertModal(
     #[prop(into)] open: Signal<bool>,

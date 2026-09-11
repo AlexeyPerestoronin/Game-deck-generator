@@ -1,3 +1,9 @@
+//! Open-file pane: plain textarea, or overlay highlighting for known types.
+//!
+//! Selection comes from [`Workspace::open_file_path`]. Markdown / JSON / HTML /
+//! SCSS use syntect HTML behind a transparent textarea; everything else is a
+//! plain `<textarea>`. Edits write straight back into the VFS.
+
 use leptos::html;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
@@ -7,6 +13,7 @@ use super::highlight::{can_highlight, highlight_html};
 use crate::fs::file_name;
 use crate::workspace::Workspace;
 
+/// Center pane: tab title plus the editor for the selected file.
 #[component]
 pub fn Editor(workspace: Workspace) -> impl IntoView {
     let open_file = move || workspace.open_file_path();

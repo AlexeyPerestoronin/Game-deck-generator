@@ -1,4 +1,9 @@
 //! Pick a local folder and copy it into the workspace.
+//!
+//! Only `md` / `json` / `json5` / `html` / `scss` files are accepted; any other
+//! extension rejects the whole import. The picker uses `showDirectoryPicker`
+//! when present, otherwise a hidden `<input webkitdirectory>`. The folder is
+//! copied under `games/` with a unique name.
 
 use std::collections::BTreeSet;
 
@@ -9,16 +14,21 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{File, FileList, HtmlInputElement};
 
-use crate::fs::{file_ext, join_path, parent_path, Vfs};
+use crate::fs::{file_ext, join_path, parent_path, unique_name, Vfs};
 
 const ALLOWED: &[&str] = &["md", "json", "json5", "html", "scss"];
 
+/// Outcome of the directory picker, including extension-policy rejects.
 pub enum PickResult {
+    /// User dismissed the picker.
     Cancelled,
+    /// I/O failure or disallowed extensions.
     Rejected(String),
+    /// Folder name plus relative files and directories.
     Ready { name: String, files: Vec<(String, String)>, dirs: Vec<String> },
 }
 
+/// Whether `path` has an allowed source-file extension.
 pub fn extension_allowed(path: &str) -> bool {
     match file_ext(path).map(|ext| ext.to_ascii_lowercase()) {
         Some(ext) => ALLOWED.iter().any(|ok| ext == *ok),
@@ -26,21 +36,13 @@ pub fn extension_allowed(path: &str) -> bool {
     }
 }
 
+/// Unique sibling under `games/`; empty `base` becomes `"game"`.
 pub fn unique_folder_name(base: &str, taken: impl Fn(&str) -> bool) -> String {
     let base = if base.is_empty() { "game" } else { base };
-    if !taken(base) {
-        return base.to_string();
-    }
-    let mut n = 1u32;
-    loop {
-        let name = format!("{base}-{n}");
-        if !taken(&name) {
-            return name;
-        }
-        n += 1;
-    }
+    unique_name(base, taken)
 }
 
+/// Copy `dirs` / `files` into `games/{unique}` and return that folder name.
 pub fn install_folder(
     vfs: &mut Vfs,
     name: &str,
@@ -59,6 +61,7 @@ pub fn install_folder(
     Ok(folder)
 }
 
+/// Open a directory picker and read allowed files (or a reject/cancel).
 pub async fn pick_and_read_folder() -> PickResult {
     match pick_directory().await {
         PickDir::Cancelled => PickResult::Cancelled,

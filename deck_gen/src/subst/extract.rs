@@ -1,10 +1,16 @@
 //! Slice a `"key": { ... }` object out of still-invalid JSON text.
+//!
+//! Local `vars` must be read after file-ref expansion and before the rest of
+//! `${…}` is resolved, so the file is not valid JSON5 yet. This walks with
+//! [`JsonText`](super::cursor::JsonText), finds `"key"`, and parses the following
+//! braced object with `json5`.
 
 use serde_json::Value;
 
 use super::cursor::{skip_json_whitespace, JsonText};
 use crate::error::{Error, Result};
 
+/// First `"key": { … }` object in `raw`, or `None` if the key is absent.
 pub fn extract_json_object_for_key(raw: &str, key: &str) -> Result<Option<Value>> {
     let needle = format!("\"{key}\"");
     let mut scan = JsonText::new(raw);

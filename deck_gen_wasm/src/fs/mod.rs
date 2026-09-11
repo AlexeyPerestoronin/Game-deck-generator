@@ -1,4 +1,9 @@
 //! In-memory workspace tree.
+//!
+//! [`Vfs`] is a `BTreeMap` of [`Node`] (file or directory). Paths are the
+//! `/`-separated strings from [`path`]. Mutating methods return `Result<_, String>`
+//! so the UI can show the message as status. [`VfsFs`] adapts this tree to
+//! [`deck_gen::FileSystem`] for HTML generation.
 
 use std::collections::BTreeMap;
 
@@ -7,21 +12,28 @@ use serde::{Deserialize, Serialize};
 mod path;
 mod vfs_fs;
 
-pub use path::{file_ext, file_name, join_path, parent_path, rewrite_prefix, split_path};
+pub use path::{
+    file_ext, file_name, join_path, parent_path, rewrite_prefix, split_path, unique_name,
+};
 pub use vfs_fs::VfsFs;
 
+/// A file body or a sorted map of children.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Node {
+    /// UTF-8 file contents.
     File { content: String },
+    /// Directory keyed by a single path segment.
     Dir { children: BTreeMap<String, Node> },
 }
 
+/// Workspace root: the map of top-level names (usually `games`).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Vfs {
     root: BTreeMap<String, Node>,
 }
 
 impl Vfs {
+    /// Create `path` and any missing parent directories.
     pub fn mkdir(&mut self, path: &str) -> Result<(), String> {
         let parts = split_path(path)?;
         if parts.is_empty() {
@@ -31,6 +43,7 @@ impl Vfs {
         Ok(())
     }
 
+    /// Create an empty file; error if `path` already exists.
     pub fn create_file(&mut self, path: &str) -> Result<(), String> {
         let parts = split_path(path)?;
         let Some((name, parent_parts)) = parts.split_last() else {
@@ -50,6 +63,7 @@ impl Vfs {
         }
     }
 
+    /// Replace the body of an existing file.
     pub fn write_file(&mut self, path: &str, content: String) -> Result<(), String> {
         match node_at_mut(&mut self.root, &split_path(path)?)? {
             Node::File { content: slot } => {
@@ -74,6 +88,7 @@ impl Vfs {
         Ok(())
     }
 
+    /// Whether `path` is the root or an existing node.
     pub fn exists(&self, path: &str) -> bool {
         if path.is_empty() {
             return true;
@@ -84,6 +99,7 @@ impl Vfs {
         node_at(&self.root, &parts).is_ok()
     }
 
+    /// File body, or `None` if missing or a directory.
     pub fn read_file(&self, path: &str) -> Option<&str> {
         let parts = split_path(path).ok()?;
         match node_at(&self.root, &parts) {
@@ -92,6 +108,7 @@ impl Vfs {
         }
     }
 
+    /// Whether `path` is the root or an existing directory.
     pub fn is_dir(&self, path: &str) -> bool {
         if path.is_empty() {
             return true;
@@ -102,10 +119,12 @@ impl Vfs {
         matches!(node_at(&self.root, &parts), Ok(Node::Dir { .. }))
     }
 
+    /// Whether `path` is an existing file.
     pub fn is_file(&self, path: &str) -> bool {
         self.read_file(path).is_some()
     }
 
+    /// Immediate children as `(name, is_dir)`, sorted by [`BTreeMap`] order.
     pub fn children(&self, path: &str) -> Vec<(String, bool)> {
         let Some(map) = dir_children(&self.root, path) else {
             return Vec::new();
@@ -115,6 +134,7 @@ impl Vfs {
             .collect()
     }
 
+    /// Depth-first listing: directory paths, then `(path, content)` files.
     pub fn files_and_dirs(&self) -> (Vec<String>, Vec<(String, String)>) {
         let mut dirs = Vec::new();
         let mut files = Vec::new();
@@ -122,6 +142,7 @@ impl Vfs {
         (dirs, files)
     }
 
+    /// Delete a file or directory (and its descendants).
     pub fn remove(&mut self, path: &str) -> Result<(), String> {
         let parts = split_path(path)?;
         let Some((name, parent_parts)) = parts.split_last() else {
@@ -134,6 +155,7 @@ impl Vfs {
         Ok(())
     }
 
+    /// Rename one segment of `path`; returns the new full path.
     pub fn rename(&mut self, path: &str, new_name: &str) -> Result<String, String> {
         let new_name = new_name.trim();
         if !is_single_segment_name(new_name) {

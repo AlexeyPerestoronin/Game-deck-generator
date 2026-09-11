@@ -1,4 +1,10 @@
 //! Jinja + SCSS rendering of face / back / preview HTML.
+//!
+//! Templates are loaded from the deck directory first, then the game `views/`.
+//! `.scss` files are run through MiniJinja (so they can use the same globals)
+//! and then `grass`. That needs two environments: a “raw” loader without SCSS
+//! compilation, and the public loader that compiles `.scss` using the raw env.
+//! The MiniJinja loader is `'static`, so the [`FileSystem`] is held in an `Arc`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -12,27 +18,39 @@ use crate::error::Result;
 use crate::fs::FileSystem;
 use crate::model::Deck;
 
+/// Paths written by [`prepare_html`] and the number of cards in the deck.
 pub struct HtmlArtifacts {
+    /// Preview page (`preview.html` by default).
     pub preview: PathBuf,
+    /// Face sheet HTML.
     pub face_html: PathBuf,
+    /// Back sheet HTML.
     pub back_html: PathBuf,
+    /// `cards.len()` after row expansion.
     pub card_count: usize,
 }
 
-pub fn prepare_html(
-    fs: &Arc<dyn FileSystem>,
+/// Render face, back, and preview HTML for `deck` into its output directory.
+pub fn prepare_html<F>(
+    fs: &Arc<F>,
     loaded: &Conf,
     deck: &Deck,
-) -> Result<HtmlArtifacts> {
+) -> Result<HtmlArtifacts>
+where
+    F: FileSystem + ?Sized + 'static,
+{
     render_html(fs, loaded, deck, &deck.cards())
 }
 
-fn render_html(
-    fs: &Arc<dyn FileSystem>,
+fn render_html<F>(
+    fs: &Arc<F>,
     loaded: &Conf,
     deck: &Deck,
     cards: &[Value],
-) -> Result<HtmlArtifacts> {
+) -> Result<HtmlArtifacts>
+where
+    F: FileSystem + ?Sized + 'static,
+{
     let game = loaded.game_for_deck_name(&deck.name)?;
     let env = jinja_env(fs.clone(), loaded, deck)?;
     let out = deck.output_dir(loaded)?;
@@ -72,11 +90,14 @@ fn template_context(deck: &Deck, cards: &[Value]) -> minijinja::value::Value {
     }
 }
 
-fn jinja_env(
-    fs: Arc<dyn FileSystem>,
+fn jinja_env<F>(
+    fs: Arc<F>,
     loaded: &Conf,
     deck: &Deck,
-) -> Result<Environment<'static>> {
+) -> Result<Environment<'static>>
+where
+    F: FileSystem + ?Sized + 'static,
+{
     let search = Arc::new(vec![
         deck.directory.clone(),
         views_for_deck_name(loaded, &deck.name)?,
@@ -106,12 +127,14 @@ fn configure_env(env: &mut Environment<'static>, deck: &Deck) {
     env.add_global("card_height_mm", deck.card_height_mm());
 }
 
-fn attach_loader(
+fn attach_loader<F>(
     env: &mut Environment<'static>,
-    fs: Arc<dyn FileSystem>,
+    fs: Arc<F>,
     search: Arc<Vec<PathBuf>>,
     scss_env: Option<Arc<Environment<'static>>>,
-) {
+) where
+    F: FileSystem + ?Sized + 'static,
+{
     env.set_loader(move |name| {
         let Some(raw) = read_template(name, fs.as_ref(), &search) else {
             return Ok(None);
@@ -129,7 +152,10 @@ fn attach_loader(
     });
 }
 
-fn read_template(name: &str, fs: &dyn FileSystem, search: &[PathBuf]) -> Option<String> {
+fn read_template<F>(name: &str, fs: &F, search: &[PathBuf]) -> Option<String>
+where
+    F: FileSystem + ?Sized,
+{
     for dir in search {
         let path = dir.join(name);
         if let Ok(raw) = fs.read_to_string(&path) {

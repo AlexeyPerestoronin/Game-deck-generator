@@ -1,4 +1,10 @@
 //! JSON-string-aware expansion of `${...}` and `$s{...}`.
+//!
+//! Deck files are expanded *before* JSON5 parse, so the scanner must know
+//! whether it is inside a JSON string: inside, a value is escaped string
+//! content; outside, it is a full JSON token. [`cursor`] tracks that state;
+//! [`placeholder`] walks `${…}`; [`sticky`] rewrites `$s{…}` to NBSP; [`extract`]
+//! slices a `"key": { … }` object out of still-invalid text (for local `vars`).
 
 mod cursor;
 mod extract;

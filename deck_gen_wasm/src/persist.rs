@@ -1,4 +1,9 @@
 //! Browser localStorage snapshot of the in-memory workspace.
+//!
+//! The editor has no backend: [`Session`] is the whole durable state (tree,
+//! selection, expanded folders). Load is best-effort; a corrupt or missing
+//! key starts an empty workspace. Save is triggered from the activity bar and
+//! from a Leptos effect on every signal change.
 
 use std::collections::HashSet;
 
@@ -8,14 +13,19 @@ use crate::fs::Vfs;
 
 const STORAGE_KEY: &str = "deck_gen_wasm.session";
 
+/// Serializable workspace snapshot stored under `deck_gen_wasm.session`.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Session {
+    /// Full in-memory tree.
     pub vfs: Vfs,
+    /// Selected explorer path, if any.
     pub selected: Option<String>,
+    /// Expanded directory paths (sorted on write).
     pub expanded: Vec<String>,
 }
 
 impl Session {
+    /// Build a snapshot; expanded dirs are sorted for stable JSON.
     pub fn from_workspace(vfs: Vfs, selected: Option<String>, expanded: &HashSet<String>) -> Self {
         let mut dirs: Vec<String> = expanded.iter().cloned().collect();
         dirs.sort();
@@ -26,16 +36,19 @@ impl Session {
         }
     }
 
+    /// Expanded paths as a set for the explorer.
     pub fn expanded_set(&self) -> HashSet<String> {
         self.expanded.iter().cloned().collect()
     }
 }
 
+/// Read and deserialize the session, or `None` if missing/invalid.
 pub fn load_session() -> Option<Session> {
     let raw = local_storage()?.get_item(STORAGE_KEY).ok().flatten()?;
     serde_json::from_str(&raw).ok()
 }
 
+/// Serialize `session` to localStorage.
 pub fn save_session(session: &Session) -> Result<(), String> {
     let raw = serde_json::to_string(session).map_err(|err| err.to_string())?;
     local_storage()

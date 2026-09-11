@@ -1,4 +1,8 @@
 //! Encode the in-memory tree as a ZIP byte buffer.
+//!
+//! Directories are stored with a trailing `/`; files use DEFLATE. The walk
+//! order is the VFS `BTreeMap` order so archives are deterministic for the
+//! same tree.
 
 use std::io::{Cursor, Write};
 
@@ -7,6 +11,7 @@ use zip::{CompressionMethod, ZipWriter};
 
 use crate::fs::Vfs;
 
+/// Build a ZIP of every directory and file in `vfs`.
 pub fn vfs_to_zip(vfs: &Vfs) -> Result<Vec<u8>, String> {
     let mut cursor = Cursor::new(Vec::new());
     let mut zip = ZipWriter::new(&mut cursor);

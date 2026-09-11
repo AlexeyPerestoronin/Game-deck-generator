@@ -1,5 +1,8 @@
-//! Syntax highlighting via `syntect` (TextMate grammars). Used only for
-//! significant extensions; unknown types stay as a plain textarea.
+//! Syntax highlighting via `syntect` (TextMate grammars).
+//!
+//! Used only for extensions the editor cares about (md, json/json5, html,
+//! scss/css). Unknown types stay as a plain textarea. The syntax set is
+//! loaded once; output is classed HTML for the overlay `<pre>`.
 
 use std::sync::OnceLock;
 
@@ -25,6 +28,7 @@ fn syntax_name_for_ext(ext: &str) -> Option<&'static str> {
     }
 }
 
+/// Whether `path` has a grammar this module will highlight.
 pub fn can_highlight(path: &str) -> bool {
     file_ext(path)
         .and_then(syntax_name_for_ext)
@@ -46,6 +50,7 @@ mod tests {
     }
 }
 
+/// Classed HTML for `code`, or `None` if the extension is unknown / parse fails.
 pub fn highlight_html(path: &str, code: &str) -> Option<String> {
     let ext = file_ext(path)?;
     let name = syntax_name_for_ext(ext)?;

@@ -1,17 +1,25 @@
 //! `${...}` expansion. Inside a JSON string the value is escaped string
 //! content; outside it is a full JSON token.
+//!
+//! Resolution is a callback so load can keep file refs on pass 1 (`Keep`) and
+//! substitute everything on pass 2 without a second scanner. [`lookup_var`]
+//! walks dotted paths on a JSON tree (vars files or the synthetic `{vars: …}`).
 
 use serde_json::Value;
 
 use super::cursor::JsonText;
 use crate::error::{Error, Result};
 
+/// What to write in place of one `${…}` occurrence.
 #[derive(Debug)]
 pub enum Resolve {
+    /// Leave the original `${…}` text unchanged (pass 1, local vars).
     Keep,
+    /// Insert this JSON value, encoded for the current string context.
     Value(Value),
 }
 
+/// Walk `path` (`a.b.c`) on `tree`. Empty paths and missing keys are errors.
 pub fn lookup_var<'a>(tree: &'a Value, path: &str) -> Result<&'a Value> {
     let mut node = tree;
     let parts: Vec<&str> = path.split('.').filter(|part| !part.is_empty()).collect();
@@ -31,6 +39,10 @@ pub fn lookup_var<'a>(tree: &'a Value, path: &str) -> Result<&'a Value> {
     Ok(node)
 }
 
+/// Replace each `${…}` in `raw` using `resolve`.
+///
+/// `resolve` is a generic `FnMut` (static dispatch). `${` is ignored when the
+/// previous character in a string was `\`.
 pub fn substitute_placeholders(
     raw: &str,
     mut resolve: impl FnMut(&str) -> Result<Resolve>,
@@ -75,10 +87,12 @@ fn encode_placeholder(value: &Value, in_string: bool) -> Result<String> {
     dumps(value)
 }
 
+/// Compact JSON encoding of `value`.
 pub fn dumps(value: &Value) -> Result<String> {
     Ok(serde_json::to_string(value)?)
 }
 
+/// `text` as JSON string content (no surrounding quotes).
 pub fn escape_json_string_content(text: &str) -> Result<String> {
     let quoted = dumps(&Value::String(text.to_string()))?;
     Ok(quoted[1..quoted.len() - 1].to_string())

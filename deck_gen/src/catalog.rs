@@ -1,4 +1,10 @@
 //! Discover decks under each game's `decks/` folder.
+//!
+//! A deck is a directory that contains `data.json5`. The public name is
+//! `{game_id}.{relative.dotted.path}` and must match the `name` field inside
+//! the file. Queries accept a full name, a name relative to the default game,
+//! or a prefix of either. Discovery is a walk + `BTreeMap` so output order is
+//! stable across filesystems.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -16,25 +22,36 @@ struct LocatedDeck {
     vars: PathBuf,
 }
 
-pub fn matching_names(fs: &dyn FileSystem, loaded: &Conf, query: Option<&str>) -> Result<Vec<String>> {
+/// Names of decks that match `query` (or every deck if `query` is `None`).
+pub fn matching_names<F>(fs: &F, loaded: &Conf, query: Option<&str>) -> Result<Vec<String>>
+where
+    F: FileSystem + ?Sized,
+{
     Ok(matching_located(fs, loaded, query)?
         .into_iter()
         .map(|item| item.name)
         .collect())
 }
 
-pub fn find_decks(fs: &dyn FileSystem, loaded: &Conf, query: Option<&str>) -> Result<Vec<Deck>> {
+/// Load every matching deck, checking that `data.json5` `name` equals the path.
+pub fn find_decks<F>(fs: &F, loaded: &Conf, query: Option<&str>) -> Result<Vec<Deck>>
+where
+    F: FileSystem + ?Sized,
+{
     matching_located(fs, loaded, query)?
         .iter()
         .map(|item| load_deck(fs, &item.path, &item.name, &item.vars))
         .collect()
 }
 
-fn matching_located(
-    fs: &dyn FileSystem,
+fn matching_located<F>(
+    fs: &F,
     loaded: &Conf,
     query: Option<&str>,
-) -> Result<Vec<LocatedDeck>> {
+) -> Result<Vec<LocatedDeck>>
+where
+    F: FileSystem + ?Sized,
+{
     let located = locate_all(fs, loaded)?;
     if located.is_empty() {
         return Err(Error::msg("No deck data files found under configured games"));
@@ -54,7 +71,10 @@ fn matching_located(
     Ok(matched)
 }
 
-fn locate_all(fs: &dyn FileSystem, loaded: &Conf) -> Result<Vec<LocatedDeck>> {
+fn locate_all<F>(fs: &F, loaded: &Conf) -> Result<Vec<LocatedDeck>>
+where
+    F: FileSystem + ?Sized,
+{
     let mut by_dir: BTreeMap<PathBuf, LocatedDeck> = BTreeMap::new();
     for game in loaded.games.values() {
         if fs.is_dir(&game.decks) {
@@ -64,12 +84,15 @@ fn locate_all(fs: &dyn FileSystem, loaded: &Conf) -> Result<Vec<LocatedDeck>> {
     Ok(by_dir.into_values().collect())
 }
 
-fn collect_data_files(
-    fs: &dyn FileSystem,
+fn collect_data_files<F>(
+    fs: &F,
     game: &GamePaths,
     dir: &Path,
     by_dir: &mut BTreeMap<PathBuf, LocatedDeck>,
-) -> Result<()> {
+) -> Result<()>
+where
+    F: FileSystem + ?Sized,
+{
     for path in fs.read_dir(dir)? {
         if fs.is_dir(&path) {
             collect_data_files(fs, game, &path, by_dir)?;
@@ -105,12 +128,15 @@ fn dotted_name(game: &GamePaths, data_file: &Path) -> Result<String> {
     Ok(format!("{}.{}", game.id, rest))
 }
 
-fn load_deck(
-    fs: &dyn FileSystem,
+fn load_deck<F>(
+    fs: &F,
     data_file: &Path,
     expected_name: &str,
     vars_dir: &Path,
-) -> Result<Deck> {
+) -> Result<Deck>
+where
+    F: FileSystem + ?Sized,
+{
     let deck = Deck::from_manager(&DataManager::new(fs, data_file, vars_dir.to_path_buf())?)?;
     if deck.name != expected_name {
         return Err(Error::file(

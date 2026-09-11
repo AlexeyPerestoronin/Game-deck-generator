@@ -1,17 +1,24 @@
-//! Right-click menu. File and folder command lists are independent so they
-//! can grow apart without touching shared match arms.
+//! Right-click menu for explorer entries.
+//!
+//! File and folder command lists are independent tables so they can grow
+//! apart without shared match arms. The menu is positioned at the click and
+//! dismissed by backdrop click or choosing a command.
 
 use leptos::prelude::*;
 
+/// Whether the context menu was opened on a file or a folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EntryKind {
     File,
     Folder,
 }
 
+/// One menu row: stable `id` (handled by the workspace) and visible label.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MenuCommand {
+    /// Command id (`rename`, `delete`, …).
     pub id: &'static str,
+    /// Text shown in the menu.
     pub label: &'static str,
 }
 
@@ -37,6 +44,7 @@ const FOLDER_COMMANDS: &[MenuCommand] = &[
     },
 ];
 
+/// Command table for `kind`.
 pub fn commands_for(kind: EntryKind) -> &'static [MenuCommand] {
     match kind {
         EntryKind::File => FILE_COMMANDS,
@@ -44,20 +52,29 @@ pub fn commands_for(kind: EntryKind) -> &'static [MenuCommand] {
     }
 }
 
+/// Open menu: target path, entry kind, and viewport coordinates.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MenuState {
+    /// Path the menu was opened on.
     pub path: String,
+    /// File vs folder command list.
     pub kind: EntryKind,
+    /// Viewport X of the click.
     pub x: f64,
+    /// Viewport Y of the click.
     pub y: f64,
 }
 
+/// Command the user picked, plus the path it applies to.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ChosenCommand {
+    /// Command id from [`MenuCommand::id`].
     pub id: &'static str,
+    /// Path from [`MenuState::path`].
     pub path: String,
 }
 
+/// Floating menu at `state`’s coordinates.
 #[component]
 pub fn ContextMenu(
     state: MenuState,

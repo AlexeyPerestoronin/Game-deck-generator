@@ -1,3 +1,9 @@
+//! Left icon strip: save, ZIP, new/load game, prepare HTML, clear.
+//!
+//! Each button is a delayed tooltip plus a click that calls into
+//! [`Workspace`](crate::workspace::Workspace). Destructive / warning flows
+//! (clear, load-game confirm, prepare-html errors) open the shared modals.
+
 use leptos::prelude::*;
 
 use super::icons::{
@@ -7,6 +13,7 @@ use super::modal::{AlertModal, ConfirmModal};
 use super::tooltip::DelayedTooltip;
 use crate::workspace::Workspace;
 
+/// Vertical action bar bound to one [`Workspace`].
 #[component]
 pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
     let show_clear = RwSignal::new(false);

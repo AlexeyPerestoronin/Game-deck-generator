@@ -5,18 +5,31 @@ edition.workspace = true
 description = "Browser WASM app: virtual workspace editor"
 
 [dependencies]
+# Route panics to the browser console instead of aborting silently.
 console_error_panic_hook = "0.1"
+# Shared JSON5 → HTML pipeline; wasm builds omit the native CLI/PDF feature.
 deck_gen = { path = "../deck_gen", default-features = false }
+# Enable the JS entropy backend for transitive `getrandom` (see `.cargo/config.toml`).
 getrandom = { version = "0.3", features = ["wasm_js"] }
+# HTTP fetch of the `new-game` template from GitHub / the Trunk local copy.
 gloo-net = "0.6"
+# Delayed tooltips and a 0ms yield before `prepare_html` so the UI can paint.
 gloo-timers = { version = "0.3", features = ["futures"] }
+# `Reflect` / `Function` / typed arrays for the directory picker and ZIP save.
 js-sys = "0.3"
+# Client-side reactive UI (explorer, editor, activity bar).
 leptos = { version = "0.8", features = ["csr"] }
+# `Session` and GitHub tree JSON.
 serde = { version = "1", features = ["derive"] }
+# localStorage snapshot encode/decode and GitHub API tree parsing.
 serde_json = "1"
+# TextMate syntax highlighting in the editor (`default-fancy` avoids onig).
 syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+# JS interop (`JsCast`, `JsValue`, closures) for DOM and File System Access.
 wasm-bindgen = "0.2"
+# `spawn_local` for folder pick, template fetch, ZIP download, and HTML prepare.
 wasm-bindgen-futures = "0.4"
+# DOM, File, Blob, localStorage, and download-anchor APIs used by the UI.
 web-sys = { version = "0.3", features = [
     "Blob",
     "BlobPropertyBag",
@@ -35,4 +48,5 @@ web-sys = { version = "0.3", features = [
     "Url",
     "Window",
 ] }
+# Encode the in-memory workspace as a downloadable ZIP.
 zip = { version = "2", default-features = false, features = ["deflate"] }

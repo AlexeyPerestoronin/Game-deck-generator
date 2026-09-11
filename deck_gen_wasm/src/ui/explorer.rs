@@ -1,3 +1,9 @@
+//! File tree for the in-memory workspace.
+//!
+//! Rows are a flattened walk of expanded directories. Click selects (and
+//! toggles folders); right-click opens [`ContextMenu`](super::context_menu).
+//! Create-file / create-folder buttons live in the header; status is the footer.
+
 use std::collections::HashSet;
 
 use leptos::prelude::*;
@@ -7,6 +13,7 @@ use super::icons::FileTypeIcon;
 use crate::fs::{join_path, Vfs};
 use crate::workspace::Workspace;
 
+/// Sidebar tree bound to one [`Workspace`].
 #[component]
 pub fn Explorer(workspace: Workspace) -> impl IntoView {
     let menu = RwSignal::new(None::<MenuState>);

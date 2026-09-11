@@ -1,4 +1,7 @@
 //! Tooltip that appears after the pointer stays on the control for 1.5s.
+//!
+//! A generation counter cancels the pending timer on leave or re-enter so a
+//! fast mouse pass never flashes the tip. Used by the activity-bar buttons.
 
 use gloo_timers::future::TimeoutFuture;
 use leptos::prelude::*;
@@ -6,6 +9,7 @@ use wasm_bindgen_futures::spawn_local;
 
 const HOVER_DELAY_MS: u32 = 1500;
 
+/// Wrap `children` with a delayed hover tooltip showing `text`.
 #[component]
 pub fn DelayedTooltip(text: &'static str, children: Children) -> impl IntoView {
     let visible = RwSignal::new(false);

@@ -1,4 +1,9 @@
 //! Offer ZIP bytes to the user: File System Access picker, else `<a download>`.
+//!
+//! `showSaveFilePicker` is feature-detected. If it is missing or fails, the
+//! same bytes are turned into a Blob URL and a hidden anchor is clicked.
+//! Errors from the picker path are swallowed in favor of the fallback so a
+//! permission deny still downloads.
 
 use js_sys::{Array, Reflect, Uint8Array};
 use wasm_bindgen::JsCast;
@@ -6,6 +11,7 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Blob, BlobPropertyBag, HtmlAnchorElement, Url};
 
+/// Save `bytes` as `filename`, preferring the save picker over an anchor click.
 pub async fn save_zip_bytes(bytes: Vec<u8>, filename: &str) -> Result<(), String> {
     if has_save_file_picker() && save_with_picker(&bytes, filename).await.is_ok() {
         return Ok(());

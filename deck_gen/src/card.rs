@@ -1,4 +1,10 @@
 //! One card row: key normalisation, life-effects, slug.
+//!
+//! Deck JSON5 is schema-light (`serde_json::Value`). This module turns a raw
+//! row plus `card_*` defaults into the object the templates see: lowercase
+//! keys, 1-based `index`, a `slug`, and `life_effects` split into a string
+//! array. Regexes are compiled once; the splitting rules are part of the
+//! published card layout.
 
 use std::sync::OnceLock;
 
@@ -9,12 +15,18 @@ fn normalize_key(key: &str) -> String {
     key.trim().replace('-', "_").to_lowercase()
 }
 
+/// Lowercase keys, map `-` to `_`, keep values. Used for both deck fields and
+/// extra top-level keys from `data.json5`.
 pub fn normalize_map(map: &Map<String, Value>) -> Map<String, Value> {
     map.iter()
         .map(|(key, value)| (normalize_key(key), value.clone()))
         .collect()
 }
 
+/// Build the JSON object for card `index` (1-based) from a row and defaults.
+///
+/// Defaults are the deck's `card_*` fields. Row keys override them. Empty
+/// keys are ignored. `life_effects` is always an array of trimmed strings.
 pub fn card_from_row(index: usize, row: &Value, defaults: &Map<String, Value>) -> Value {
     let mut fields = defaults.clone();
     if let Value::Object(map) = row {

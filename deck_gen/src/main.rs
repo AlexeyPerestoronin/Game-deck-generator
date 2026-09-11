@@ -1,3 +1,6 @@
+//! Native binary entry. Delegates to [`deck_gen::cli`] when the `cli` feature
+//! is on and the target is not wasm; otherwise prints a short usage error.
+
 fn main() {
     #[cfg(all(feature = "cli", not(target_arch = "wasm32")))]
     {

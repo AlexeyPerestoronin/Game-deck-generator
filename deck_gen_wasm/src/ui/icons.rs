@@ -1,7 +1,14 @@
+//! Inline SVG icons for the activity bar and explorer rows.
+//!
+//! [`FileTypeIcon`] maps a file name’s extension to a glyph; unknown types
+//! render an empty slot so the tree stays aligned. Toolbar icons are 16×16
+//! and inherit `currentColor`.
+
 use leptos::prelude::*;
 
 use crate::fs::file_ext;
 
+/// Explorer glyph for `name`’s extension, or an empty slot.
 #[component]
 pub fn FileTypeIcon(name: String) -> impl IntoView {
     match file_ext(&name).map(|ext| ext.to_ascii_lowercase()) {
@@ -15,6 +22,7 @@ pub fn FileTypeIcon(name: String) -> impl IntoView {
     }
 }
 
+/// Activity-bar save (localStorage) glyph.
 #[component]
 pub fn SaveIcon() -> impl IntoView {
     view! {
@@ -27,6 +35,7 @@ pub fn SaveIcon() -> impl IntoView {
     }
 }
 
+/// Activity-bar ZIP download glyph.
 #[component]
 pub fn DownloadIcon() -> impl IntoView {
     view! {
@@ -39,6 +48,7 @@ pub fn DownloadIcon() -> impl IntoView {
     }
 }
 
+/// Activity-bar “load folder from disk” glyph.
 #[component]
 pub fn LoadGameIcon() -> impl IntoView {
     view! {
@@ -52,6 +62,7 @@ pub fn LoadGameIcon() -> impl IntoView {
     }
 }
 
+/// Activity-bar “new game from template” glyph.
 #[component]
 pub fn NewGameIcon() -> impl IntoView {
     view! {
@@ -64,6 +75,7 @@ pub fn NewGameIcon() -> impl IntoView {
     }
 }
 
+/// Activity-bar `prepare_html` glyph.
 #[component]
 pub fn PrepareHtmlIcon() -> impl IntoView {
     view! {
@@ -78,6 +90,7 @@ pub fn PrepareHtmlIcon() -> impl IntoView {
     }
 }
 
+/// Activity-bar clear-workspace glyph.
 #[component]
 pub fn ClearIcon() -> impl IntoView {
     view! {
@@ -90,6 +103,7 @@ pub fn ClearIcon() -> impl IntoView {
     }
 }
 
+/// Explorer icon for Markdown files.
 #[component]
 pub fn MdFileIcon() -> impl IntoView {
     view! {
@@ -100,6 +114,7 @@ pub fn MdFileIcon() -> impl IntoView {
     }
 }
 
+/// Explorer icon for JSON files.
 #[component]
 pub fn JsonFileIcon() -> impl IntoView {
     view! {
@@ -110,6 +125,7 @@ pub fn JsonFileIcon() -> impl IntoView {
     }
 }
 
+/// Explorer icon for JSON5 files.
 #[component]
 pub fn Json5FileIcon() -> impl IntoView {
     view! {
@@ -121,6 +137,7 @@ pub fn Json5FileIcon() -> impl IntoView {
     }
 }
 
+/// Explorer icon for HTML files.
 #[component]
 pub fn HtmlFileIcon() -> impl IntoView {
     view! {
@@ -131,6 +148,7 @@ pub fn HtmlFileIcon() -> impl IntoView {
     }
 }
 
+/// Explorer icon for SCSS files.
 #[component]
 pub fn ScssFileIcon() -> impl IntoView {
     view! {
@@ -140,6 +158,7 @@ pub fn ScssFileIcon() -> impl IntoView {
     }
 }
 
+/// Explorer icon for PDF files.
 #[component]
 pub fn PdfFileIcon() -> impl IntoView {
     view! {
