@@ -6,17 +6,15 @@
 //! `prepare_pdf`, folder pick, template fetch, ZIP) uses `spawn_local` and the
 //! `loading` flag so two long actions cannot overlap.
 
+mod actions;
+mod commands;
+
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use leptos::prelude::*;
-use wasm_bindgen_futures::spawn_local;
 
-use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
-use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs, VfsFs};
-use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
-use crate::persist::{save_session, Session};
-use crate::template::install_new_game;
+use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs};
+use crate::persist::Session;
 
 /// Whether an editor tab shows the source or a rendered preview.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -176,196 +174,6 @@ impl Workspace {
         }
     }
 
-    /// Write the current snapshot to localStorage (manual Save).
-    pub fn persist(&self) {
-        match save_session(&self.snapshot()) {
-            Ok(()) => self.status.set("Saved in this browser".into()),
-            Err(err) => self.status.set(err),
-        }
-    }
-
-    /// Empty the tree and persist that empty session.
-    pub fn clear(&self) {
-        self.vfs.set(Vfs::default());
-        self.selected.set(None);
-        self.tabs.set(Vec::new());
-        self.active_tab.set(None);
-        self.expanded.set(HashSet::new());
-        self.status.set("Workspace cleared".into());
-        let _ = save_session(&self.snapshot());
-    }
-
-    /// Pick a local folder and copy it under `games/` with a unique name.
-    pub fn load_game_from_disk(&self, warning: RwSignal<Option<String>>) {
-        if self.loading.get() {
-            return;
-        }
-        self.loading.set(true);
-        self.status.set("Select a folder…".into());
-        let workspace = *self;
-        spawn_local(async move {
-            match pick_and_read_folder().await {
-                PickResult::Cancelled => {
-                    workspace.status.set(String::new());
-                }
-                PickResult::Rejected(reason) => {
-                    warning.set(Some(reason));
-                    workspace.status.set(String::new());
-                }
-                PickResult::Ready { name, files, dirs } => {
-                    workspace.status.set("Loading folder…".into());
-                    let mut vfs = workspace.vfs.get_untracked();
-                    match install_folder(&mut vfs, &name, &dirs, &files) {
-                        Ok(folder) => {
-                            workspace.vfs.set(vfs);
-                            let path = format!("games/{folder}");
-                            workspace.expand_ancestors(&path);
-                            workspace.selected.set(Some(path.clone()));
-                            workspace.status.set(format!("Loaded {path}"));
-                        }
-                        Err(err) => workspace.status.set(err),
-                    }
-                }
-            }
-            workspace.loading.set(false);
-        });
-    }
-
-    /// Run [`deck_gen::prepare_html`] on the VFS after a 0ms yield so the UI can paint.
-    pub fn prepare_html(&self, warning: RwSignal<Option<String>>) {
-        if self.loading.get() {
-            return;
-        }
-        self.loading.set(true);
-        self.status.set("Preparing HTML…".into());
-        let workspace = *self;
-        spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(0).await;
-            let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
-            match deck_gen::prepare_html(fs.clone()) {
-                Ok(n) => {
-                    workspace.vfs.set(take_vfs(fs));
-                    workspace.status.set(format!("Prepared HTML for {n} decks"));
-                }
-                Err(err) => {
-                    warning.set(Some(err.to_string()));
-                    workspace.status.set(String::new());
-                }
-            }
-            workspace.loading.set(false);
-        });
-    }
-
-    /// Run [`deck_gen::prepare_pdf`] with the browser engine after a 0ms yield.
-    pub fn prepare_pdf(&self, warning: RwSignal<Option<String>>) {
-        if self.loading.get() {
-            return;
-        }
-        self.loading.set(true);
-        self.status.set("Preparing PDF…".into());
-        let workspace = *self;
-        spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(0).await;
-            let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
-            let engine = prepare_pdf_web::WebPdfEngine;
-            match deck_gen::prepare_pdf(fs.clone(), &engine).await {
-                Ok(n) => {
-                    workspace.vfs.set(take_vfs(fs));
-                    workspace.status.set(format!("Prepared PDF for {n} decks"));
-                }
-                Err(err) => {
-                    warning.set(Some(err.to_string()));
-                    workspace.status.set(String::new());
-                }
-            }
-            workspace.loading.set(false);
-        });
-    }
-
-    /// Fetch the `new-game` template and install it under `games/`.
-    pub fn add_new_game(&self) {
-        if self.loading.get() {
-            return;
-        }
-        self.loading.set(true);
-        self.status.set("Loading new-game template…".into());
-        let workspace = *self;
-        spawn_local(async move {
-            let mut vfs = workspace.vfs.get_untracked();
-            let result = install_new_game(&mut vfs).await;
-            match result {
-                Ok(installed) => {
-                    workspace.vfs.set(vfs);
-                    let path = format!("games/{}", installed.folder);
-                    workspace.expand_ancestors(&path);
-                    workspace.selected.set(Some(path.clone()));
-                    workspace.status.set(format!(
-                        "Added {path} from {}",
-                        installed.source
-                    ));
-                }
-                Err(err) => workspace.status.set(err),
-            }
-            workspace.loading.set(false);
-        });
-    }
-
-    /// Encode the tree as ZIP and offer it to the browser.
-    pub fn download(&self) {
-        let vfs = self.vfs.get();
-        match vfs_to_zip(&vfs) {
-            Ok(bytes) => {
-                self.status.set("Downloading ZIP…".into());
-                let status = self.status;
-                spawn_local(async move {
-                    match save_zip_bytes(bytes, ZIP_FILENAME).await {
-                        Ok(()) => status.set(format!("Downloaded {ZIP_FILENAME}")),
-                        Err(err) => status.set(err),
-                    }
-                });
-            }
-            Err(err) => self.status.set(err),
-        }
-    }
-
-    /// Context-menu command (`rename` / `delete` / `preview`) on an explorer entry.
-    pub fn run_entry_command(&self, id: &str, path: &str) {
-        match id {
-            "delete" => self.delete_entry(path),
-            "rename" => self.rename_entry(path),
-            "preview" => self.open_tab(OpenTab {
-                path: path.to_string(),
-                kind: TabKind::Preview,
-            }),
-            other => self.status.set(format!("Unknown command {other}")),
-        }
-    }
-
-    fn delete_entry(&self, path: &str) {
-        match self.vfs.try_update(|vfs| vfs.remove(path)) {
-            Some(Ok(())) => {
-                self.forget_path(path);
-                self.status.set(format!("Deleted {path}"));
-            }
-            Some(Err(err)) => self.status.set(err),
-            None => self.status.set("Could not update workspace".into()),
-        }
-    }
-
-    fn rename_entry(&self, path: &str) {
-        let Some(name) = ask_name("New name") else {
-            return;
-        };
-        match self.vfs.try_update(|vfs| vfs.rename(path, &name)) {
-            Some(Ok(new_path)) => {
-                self.rewrite_paths(path, &new_path);
-                self.status.set(format!("Renamed to {new_path}"));
-            }
-            Some(Err(err)) => self.status.set(err),
-            None => self.status.set("Could not update workspace".into()),
-        }
-    }
-
     fn forget_path(&self, path: &str) {
         let prefix = format!("{path}/");
         let gone = |current: &str| current == path || current.starts_with(&prefix);
@@ -380,7 +188,9 @@ impl Workspace {
         let tabs = self.tabs.get();
         let active = self.active_tab.get();
         let closing_active = active.as_ref().is_some_and(|tab| gone(&tab.path));
-        let idx = active.as_ref().and_then(|tab| tabs.iter().position(|open| open == tab));
+        let idx = active
+            .as_ref()
+            .and_then(|tab| tabs.iter().position(|open| open == tab));
         let remaining: Vec<_> = tabs.into_iter().filter(|tab| !gone(&tab.path)).collect();
         let next = if closing_active {
             idx.and_then(|i| {
@@ -440,13 +250,6 @@ impl Workspace {
                 current = parent_path(&current);
             }
         });
-    }
-}
-
-fn take_vfs(fs: Arc<VfsFs>) -> crate::fs::Vfs {
-    match Arc::try_unwrap(fs) {
-        Ok(inner) => inner.into_vfs(),
-        Err(arc) => arc.clone_vfs(),
     }
 }
 

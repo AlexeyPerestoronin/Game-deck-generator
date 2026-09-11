@@ -7,8 +7,6 @@
 mod browser;
 mod zip;
 
+pub use crate::conf::export::ZIP_FILENAME;
 pub use browser::save_zip_bytes;
 pub use zip::vfs_to_zip;
-
-/// Default download name for a full workspace archive.
-pub const ZIP_FILENAME: &str = "workspace.zip";

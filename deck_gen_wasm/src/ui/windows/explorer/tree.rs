@@ -1,57 +1,16 @@
-//! File tree for the in-memory workspace.
-//!
-//! Rows are a flattened walk of expanded directories. Click selects (and
-//! toggles folders); right-click opens [`ContextMenu`](super::context_menu).
-//! Create-file / create-folder buttons live in the header; status is the footer.
+//! Flattened explorer rows: one button per visible file or folder.
 
 use std::collections::HashSet;
 
 use leptos::prelude::*;
 
-use super::context_menu::{ChosenCommand, ContextMenu, EntryKind, MenuState};
-use super::icons::FileTypeIcon;
 use crate::fs::{join_path, Vfs};
+use crate::ui::icons::FileTypeIcon;
+use crate::ui::menus::{EntryKind, MenuState};
 use crate::workspace::Workspace;
 
-/// Sidebar tree bound to one [`Workspace`].
 #[component]
-pub fn Explorer(workspace: Workspace) -> impl IntoView {
-    let menu = RwSignal::new(None::<MenuState>);
-
-    view! {
-        <aside class="explorer">
-            <div class="explorer-title-row">
-                <span class="explorer-title">"Games"</span>
-            </div>
-            <header class="explorer-header">
-                <div class="explorer-actions">
-                    <button class="text-btn" title="New File" on:click=move |_| workspace.create_file()>"+ File"</button>
-                    <button class="text-btn" title="New Folder" on:click=move |_| workspace.create_folder()>"+ Folder"</button>
-                </div>
-            </header>
-            <div class="tree" role="tree" on:click=move |_| menu.set(None)>
-                <TreeRows workspace=workspace menu=menu />
-            </div>
-            <footer class="status">{move || workspace.status.get()}</footer>
-            <Show when=move || menu.get().is_some()>
-                {move || menu.get().map(|state| {
-                    view! {
-                        <ContextMenu
-                            state=state
-                            on_dismiss=move |_| menu.set(None)
-                            on_command=move |chosen: ChosenCommand| {
-                                workspace.run_entry_command(chosen.id, &chosen.path);
-                            }
-                        />
-                    }
-                })}
-            </Show>
-        </aside>
-    }
-}
-
-#[component]
-fn TreeRows(workspace: Workspace, menu: RwSignal<Option<MenuState>>) -> impl IntoView {
+pub(super) fn TreeRows(workspace: Workspace, menu: RwSignal<Option<MenuState>>) -> impl IntoView {
     view! {
         <For
             each=move || flatten_tree(&workspace.vfs.get(), &workspace.expanded.get())

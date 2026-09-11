@@ -1,19 +1,16 @@
-//! Leptos panes for the in-browser workspace editor.
+//! Leptos widgets for the in-browser workspace editor.
 //!
-//! The shell is three siblings: [`ActivityBar`] (actions), [`Explorer`] (tree),
-//! and [`Editor`] (open tabs). Supporting widgets (context menu, modals,
-//! tooltips, icons, syntect highlighting) stay in this module tree so `app`
-//! only wires layout.
+//! Controls are grouped by kind so each file owns one element:
+//! bars, windows (panes), buttons, menus, modals, tooltips, and icons.
+//! [`crate::app`] only mounts [`ActivityBar`], [`Explorer`], and [`Editor`].
 
-mod activity_bar;
-mod context_menu;
-mod editor;
-mod explorer;
-mod highlight;
+mod bars;
+mod buttons;
 mod icons;
-mod modal;
-mod tooltip;
+mod menus;
+mod modals;
+mod tooltips;
+mod windows;
 
-pub use activity_bar::ActivityBar;
-pub use editor::Editor;
-pub use explorer::Explorer;
+pub use bars::ActivityBar;
+pub use windows::{Editor, Explorer};

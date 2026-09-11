@@ -7,8 +7,11 @@
 use leptos::prelude::*;
 
 mod app;
+mod conf;
 mod export;
 mod fs;
+mod github;
+mod http;
 mod load_folder;
 mod persist;
 mod template;

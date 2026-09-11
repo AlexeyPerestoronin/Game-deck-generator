@@ -1,13 +1,13 @@
-//! Tooltip that appears after the pointer stays on the control for 1.5s.
+//! Tooltip that appears after the pointer stays on the control.
 //!
 //! A generation counter cancels the pending timer on leave or re-enter so a
-//! fast mouse pass never flashes the tip. Used by the activity-bar buttons.
+//! fast mouse pass never flashes the tip. Delay is [`crate::conf::ui::TOOLTIP_HOVER_DELAY_MS`].
 
 use gloo_timers::future::TimeoutFuture;
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-const HOVER_DELAY_MS: u32 = 1500;
+use crate::conf;
 
 /// Wrap `children` with a delayed hover tooltip showing `text`.
 #[component]
@@ -20,7 +20,7 @@ pub fn DelayedTooltip(text: &'static str, children: Children) -> impl IntoView {
         let token = generation.get_untracked().wrapping_add(1);
         generation.set(token);
         spawn_local(async move {
-            TimeoutFuture::new(HOVER_DELAY_MS).await;
+            TimeoutFuture::new(conf::ui::TOOLTIP_HOVER_DELAY_MS).await;
             if generation.get_untracked() == token {
                 visible.set(true);
             }

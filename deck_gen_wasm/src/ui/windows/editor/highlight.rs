@@ -35,6 +35,20 @@ pub fn can_highlight(path: &str) -> bool {
         .is_some()
 }
 
+/// Classed HTML for `code`, or `None` if the extension is unknown / parse fails.
+pub fn highlight_html(path: &str, code: &str) -> Option<String> {
+    let ext = file_ext(path)?;
+    let name = syntax_name_for_ext(ext)?;
+    let set = syntax_set();
+    let syntax = set.find_syntax_by_extension(name)?;
+    let mut generator =
+        ClassedHTMLGenerator::new_with_class_style(syntax, set, ClassStyle::Spaced);
+    for line in LinesWithEndings::from(code) {
+        generator.parse_html_for_line_which_includes_newline(line).ok()?;
+    }
+    Some(generator.finalize())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -48,18 +62,4 @@ mod tests {
         let html = highlight_html("x.json", r#"{ "a": 1 }"#).expect("json highlight");
         assert!(html.contains("string") || html.contains("constant") || html.contains("span"));
     }
-}
-
-/// Classed HTML for `code`, or `None` if the extension is unknown / parse fails.
-pub fn highlight_html(path: &str, code: &str) -> Option<String> {
-    let ext = file_ext(path)?;
-    let name = syntax_name_for_ext(ext)?;
-    let set = syntax_set();
-    let syntax = set.find_syntax_by_extension(name)?;
-    let mut generator =
-        ClassedHTMLGenerator::new_with_class_style(syntax, set, ClassStyle::Spaced);
-    for line in LinesWithEndings::from(code) {
-        generator.parse_html_for_line_which_includes_newline(line).ok()?;
-    }
-    Some(generator.finalize())
 }
