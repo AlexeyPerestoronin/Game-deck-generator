@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Map, Value};
 
 use crate::card::{card_from_row, normalize_map};
-use crate::conf::output_dir_for_name;
+use crate::conf::{output_dir_for_name, Conf};
 use crate::error::{Error, Result};
 use crate::load::DataManager;
 
@@ -61,8 +61,8 @@ impl Deck {
             })
     }
 
-    pub fn output_dir(&self) -> Result<PathBuf> {
-        output_dir_for_name(&self.name)
+    pub fn output_dir(&self, loaded: &Conf) -> Result<PathBuf> {
+        output_dir_for_name(loaded, &self.name)
     }
 
     pub fn card_width_mm(&self) -> f64 {

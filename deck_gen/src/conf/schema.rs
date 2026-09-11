@@ -59,7 +59,7 @@ pub struct PrintSettings {
     pub crop_mark_thickness_pt: f64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct ChromeSettings {
     pub env_vars: Vec<String>,
     pub executables: Vec<String>,

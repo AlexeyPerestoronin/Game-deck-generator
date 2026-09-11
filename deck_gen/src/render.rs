@@ -1,6 +1,5 @@
 //! Jinja + SCSS rendering of face / back / preview HTML.
 
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -8,8 +7,9 @@ use minijinja::value::Value as JinjaValue;
 use minijinja::{context, AutoEscape, Environment};
 use serde_json::Value;
 
-use crate::conf::{conf, views_for_deck_name};
+use crate::conf::{views_for_deck_name, Conf};
 use crate::error::Result;
+use crate::fs::FileSystem;
 use crate::model::Deck;
 
 pub struct HtmlArtifacts {
@@ -19,16 +19,24 @@ pub struct HtmlArtifacts {
     pub card_count: usize,
 }
 
-pub fn prepare_html(deck: &Deck) -> Result<HtmlArtifacts> {
-    render_html(deck, &deck.cards())
+pub fn prepare_html(
+    fs: &Arc<dyn FileSystem>,
+    loaded: &Conf,
+    deck: &Deck,
+) -> Result<HtmlArtifacts> {
+    render_html(fs, loaded, deck, &deck.cards())
 }
 
-fn render_html(deck: &Deck, cards: &[Value]) -> Result<HtmlArtifacts> {
-    let loaded = conf()?;
+fn render_html(
+    fs: &Arc<dyn FileSystem>,
+    loaded: &Conf,
+    deck: &Deck,
+    cards: &[Value],
+) -> Result<HtmlArtifacts> {
     let game = loaded.game_for_deck_name(&deck.name)?;
-    let env = jinja_env(deck)?;
-    let out = deck.output_dir()?;
-    fs::create_dir_all(&out)?;
+    let env = jinja_env(fs.clone(), loaded, deck)?;
+    let out = deck.output_dir(loaded)?;
+    fs.create_dir_all(&out)?;
 
     let face_template = deck.template_for("face")?;
     let back_template = deck.template_for("back")?;
@@ -37,11 +45,11 @@ fn render_html(deck: &Deck, cards: &[Value]) -> Result<HtmlArtifacts> {
     let face_path = out.join(&game.output.face_html);
     let back_path = out.join(&game.output.back_html);
     let preview_path = out.join(&game.output.preview_html);
-    fs::write(&face_path, env.get_template(&face_template)?.render(&ctx)?)?;
-    fs::write(&back_path, env.get_template(&back_template)?.render(&ctx)?)?;
-    fs::write(
+    fs.write(&face_path, &env.get_template(&face_template)?.render(&ctx)?)?;
+    fs.write(&back_path, &env.get_template(&back_template)?.render(&ctx)?)?;
+    fs.write(
         &preview_path,
-        env.get_template(&game.output.preview_html)?.render(&ctx)?,
+        &env.get_template(&game.output.preview_html)?.render(&ctx)?,
     )?;
 
     Ok(HtmlArtifacts {
@@ -64,18 +72,22 @@ fn template_context(deck: &Deck, cards: &[Value]) -> minijinja::value::Value {
     }
 }
 
-fn jinja_env(deck: &Deck) -> Result<Environment<'static>> {
+fn jinja_env(
+    fs: Arc<dyn FileSystem>,
+    loaded: &Conf,
+    deck: &Deck,
+) -> Result<Environment<'static>> {
     let search = Arc::new(vec![
         deck.directory.clone(),
-        views_for_deck_name(&deck.name)?,
+        views_for_deck_name(loaded, &deck.name)?,
     ]);
     let mut raw_env = Environment::new();
     configure_env(&mut raw_env, deck);
-    attach_loader(&mut raw_env, search.clone(), None);
+    attach_loader(&mut raw_env, fs.clone(), search.clone(), None);
 
     let mut env = Environment::new();
     configure_env(&mut env, deck);
-    attach_loader(&mut env, search, Some(Arc::new(raw_env)));
+    attach_loader(&mut env, fs, search, Some(Arc::new(raw_env)));
     Ok(env)
 }
 
@@ -96,11 +108,12 @@ fn configure_env(env: &mut Environment<'static>, deck: &Deck) {
 
 fn attach_loader(
     env: &mut Environment<'static>,
+    fs: Arc<dyn FileSystem>,
     search: Arc<Vec<PathBuf>>,
     scss_env: Option<Arc<Environment<'static>>>,
 ) {
     env.set_loader(move |name| {
-        let Some(raw) = read_template(name, &search) else {
+        let Some(raw) = read_template(name, fs.as_ref(), &search) else {
             return Ok(None);
         };
         if let Some(scss_env) = &scss_env {
@@ -116,14 +129,12 @@ fn attach_loader(
     });
 }
 
-fn read_template(name: &str, search: &[PathBuf]) -> Option<String> {
+fn read_template(name: &str, fs: &dyn FileSystem, search: &[PathBuf]) -> Option<String> {
     for dir in search {
         let path = dir.join(name);
-        if path.is_file() {
-            return fs::read_to_string(path).ok();
+        if let Ok(raw) = fs.read_to_string(&path) {
+            return Some(raw);
         }
     }
     None
 }
-
-

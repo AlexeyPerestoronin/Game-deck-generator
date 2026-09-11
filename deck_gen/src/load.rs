@@ -1,26 +1,31 @@
 //! Load one deck JSON5 file and expand its placeholders.
 
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
 use crate::error::{Error, Result};
+use crate::fs::FileSystem;
 use crate::subst::{
     expand_sticky_spans, extract_json_object_for_key, lookup_var, substitute_placeholders, Resolve,
 };
 
-pub struct DataManager {
+pub struct DataManager<'a> {
+    fs: &'a dyn FileSystem,
     pub path: PathBuf,
     pub directory: PathBuf,
     game_vars_dir: PathBuf,
 }
 
-impl DataManager {
-    pub fn new(json_data_file: impl AsRef<Path>) -> Result<Self> {
-        let path = json_data_file.as_ref().canonicalize()?;
-        if !path.is_file() {
+impl<'a> DataManager<'a> {
+    pub fn new(
+        fs: &'a dyn FileSystem,
+        json_data_file: impl AsRef<Path>,
+        game_vars_dir: PathBuf,
+    ) -> Result<Self> {
+        let path = fs.canonicalize(json_data_file.as_ref())?;
+        if !fs.is_file(&path) {
             return Err(Error::file(&path, "Deck data file does not exist"));
         }
         let directory = path
@@ -28,14 +33,15 @@ impl DataManager {
             .ok_or_else(|| Error::file(&path, "has no parent directory"))?
             .to_path_buf();
         Ok(Self {
-            game_vars_dir: crate::conf::vars_dir_for_data_file(&path)?,
+            fs,
+            game_vars_dir,
             directory,
             path,
         })
     }
 
     pub fn get_data(&self) -> Result<Map<String, Value>> {
-        let raw = fs::read_to_string(&self.path)?;
+        let raw = self.fs.read_to_string(&self.path)?;
         let expanded = self.expand_placeholders(&raw)?;
         let payload = parse_json5(&self.path, &expanded)?;
         match payload {
@@ -97,7 +103,7 @@ impl DataManager {
             return Ok(existing.clone());
         }
         let path = self.vars_file_path(name)?;
-        let loaded = parse_json5(&path, &fs::read_to_string(&path)?)?;
+        let loaded = parse_json5(&path, &self.fs.read_to_string(&path)?)?;
         cache.insert(name.to_string(), loaded.clone());
         Ok(loaded)
     }
@@ -107,7 +113,7 @@ impl DataManager {
             return Err(Error::msg(format!("Invalid vars file name {name:?}")));
         }
         let path = self.game_vars_dir.join(format!("{name}.json5"));
-        if path.is_file() {
+        if self.fs.is_file(&path) {
             return Ok(path);
         }
         Err(Error::msg(format!(

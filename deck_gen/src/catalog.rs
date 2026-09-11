@@ -3,8 +3,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::conf::{conf, GamePaths};
+use crate::conf::{Conf, GamePaths};
 use crate::error::{Error, Result};
+use crate::fs::FileSystem;
 use crate::load::DataManager;
 use crate::model::Deck;
 
@@ -12,35 +13,38 @@ use crate::model::Deck;
 struct LocatedDeck {
     path: PathBuf,
     name: String,
+    vars: PathBuf,
 }
 
-pub fn list_deck_names() -> Result<Vec<String>> {
-    Ok(locate_all()?.into_iter().map(|item| item.name).collect())
+pub fn matching_names(fs: &dyn FileSystem, loaded: &Conf, query: Option<&str>) -> Result<Vec<String>> {
+    Ok(matching_located(fs, loaded, query)?
+        .into_iter()
+        .map(|item| item.name)
+        .collect())
 }
 
-pub fn matching_names(query: Option<&str>) -> Result<Vec<String>> {
-    Ok(matching_located(query)?.into_iter().map(|item| item.name).collect())
-}
-
-pub fn find_decks(query: Option<&str>) -> Result<Vec<Deck>> {
-    matching_located(query)?
+pub fn find_decks(fs: &dyn FileSystem, loaded: &Conf, query: Option<&str>) -> Result<Vec<Deck>> {
+    matching_located(fs, loaded, query)?
         .iter()
-        .map(|item| load_deck(&item.path, &item.name))
+        .map(|item| load_deck(fs, &item.path, &item.name, &item.vars))
         .collect()
 }
 
-fn matching_located(query: Option<&str>) -> Result<Vec<LocatedDeck>> {
-    let located = locate_all()?;
+fn matching_located(
+    fs: &dyn FileSystem,
+    loaded: &Conf,
+    query: Option<&str>,
+) -> Result<Vec<LocatedDeck>> {
+    let located = locate_all(fs, loaded)?;
     if located.is_empty() {
         return Err(Error::msg("No deck data files found under configured games"));
     }
     let Some(needle) = query else {
         return Ok(located);
     };
-    let default_game = conf()?.default_game.clone();
     let matched: Vec<LocatedDeck> = located
         .iter()
-        .filter(|item| name_matches_query(&item.name, needle, &default_game))
+        .filter(|item| name_matches_query(&item.name, needle, &loaded.default_game))
         .cloned()
         .collect();
     if matched.is_empty() {
@@ -50,32 +54,38 @@ fn matching_located(query: Option<&str>) -> Result<Vec<LocatedDeck>> {
     Ok(matched)
 }
 
-fn locate_all() -> Result<Vec<LocatedDeck>> {
-    let loaded = conf()?;
+fn locate_all(fs: &dyn FileSystem, loaded: &Conf) -> Result<Vec<LocatedDeck>> {
     let mut by_dir: BTreeMap<PathBuf, LocatedDeck> = BTreeMap::new();
     for game in loaded.games.values() {
-        if game.decks.is_dir() {
-            collect_data_files(game, &game.decks, &mut by_dir)?;
+        if fs.is_dir(&game.decks) {
+            collect_data_files(fs, game, &game.decks, &mut by_dir)?;
         }
     }
     Ok(by_dir.into_values().collect())
 }
 
 fn collect_data_files(
+    fs: &dyn FileSystem,
     game: &GamePaths,
     dir: &Path,
     by_dir: &mut BTreeMap<PathBuf, LocatedDeck>,
 ) -> Result<()> {
-    for entry in dir.read_dir()? {
-        let path = entry?.path();
-        if path.is_dir() {
-            collect_data_files(game, &path, by_dir)?;
+    for path in fs.read_dir(dir)? {
+        if fs.is_dir(&path) {
+            collect_data_files(fs, game, &path, by_dir)?;
         }
     }
     let data = dir.join("data.json5");
-    if data.is_file() {
+    if fs.is_file(&data) {
         let name = dotted_name(game, &data)?;
-        by_dir.insert(dir.to_path_buf(), LocatedDeck { path: data, name });
+        by_dir.insert(
+            dir.to_path_buf(),
+            LocatedDeck {
+                path: data,
+                name,
+                vars: game.vars.clone(),
+            },
+        );
     }
     Ok(())
 }
@@ -95,8 +105,13 @@ fn dotted_name(game: &GamePaths, data_file: &Path) -> Result<String> {
     Ok(format!("{}.{}", game.id, rest))
 }
 
-fn load_deck(data_file: &Path, expected_name: &str) -> Result<Deck> {
-    let deck = Deck::from_manager(&DataManager::new(data_file)?)?;
+fn load_deck(
+    fs: &dyn FileSystem,
+    data_file: &Path,
+    expected_name: &str,
+    vars_dir: &Path,
+) -> Result<Deck> {
+    let deck = Deck::from_manager(&DataManager::new(fs, data_file, vars_dir.to_path_buf())?)?;
     if deck.name != expected_name {
         return Err(Error::file(
             data_file,

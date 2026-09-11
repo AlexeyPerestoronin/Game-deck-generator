@@ -5,8 +5,10 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 mod path;
+mod vfs_fs;
 
 pub use path::{file_ext, file_name, join_path, parent_path, rewrite_prefix, split_path};
+pub use vfs_fs::VfsFs;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Node {

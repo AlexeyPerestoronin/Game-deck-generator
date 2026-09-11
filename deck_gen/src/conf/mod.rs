@@ -1,20 +1,22 @@
 //! Runtime layout loaded from the three `conf.json5` files.
 
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use serde::de::DeserializeOwned;
 
 use crate::error::{Error, Result};
+use crate::fs::FileSystem;
 
 mod locate;
 mod schema;
 
 pub use schema::{ChromeSettings, OutputNames, PrintSettings};
 
-use locate::{canonicalize_or_abs, find_conf_file};
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use locate::{canonicalize_or_abs, os_search_roots};
+use locate::find_conf_file;
 use schema::{GameFile, GamesRootFile, RootFile};
 
 const CONF_FILE_NAME: &str = "conf.json5";
@@ -53,8 +55,31 @@ pub fn conf() -> Result<Arc<Conf>> {
     if let Some(existing) = CONF.get() {
         return Ok(existing.clone());
     }
-    let loaded = Arc::new(load_from_disk()?);
-    Ok(CONF.get_or_init(|| loaded).clone())
+    #[cfg(target_arch = "wasm32")]
+    {
+        Err(Error::msg(
+            "Native conf discovery is not available in wasm; use prepare_html with a FileSystem",
+        ))
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let loaded = Arc::new(load(&crate::fs::OsFs)?);
+        Ok(CONF.get_or_init(|| loaded).clone())
+    }
+}
+
+pub fn load(fs: &dyn FileSystem) -> Result<Conf> {
+    match find_conf_file(fs) {
+        Ok(path) => build_conf(fs, path),
+        Err(err) => {
+            let virtual_root = fs.search_roots().iter().any(|root| root.as_os_str().is_empty());
+            if virtual_root || fs.is_dir(Path::new("games")) {
+                load_workspace_fallback(fs)
+            } else {
+                Err(err)
+            }
+        }
+    }
 }
 
 impl Conf {
@@ -72,8 +97,7 @@ impl Conf {
     }
 }
 
-pub fn output_dir_for_name(name: &str) -> Result<PathBuf> {
-    let loaded = conf()?;
+pub fn output_dir_for_name(loaded: &Conf, name: &str) -> Result<PathBuf> {
     let game = loaded.game_for_deck_name(name)?;
     let prefix = format!("{}.", game.id);
     let rest = name.strip_prefix(&prefix).ok_or_else(|| {
@@ -86,40 +110,43 @@ pub fn output_dir_for_name(name: &str) -> Result<PathBuf> {
     Ok(path)
 }
 
-pub fn vars_dir_for_data_file(data_file: &Path) -> Result<PathBuf> {
-    let loaded = conf()?;
-    let file = canonicalize_or_abs(data_file);
-    for game in loaded.games.values() {
-        let decks = canonicalize_or_abs(&game.decks);
-        if file.starts_with(&decks) {
-            return Ok(game.vars.clone());
-        }
-    }
-    Err(Error::file(
-        data_file,
-        "is not under any configured game decks directory",
-    ))
+pub fn views_for_deck_name(loaded: &Conf, name: &str) -> Result<PathBuf> {
+    Ok(loaded.game_for_deck_name(name)?.views.clone())
 }
 
-pub fn views_for_deck_name(name: &str) -> Result<PathBuf> {
-    Ok(conf()?.game_for_deck_name(name)?.views.clone())
+fn load_workspace_fallback(fs: &dyn FileSystem) -> Result<Conf> {
+    let games_root = PathBuf::from("games");
+    let games = if fs.is_dir(&games_root) {
+        discover_games(fs, &games_root)?
+    } else {
+        HashMap::new()
+    };
+    let games_conf_path = games_root.join(CONF_FILE_NAME);
+    let default_game = if fs.is_file(&games_conf_path) {
+        let games_raw: GamesRootFile = parse_json5_file(fs, &games_conf_path)?;
+        games_raw.default_game
+    } else {
+        games.keys().next().cloned().unwrap_or_default()
+    };
+    Ok(Conf {
+        root: PathBuf::new(),
+        games_root,
+        default_game,
+        chrome: ChromeSettings::default(),
+        games,
+    })
 }
 
-fn load_from_disk() -> Result<Conf> {
-    let conf_path = find_conf_file()?;
-    let raw: RootFile = parse_json5_file(&conf_path)?;
-    build_conf(conf_path, raw)
-}
-
-fn build_conf(conf_path: PathBuf, raw: RootFile) -> Result<Conf> {
+fn build_conf(fs: &dyn FileSystem, conf_path: PathBuf) -> Result<Conf> {
+    let raw: RootFile = parse_json5_file(fs, &conf_path)?;
     let root = conf_path
         .parent()
         .ok_or_else(|| Error::file(&conf_path, "has no parent directory"))?
         .to_path_buf();
     let games_root = root.join(&raw.games_root);
     let games_conf_path = games_root.join(CONF_FILE_NAME);
-    let games_raw: GamesRootFile = parse_json5_file(&games_conf_path)?;
-    let games = discover_games(&games_root)?;
+    let games_raw: GamesRootFile = parse_json5_file(fs, &games_conf_path)?;
+    let games = discover_games(fs, &games_root)?;
     if games.is_empty() {
         return Err(Error::file(
             &games_root,
@@ -144,21 +171,20 @@ fn build_conf(conf_path: PathBuf, raw: RootFile) -> Result<Conf> {
     })
 }
 
-fn discover_games(games_root: &Path) -> Result<HashMap<String, GamePaths>> {
-    if !games_root.is_dir() {
+fn discover_games(fs: &dyn FileSystem, games_root: &Path) -> Result<HashMap<String, GamePaths>> {
+    if !fs.is_dir(games_root) {
         return Err(Error::file(games_root, "is not a directory"));
     }
     let mut games = HashMap::new();
-    for entry in fs::read_dir(games_root)? {
-        let path = entry?.path();
-        if !path.is_dir() {
+    for path in fs.read_dir(games_root)? {
+        if !fs.is_dir(&path) {
             continue;
         }
         let conf_path = path.join(CONF_FILE_NAME);
-        if !conf_path.is_file() {
+        if !fs.is_file(&conf_path) {
             continue;
         }
-        let spec: GameFile = parse_json5_file(&conf_path)?;
+        let spec: GameFile = parse_json5_file(fs, &conf_path)?;
         let id = spec.game_name.clone();
         if games.contains_key(&id) {
             return Err(Error::file(
@@ -187,7 +213,7 @@ fn resolve_game(game_root: PathBuf, id: String, spec: GameFile) -> GamePaths {
     }
 }
 
-fn parse_json5_file<T: DeserializeOwned>(path: &Path) -> Result<T> {
-    let text = fs::read_to_string(path)?;
+fn parse_json5_file<T: DeserializeOwned>(fs: &dyn FileSystem, path: &Path) -> Result<T> {
+    let text = fs.read_to_string(path)?;
     json5::from_str(&text).map_err(|err| Error::file(path, format!("invalid JSON5: {err}")))
 }

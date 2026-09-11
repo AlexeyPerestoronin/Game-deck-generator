@@ -1,18 +1,18 @@
 //! Find the repository-root `conf.json5` without baking a path into the binary.
 
 use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
+use crate::fs::FileSystem;
 
 const CONF_FILE_NAME: &str = "conf.json5";
 const CONF_PATH_ENV: &str = "DECK_GEN_CONF";
 
-pub fn find_conf_file() -> Result<PathBuf> {
+pub fn find_conf_file(fs: &dyn FileSystem) -> Result<PathBuf> {
     if let Ok(explicit) = env::var(CONF_PATH_ENV) {
         let path = PathBuf::from(explicit);
-        if path.is_file() {
+        if fs.is_file(&path) {
             return Ok(path);
         }
         return Err(Error::file(
@@ -21,8 +21,8 @@ pub fn find_conf_file() -> Result<PathBuf> {
         ));
     }
 
-    for start in search_roots() {
-        if let Some(found) = walk_parents_for_root_conf(start) {
+    for start in fs.search_roots() {
+        if let Some(found) = walk_parents_for_root_conf(fs, start) {
             return Ok(found);
         }
     }
@@ -32,7 +32,8 @@ pub fn find_conf_file() -> Result<PathBuf> {
     )))
 }
 
-fn search_roots() -> Vec<PathBuf> {
+#[cfg(not(target_arch = "wasm32"))]
+pub fn os_search_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Ok(cwd) = env::current_dir() {
         roots.push(cwd);
@@ -45,11 +46,11 @@ fn search_roots() -> Vec<PathBuf> {
     roots
 }
 
-fn walk_parents_for_root_conf(start: PathBuf) -> Option<PathBuf> {
+fn walk_parents_for_root_conf(fs: &dyn FileSystem, start: PathBuf) -> Option<PathBuf> {
     let mut dir = start;
     loop {
         let candidate = dir.join(CONF_FILE_NAME);
-        if candidate.is_file() && looks_like_root_conf(&candidate) {
+        if fs.is_file(&candidate) && looks_like_root_conf(fs, &candidate) {
             return Some(candidate);
         }
         if !dir.pop() {
@@ -60,8 +61,8 @@ fn walk_parents_for_root_conf(start: PathBuf) -> Option<PathBuf> {
 
 /// Root conf is the one that points at the games folder. Game and games-root
 /// conf files share the same filename, so we must not stop at the first hit.
-fn looks_like_root_conf(path: &Path) -> bool {
-    let Ok(text) = fs::read_to_string(path) else {
+fn looks_like_root_conf(fs: &dyn FileSystem, path: &Path) -> bool {
+    let Ok(text) = fs.read_to_string(path) else {
         return false;
     };
     let Ok(value) = json5::from_str::<serde_json::Value>(&text) else {
@@ -70,6 +71,7 @@ fn looks_like_root_conf(path: &Path) -> bool {
     value.get("games_root").is_some()
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn canonicalize_or_abs(path: &Path) -> PathBuf {
     let raw = path.canonicalize().unwrap_or_else(|_| {
         if path.is_absolute() {
@@ -83,6 +85,7 @@ pub fn canonicalize_or_abs(path: &Path) -> PathBuf {
     strip_windows_verbatim_prefix(raw)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn strip_windows_verbatim_prefix(path: PathBuf) -> PathBuf {
     let text = path.to_string_lossy();
     if let Some(rest) = text.strip_prefix(r"\\?\") {

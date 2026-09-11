@@ -1,15 +1,15 @@
 //! Reactive workspace: tree, selection, and the actions the UI triggers.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
-use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs};
+use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs, VfsFs};
 use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
 use crate::persist::{save_session, Session};
-use crate::prepare::prepare_all_html;
 use crate::template::install_new_game;
 
 #[derive(Clone, Copy)]
@@ -148,14 +148,14 @@ impl Workspace {
         let workspace = *self;
         spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(0).await;
-            let mut vfs = workspace.vfs.get_untracked();
-            match prepare_all_html(&mut vfs) {
+            let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
+            match deck_gen::prepare_html(fs.clone()) {
                 Ok(n) => {
-                    workspace.vfs.set(vfs);
+                    workspace.vfs.set(take_vfs(fs));
                     workspace.status.set(format!("Prepared HTML for {n} decks"));
                 }
                 Err(err) => {
-                    warning.set(Some(err));
+                    warning.set(Some(err.to_string()));
                     workspace.status.set(String::new());
                 }
             }
@@ -284,6 +284,13 @@ impl Workspace {
                 current = parent_path(&current);
             }
         });
+    }
+}
+
+fn take_vfs(fs: Arc<VfsFs>) -> crate::fs::Vfs {
+    match Arc::try_unwrap(fs) {
+        Ok(inner) => inner.into_vfs(),
+        Err(arc) => arc.clone_vfs(),
     }
 }
 

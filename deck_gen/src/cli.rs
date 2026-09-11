@@ -2,11 +2,13 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 
 use crate::catalog;
 use crate::conf::{conf, ChromeSettings, PrintSettings};
+use crate::fs::{FileSystem, OsFs};
 use crate::render;
 use prepare_pdf_host::{CardSize, Chrome, ChromeLocator, Duplex, PdfJob, SheetLayout};
 
@@ -50,7 +52,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn list_command(json: bool, name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    let names = catalog::matching_names(name)?;
+    let fs = OsFs;
+    let loaded = conf()?;
+    let names = catalog::matching_names(&fs, &loaded, name)?;
     if json {
         println!("{}", serde_json::to_string(&names)?);
     } else {
@@ -62,30 +66,31 @@ fn list_command(json: bool, name: Option<&str>) -> Result<(), Box<dyn std::error
 }
 
 fn html_command(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    for deck in catalog::find_decks(name)? {
-        let artifacts = render::prepare_html(&deck)?;
-        print_html_logs(&deck.name, &artifacts);
+    let fs: Arc<dyn FileSystem> = Arc::new(OsFs);
+    for (label, artifacts) in crate::prepare_html_named(fs, name)? {
+        print_html_logs(&label, &artifacts);
     }
     Ok(())
 }
 
 fn pdf_command(name: Option<&str>, duplex_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    let fs: Arc<dyn FileSystem> = Arc::new(OsFs);
     let loaded = conf()?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
 
-    for deck in catalog::find_decks(name)? {
+    for deck in catalog::find_decks(fs.as_ref(), &loaded, name)? {
         let game = loaded.game_for_deck_name(&deck.name)?;
         let duplex_label = duplex_override.unwrap_or(&game.print.default_duplex);
         let duplex = Duplex::parse(duplex_label).map_err(|err| -> Box<dyn std::error::Error> { err.into() })?;
         fs::create_dir_all(&game.duplex)?;
-        let html_artifacts = render::prepare_html(&deck)?;
+        let html_artifacts = render::prepare_html(&fs, &loaded, &deck)?;
         print_html_logs(&deck.name, &html_artifacts);
         let job = PdfJob {
             card: CardSize {
                 width_mm: deck.card_width_mm(),
                 height_mm: deck.card_height_mm(),
             },
-            output_dir: deck.output_dir()?,
+            output_dir: deck.output_dir(&loaded)?,
             face_html: html_artifacts.face_html,
             back_html: html_artifacts.back_html,
             face_pdf_name: game.output.face_pdf.clone(),
