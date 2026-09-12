@@ -26,16 +26,18 @@ pub(super) fn PreviewPane(workspace: Workspace, path: String) -> impl IntoView {
 #[component]
 fn HtmlPreview(workspace: Workspace, path: String) -> impl IntoView {
     view! {
-        <iframe
-            class="preview-frame"
-            prop:srcdoc=move || {
-                let vfs = workspace.vfs.get();
-                let Some(html) = vfs.read_file(&path) else {
-                    return String::new();
-                };
-                inline_relative_iframes(&vfs, &path, html)
-            }
-        />
+        <div class="preview-host">
+            <iframe
+                class="preview-frame"
+                prop:srcdoc=move || {
+                    let vfs = workspace.vfs.get();
+                    let Some(html) = vfs.read_file(&path) else {
+                        return String::new();
+                    };
+                    inline_relative_iframes(&vfs, &path, html)
+                }
+            />
+        </div>
     }
 }
 
@@ -76,7 +78,11 @@ fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
     });
     on_cleanup(move || revoke_object_url(&src.get_untracked()));
     view! {
-        <iframe class="preview-frame" prop:src=move || src.get() />
+        <div class="preview-host">
+            <Show when=move || !src.get().is_empty()>
+                <iframe class="preview-frame" prop:src=move || src.get() />
+            </Show>
+        </div>
     }
 }
 
