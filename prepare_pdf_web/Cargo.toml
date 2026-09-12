@@ -5,7 +5,11 @@ edition.workspace = true
 description = "Browser HTML→PDF for deck_gen::PdfEngineGenerator"
 
 [dependencies]
+# JPEG pages → card-size PDF (`pdf_from_jpeg_pages`); wasm omits the native engine.
 deck_gen = { path = "../deck_gen", default-features = false }
+# Read `{ data, width, height }` objects returned by `htmlToJpegPages`.
 js-sys = "0.3"
+# Bind `src/html_to_jpeg_pages.js`.
 wasm-bindgen = "0.2"
+# Await the `htmlToJpegPages` Promise.
 wasm-bindgen-futures = "0.4"

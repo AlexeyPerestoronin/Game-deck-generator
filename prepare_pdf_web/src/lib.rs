@@ -1,4 +1,9 @@
-//! Browser `PdfEngineGenerator`: layout HTML in a hidden iframe, raster cards, embed JPEGs.
+//! Browser `PdfEngineGenerator` used by `deck_gen_wasm`.
+//!
+//! Card HTML is laid out in a hidden iframe (so CSS and fit-header scripts run),
+//! painted to a canvas from the live DOM, encoded as JPEG, then wrapped in a
+//! card-size PDF by `deck_gen::pdf_engine`. Painting from the DOM keeps the
+//! canvas origin-clean in Chromium; drawing an SVG `<foreignObject>` does not.
 
 use std::future::Future;
 
