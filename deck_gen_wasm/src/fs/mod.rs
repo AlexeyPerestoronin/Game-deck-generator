@@ -22,7 +22,7 @@ pub use vfs_fs::VfsFs;
 pub enum Node {
     /// UTF-8 file contents.
     File { content: String },
-    /// Raw bytes (PDF and other non-text artifacts). Not persisted.
+    /// Raw bytes (PDF and images). Kept in IndexedDB, not localStorage.
     Binary { data: Vec<u8> },
     /// Directory keyed by a single path segment.
     Dir { children: BTreeMap<String, Node> },
@@ -138,10 +138,24 @@ impl Vfs {
         matches!(node_at(&self.root, &parts), Ok(Node::Binary { .. }))
     }
 
-    /// Snapshot without binary files (localStorage must not hold PDFs).
+    /// Snapshot without binary files (localStorage must not hold PDFs / images).
     pub fn without_binaries(&self) -> Self {
         Self {
             root: strip_binaries(&self.root),
+        }
+    }
+
+    /// Paths and bytes of every [`Node::Binary`] file, in tree order.
+    pub fn binary_entries(&self) -> Vec<(String, Vec<u8>)> {
+        let mut files = Vec::new();
+        collect_binaries("", &self.root, &mut files);
+        files
+    }
+
+    /// Write binary files back onto a tree that was stripped for localStorage.
+    pub fn restore_binaries(&mut self, entries: impl IntoIterator<Item = (String, Vec<u8>)>) {
+        for (path, data) in entries {
+            let _ = self.put_bytes(&path, data);
         }
     }
 
@@ -340,6 +354,28 @@ mod vfs_tests {
         assert!(!stripped.exists("games/a/face.pdf"));
         assert!(stripped.is_dir("games/a"));
     }
+
+    #[test]
+    fn binaries_restore_onto_stripped_tree() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/data.json5", "x".into()).unwrap();
+        vfs.put_bytes("games/a/face.pdf", vec![0x25, 0x50]).unwrap();
+        vfs.put_bytes("games/a/logo.png", vec![0x89, 0x50]).unwrap();
+        let entries = vfs.binary_entries();
+        assert_eq!(entries.len(), 2);
+        let mut stripped = vfs.without_binaries();
+        assert!(!stripped.exists("games/a/face.pdf"));
+        stripped.restore_binaries(entries);
+        assert_eq!(
+            stripped.read_bytes("games/a/face.pdf"),
+            Some(&[0x25, 0x50][..])
+        );
+        assert_eq!(
+            stripped.read_bytes("games/a/logo.png"),
+            Some(&[0x89, 0x50][..])
+        );
+        assert_eq!(stripped.read_file("games/a/data.json5"), Some("x"));
+    }
 }
 
 fn collect_entries(
@@ -357,6 +393,21 @@ fn collect_entries(
             }
             Node::File { content } => files.push((path, content.as_bytes().to_vec())),
             Node::Binary { data } => files.push((path, data.clone())),
+        }
+    }
+}
+
+fn collect_binaries(
+    prefix: &str,
+    children: &BTreeMap<String, Node>,
+    files: &mut Vec<(String, Vec<u8>)>,
+) {
+    for (name, node) in children {
+        let path = join_path(prefix, name);
+        match node {
+            Node::Dir { children } => collect_binaries(&path, children, files),
+            Node::Binary { data } => files.push((path, data.clone())),
+            Node::File { .. } => {}
         }
     }
 }

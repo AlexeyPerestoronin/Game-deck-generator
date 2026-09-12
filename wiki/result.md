@@ -1,52 +1,61 @@
-# Отчёт: иконки картинок в explorer
+# Отчёт: persist PDF и картинок после reload
 
-Формат: было → стало (почему). Доработка №1 из `wiki/todo.md`.
+Формат: было → стало (почему). Доработка №2 из `wiki/todo.md`.
 
 ## Симптом
-- Было: jpg/png/icon уже грузятся и имеют Preview, но в дереве слева от имени — пустой слот.
-- Стало: у этих файлов 16×16 глиф, как у md/json/html/scss/pdf.
-- Почему: `FileTypeIcon` не знал image-расширения и падал в empty slot.
+- Было: после F5 текст в дереве на месте, PDF и картинки исчезают.
+- Стало: бинарники поднимаются из IndexedDB до первого кадра explorer.
+- Почему: `Session::from_workspace` вызывал `without_binaries()` из‑за квоты localStorage.
 
-## Выбор глифа
-- Было: `match` по строке расширения прямо внутри компонента.
-- Стало: `icon_kind(name) -> Option<IconKind>`; `FileTypeIcon` только рисует вариант enum.
-- Почему: выбор глифа можно покрыть unit-тестом без DOM; match в view не раздувается.
+## Где лежат байты
+- Было: только localStorage JSON; `Node::Binary` вырезался при снимке.
+- Стало: текст/selection/expanded — по‑прежнему localStorage; PDF/картинки — IndexedDB `deck_gen_wasm` / store `binaries` / ключ `files`.
+- Почему: 100 МБ в localStorage не влезают; IDB держит `Uint8Array` без JSON-раздувания.
 
-## Картинки
-- Было: png/jpg/icon/jpeg/ico → `None` → `<span class="file-icon-slot">`.
-- Стало: все `conf::import::IMAGE_EXTENSIONS` → `IconKind::Image` → `ImageFileIcon`.
-- Почему: один глиф на семейство картинок (KISS); список расширений не дублируется.
+## Загрузка приложения
+- Было: `App` сразу `from_session(load_session())` и монтировал панели.
+- Стало: короткий «Loading workspace…», `load_binaries`, `restore_binaries`, затем `LoadedApp`.
+- Почему: иначе autosave мог записать пустой IDB до чтения и стереть файлы.
 
-## SVG
-- Было: отдельных image-иконок нет.
-- Стало: документ того же 16×16 формата, заливка `#4ec9b0`, солнце + горы.
-- Почему: тот же визуальный язык, что json/pdf (прямоугольник файла + пиктограмма), цвет не пересекается с md/json/html/scss/pdf.
+## Autosave
+- Было: Effect на каждый сигнал писал весь JSON (без binary).
+- Стало: текст — как раньше; IDB put только если `binaries_fingerprint` сдвинулся.
+- Почему: не гонять 100 МБ в IDB на каждый символ в md.
 
-## Модульные комментарии
-- Было: `files.rs` — одна строка; `icons/mod.rs` не упоминал images.
-- Стало: шапка объясняет, какие типы имеют глиф и зачем пустой слот.
-- Почему: правило рефакторинга про комментарий модуля.
+## Ручной Save / Clear
+- Было: Save и Clear трогали только localStorage.
+- Стало: Save ждёт `save_binaries`; Clear пишет пустой список в IDB.
+- Почему: иначе Clear оставлял бы PDF в базе до следующего fingerprint.
+
+## VFS
+- Было: `without_binaries` / `put_bytes` / `is_binary`, без списка и restore.
+- Стало: `binary_entries()` и `restore_binaries()`; strip для JSON не тронут.
+- Почему: persist не должен знать обход дерева.
+
+## Конфиг
+- Было: только `STORAGE_KEY`.
+- Стало: `IDB_NAME`, `IDB_STORE`, `IDB_KEY`, `IDB_VERSION` в `conf::session`.
+- Почему: правило «не мутабельные статики — константы в conf».
+
+## Модули
+- Было: один `persist.rs`.
+- Стало: `persist/mod.rs` (JSON) + `persist/binaries.rs` (IDB).
+- Почему: один модуль — одна ответственность.
 
 ## Тесты
-- Было: 28 тестов, иконки не проверялись.
-- Стало: 29; `image_names_get_image_kind` — png/JPG/jpeg/icon/ico → Image, md/pdf без регрессии, txt/LICENSE → None.
-- Почему: логика маппинга простая и детерминированная.
+- Было: 29 тестов, restore binary не проверялся.
+- Стало: 31; `binaries_restore_onto_stripped_tree`; fingerprint меняется от path/bytes.
+- Почему: IDB в unit-тестах нет; дерево и hash проверяются без браузера.
 
 ## Сборка
-- `cargo test -p deck_gen_wasm`: 29 passed.
+- `cargo test -p deck_gen_wasm`: 31 passed.
 - `cargo check -p deck_gen_wasm --target wasm32-unknown-unknown`: ok.
 
-## Не меняли
-- CSS `.file-icon` / `.file-icon-slot` — размер уже общий.
-- Дерево explorer — оно уже вызывает `FileTypeIcon` для файлов.
-- Другие крейты — по todo только wasm-крейт.
-- Отдельные глифы jpg vs png vs ico — не нужны, тип и так в имени файла.
-
 ## Cargo.toml
-- Было / стало: без новых зависимостей.
-- Почему: SVG инлайн, как у остальных глифов.
+- Было: web-sys без IDB.
+- Стало: IdbFactory / Database / ObjectStore / Request / Transaction + Event, DomStringList.
+- Почему: без новых крейтов, тот же web-sys.
 
-## Поведение дерева
-- Было: папки без иконки, файлы неизвестного типа — пустой слот той же ширины.
-- Стало: то же для неизвестных типов; картинки заполняют слот глифом.
-- Почему: выравнивание колонки не ломается.
+## Не меняли
+- Алгоритм strip для JSON — квота localStorage та же.
+- Форматы картинок и preview — вне этой доработки.

@@ -19,14 +19,23 @@ use crate::load_folder::{
     install_files, install_folder, pick_and_read_files, pick_and_read_folder, PickFilesResult,
     PickResult,
 };
-use crate::persist::save_session;
+use crate::persist::{save_binaries, save_session};
 use crate::template::install_new_game;
 
 impl Workspace {
-    /// Write the current snapshot to localStorage (manual Save).
+    /// Write the text snapshot to localStorage and binaries to IndexedDB.
     pub fn persist(&self) {
         match save_session(&self.snapshot()) {
-            Ok(()) => self.status.set("Saved in this browser".into()),
+            Ok(()) => {
+                let entries = self.vfs.get().binary_entries();
+                let status = self.status;
+                spawn_local(async move {
+                    match save_binaries(&entries).await {
+                        Ok(()) => status.set("Saved in this browser".into()),
+                        Err(err) => status.set(err),
+                    }
+                });
+            }
             Err(err) => self.status.set(err),
         }
     }
@@ -69,6 +78,9 @@ impl Workspace {
         self.expanded.set(HashSet::new());
         self.status.set("Workspace cleared".into());
         let _ = save_session(&self.snapshot());
+        spawn_local(async {
+            let _ = save_binaries(&[]).await;
+        });
     }
 
     /// Pick local files and copy them into an existing workspace `folder`.

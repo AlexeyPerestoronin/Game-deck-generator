@@ -1,4 +1,4 @@
-//! Activity-bar control that writes the workspace snapshot to localStorage.
+//! Activity-bar control that writes the workspace snapshot to this browser.
 
 use leptos::prelude::*;
 

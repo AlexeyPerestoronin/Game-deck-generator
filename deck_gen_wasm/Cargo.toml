@@ -33,17 +33,26 @@ syntect = { version = "5", default-features = false, features = ["default-fancy"
 wasm-bindgen = "0.2"
 # `spawn_local` for folder pick, template fetch, ZIP download, and HTML prepare.
 wasm-bindgen-futures = "0.4"
-# DOM, File, Blob, localStorage, and download-anchor APIs used by the UI.
+# DOM, File, Blob, localStorage, IndexedDB, and download-anchor APIs used by the UI.
 web-sys = { version = "0.3", features = [
     "Blob",
     "BlobPropertyBag",
     "Document",
+    "DomStringList",
     "Element",
+    "Event",
     "File",
     "FileList",
     "HtmlAnchorElement",
     "HtmlInputElement",
     "HtmlTextAreaElement",
+    "IdbDatabase",
+    "IdbFactory",
+    "IdbObjectStore",
+    "IdbOpenDbRequest",
+    "IdbRequest",
+    "IdbTransaction",
+    "IdbTransactionMode",
     "Node",
     "Storage",
     "Url",

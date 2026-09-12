@@ -69,7 +69,7 @@ impl Workspace {
         }
     }
 
-    /// Serializable snapshot for localStorage.
+    /// Serializable snapshot for localStorage (binaries omitted; they go to IndexedDB).
     pub fn snapshot(&self) -> Session {
         Session::from_workspace(self.vfs.get(), self.selected.get(), &self.expanded.get())
     }

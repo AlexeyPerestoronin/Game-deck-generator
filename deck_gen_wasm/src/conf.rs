@@ -32,10 +32,18 @@ pub mod help {
     pub const PATH: &str = "user-help.md";
 }
 
-/// localStorage snapshot of the in-memory workspace.
+/// Browser snapshot of the in-memory workspace.
 pub mod session {
-    /// Key under which [`crate::persist::Session`] JSON is stored.
+    /// Key under which [`crate::persist::Session`] JSON is stored (text tree).
     pub const STORAGE_KEY: &str = "deck_gen_wasm.session";
+    /// IndexedDB database for PDF / image bytes (localStorage quota is too small).
+    pub const IDB_NAME: &str = "deck_gen_wasm";
+    /// Object store inside [`IDB_NAME`].
+    pub const IDB_STORE: &str = "binaries";
+    /// Single record key: a JS object of path → `Uint8Array`.
+    pub const IDB_KEY: &str = "files";
+    /// Schema version; bump when the store shape changes.
+    pub const IDB_VERSION: u32 = 1;
 }
 
 /// Folder-import rules for “Load Game” and folder “load file(s)”.
