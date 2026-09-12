@@ -99,6 +99,16 @@ body {
   border-left-color: var(--accent);
 }
 
+.activity-btn.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.activity-btn.active:hover,
+.activity-btn.active:focus-visible {
+  color: #3ea6ff;
+}
+
 .explorer {
   background: var(--sidebar);
   display: flex;
@@ -212,10 +222,24 @@ body {
   font-size: 11px;
 }
 
+.editor-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.editor-split > .editor + .editor {
+  border-left: 1px solid var(--border);
+}
+
 .editor {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   background: var(--editor);
 }
 

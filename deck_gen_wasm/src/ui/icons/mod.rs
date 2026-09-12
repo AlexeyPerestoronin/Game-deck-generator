@@ -9,5 +9,6 @@ mod files;
 
 pub use activity::{
     ClearIcon, DownloadIcon, LoadGameIcon, NewGameIcon, PrepareHtmlIcon, PreparePdfIcon, SaveIcon,
+    SplitPreviewIcon,
 };
 pub use files::FileTypeIcon;

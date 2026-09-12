@@ -76,6 +76,8 @@ impl Workspace {
         self.copy_planned.set(HashSet::new());
         self.tabs.set(Vec::new());
         self.active_tab.set(None);
+        self.preview_tabs.set(Vec::new());
+        self.active_preview_tab.set(None);
         self.expanded.set(HashSet::new());
         self.status.set("Workspace cleared".into());
         let _ = save_session(&self.snapshot());

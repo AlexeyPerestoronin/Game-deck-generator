@@ -9,8 +9,7 @@
 
 use leptos::prelude::*;
 
-use crate::fs::file_ext;
-use crate::load_folder::is_image;
+use crate::workspace::split::is_previewable;
 
 /// Whether the context menu was opened on a file or a folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -84,16 +83,6 @@ const FOLDER_COMMANDS: &[MenuCommand] = &[
         label: "Past",
     },
 ];
-
-fn is_previewable(path: &str) -> bool {
-    if is_image(path) {
-        return true;
-    }
-    matches!(
-        file_ext(path).map(str::to_ascii_lowercase).as_deref(),
-        Some("html" | "htm" | "md" | "markdown" | "pdf")
-    )
-}
 
 /// Command table for `kind` (files with html/md/pdf/images also get Preview).
 pub fn commands_for(kind: EntryKind, path: &str) -> &'static [MenuCommand] {
@@ -238,14 +227,14 @@ mod tests {
                 .iter()
                 .find(|c| c.id == "copy")
                 .map(|c| c.label),
-            Some("copy")
+            Some("Copy")
         );
         assert_eq!(
             commands_for(EntryKind::Folder, "games/a")
                 .iter()
                 .find(|c| c.id == "past")
                 .map(|c| c.label),
-            Some("past")
+            Some("Past")
         );
     }
 }

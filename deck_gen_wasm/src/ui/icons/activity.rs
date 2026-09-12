@@ -85,6 +85,19 @@ pub fn PrepareHtmlIcon() -> impl IntoView {
     }
 }
 
+/// Two-pane glyph for the split-for-preview toggle.
+#[component]
+pub fn SplitPreviewIcon() -> impl IntoView {
+    view! {
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+                fill="currentColor"
+                d="M2 1.5A1.5 1.5 0 0 1 3.5 0h9A1.5 1.5 0 0 1 14 1.5v13A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM3.5 1a.5.5 0 0 0-.5.5v13a.5.5 0 0 0 .5.5H7V1H3.5zM9 1v15h3.5a.5.5 0 0 0 .5-.5v-13a.5.5 0 0 0-.5-.5H9z"
+            />
+        </svg>
+    }
+}
+
 /// Activity-bar clear-workspace glyph.
 #[component]
 pub fn ClearIcon() -> impl IntoView {

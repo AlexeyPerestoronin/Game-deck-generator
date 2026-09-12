@@ -1,4 +1,4 @@
-//! Main IDE panes: file tree and the open-file editor.
+//! Main IDE panes: file tree and the open-file editor (optionally split).
 
 mod editor;
 mod explorer;

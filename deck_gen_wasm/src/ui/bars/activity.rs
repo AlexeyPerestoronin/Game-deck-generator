@@ -1,4 +1,4 @@
-//! Left icon strip: save, ZIP, new/load game, prepare HTML, prepare PDF, clear.
+//! Left icon strip: save, ZIP, new/load game, prepare HTML/PDF, split preview, clear.
 //!
 //! Each action is its own button module. This bar owns the shared confirm/alert
 //! dialogs and wires them to [`Workspace`](crate::workspace::Workspace).
@@ -7,7 +7,7 @@ use leptos::prelude::*;
 
 use crate::ui::buttons::{
     ClearButton, DownloadButton, LoadGameButton, NewGameButton, PrepareHtmlButton,
-    PreparePdfButton, SaveButton,
+    PreparePdfButton, SaveButton, SplitPreviewButton,
 };
 use crate::ui::modals::{AlertModal, ConfirmModal};
 use crate::workspace::Workspace;
@@ -40,6 +40,7 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
                 warning=warning
                 warning_title=warning_title
             />
+            <SplitPreviewButton workspace=workspace />
             <div class="activity-spacer"></div>
             <ClearButton on_open=move |_| show_clear.set(true) />
             <ConfirmModal

@@ -1,15 +1,16 @@
-//! Reactive workspace: tree, selection, and the actions the UI triggers.
+//! Reactive workspace: tree, selection, tabs, and the actions the UI triggers.
 //!
 //! [`Workspace`] is a cheap `Copy` handle to Leptos signals (VFS, selection,
-//! multi-selection, copy plan, expanded folders, status, loading). Explorer,
-//! editor, and the activity bar all clone it. Mutations go through the VFS;
-//! async work (`prepare_html`, `prepare_pdf`, folder pick, template fetch,
-//! ZIP) uses `spawn_local` and the `loading` flag so two long actions cannot
-//! overlap.
+//! multi-selection, copy plan, expanded folders, tabs, split preview, status,
+//! loading). Explorer, editor, and the activity bar all clone it. Mutations
+//! go through the VFS; async work (`prepare_html`, `prepare_pdf`, folder pick,
+//! template fetch, ZIP) uses `spawn_local` and the `loading` flag so two long
+//! actions cannot overlap.
 
 mod actions;
 mod commands;
 pub(crate) mod copy_plan;
+pub(crate) mod split;
 
 use std::collections::HashSet;
 
@@ -47,10 +48,16 @@ pub struct Workspace {
     pub multi_selected: RwSignal<HashSet<String>>,
     /// Paths marked for copy (in-app plan, not the OS clipboard).
     pub copy_planned: RwSignal<HashSet<String>>,
-    /// Open editor tabs, left to right.
+    /// Open editor tabs, left to right (edit tabs only while split is on).
     pub tabs: RwSignal<Vec<OpenTab>>,
-    /// Focused tab, if any.
+    /// Focused tab in the main / left pane, if any.
     pub active_tab: RwSignal<Option<OpenTab>>,
+    /// When true, the editor is split: files on the left, previews on the right.
+    pub split_preview: RwSignal<bool>,
+    /// Preview tabs in the right pane (empty while split is off).
+    pub preview_tabs: RwSignal<Vec<OpenTab>>,
+    /// Focused tab in the right preview pane, if any.
+    pub active_preview_tab: RwSignal<Option<OpenTab>>,
     /// Directories currently expanded in the tree.
     pub expanded: RwSignal<HashSet<String>>,
     /// Footer status line.
@@ -72,6 +79,9 @@ impl Workspace {
             copy_planned: RwSignal::new(HashSet::new()),
             tabs: RwSignal::new(tabs),
             active_tab: RwSignal::new(active_tab),
+            split_preview: RwSignal::new(false),
+            preview_tabs: RwSignal::new(Vec::new()),
+            active_preview_tab: RwSignal::new(None),
             expanded: RwSignal::new(expanded),
             status: RwSignal::new(String::new()),
             loading: RwSignal::new(false),
@@ -123,46 +133,6 @@ impl Workspace {
             None => self.multi_selected.set(HashSet::new()),
         }
         self.selected.set(path);
-    }
-
-    /// Focus `tab`, creating it if it is not already open.
-    pub fn open_tab(&self, tab: OpenTab) {
-        self.tabs.update({
-            let tab = tab.clone();
-            move |tabs| {
-                if !tabs.contains(&tab) {
-                    tabs.push(tab);
-                }
-            }
-        });
-        self.active_tab.set(Some(tab));
-    }
-
-    /// Make an existing tab active and select its path in the explorer.
-    pub fn activate_tab(&self, tab: OpenTab) {
-        self.active_tab.set(Some(tab.clone()));
-        self.set_primary_selection(Some(tab.path));
-    }
-
-    /// Close `tab`. If it was active, activate the neighbor to the right (else left).
-    pub fn close_tab(&self, tab: OpenTab) {
-        let mut tabs = self.tabs.get();
-        let idx = tabs.iter().position(|open| open == &tab);
-        tabs.retain(|open| open != &tab);
-        let was_active = self.active_tab.get().as_ref() == Some(&tab);
-        self.tabs.set(tabs.clone());
-        if !was_active {
-            return;
-        }
-        let next = idx.and_then(|i| {
-            if i < tabs.len() {
-                tabs.get(i).cloned()
-            } else {
-                tabs.last().cloned()
-            }
-        });
-        self.active_tab.set(next.clone());
-        self.set_primary_selection(next.map(|tab| tab.path));
     }
 
     /// Prompt for a name and create an empty file under the creation parent.
@@ -222,26 +192,16 @@ impl Workspace {
         self.expanded.update(|set| {
             set.retain(|current| !gone(current));
         });
-        let tabs = self.tabs.get();
-        let active = self.active_tab.get();
-        let closing_active = active.as_ref().is_some_and(|tab| gone(&tab.path));
-        let idx = active
-            .as_ref()
-            .and_then(|tab| tabs.iter().position(|open| open == tab));
-        let remaining: Vec<_> = tabs.into_iter().filter(|tab| !gone(&tab.path)).collect();
-        let next = if closing_active {
-            idx.and_then(|i| {
-                if remaining.is_empty() {
-                    None
-                } else {
-                    remaining.get(i.min(remaining.len() - 1)).cloned()
-                }
-            })
-        } else {
-            active.filter(|tab| remaining.contains(tab))
-        };
+        let (remaining, next) = split::forget_tabs(self.tabs.get(), self.active_tab.get(), &gone);
+        let (preview_remaining, preview_next) = split::forget_tabs(
+            self.preview_tabs.get(),
+            self.active_preview_tab.get(),
+            &gone,
+        );
         self.tabs.set(remaining);
         self.active_tab.set(next.clone());
+        self.preview_tabs.set(preview_remaining);
+        self.active_preview_tab.set(preview_next);
         if let Some(next) = next {
             self.set_primary_selection(Some(next.path));
         }
@@ -276,7 +236,17 @@ impl Workspace {
                 tab.path = rewrite_prefix(&tab.path, old, new);
             }
         });
+        self.preview_tabs.update(|tabs| {
+            for tab in tabs.iter_mut() {
+                tab.path = rewrite_prefix(&tab.path, old, new);
+            }
+        });
         self.active_tab.update(|active| {
+            if let Some(tab) = active {
+                tab.path = rewrite_prefix(&tab.path, old, new);
+            }
+        });
+        self.active_preview_tab.update(|active| {
             if let Some(tab) = active {
                 tab.path = rewrite_prefix(&tab.path, old, new);
             }

@@ -5,8 +5,9 @@ use leptos::prelude::*;
 use crate::fs::file_name;
 use crate::workspace::{OpenTab, TabKind, Workspace};
 
+/// Tab chip. `preview_pane` compares active state against the right-hand strip.
 #[component]
-pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab) -> impl IntoView {
+pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) -> impl IntoView {
     let tab_for_active = tab.clone();
     let tab_for_click = tab.clone();
     let tab_for_close = tab.clone();
@@ -17,7 +18,14 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab) -> impl IntoView {
     view! {
         <div
             class="editor-tab"
-            class:active=move || workspace.active_tab.get().as_ref() == Some(&tab_for_active)
+            class:active=move || {
+                let active = if preview_pane {
+                    workspace.active_preview_tab.get()
+                } else {
+                    workspace.active_tab.get()
+                };
+                active.as_ref() == Some(&tab_for_active)
+            }
             role="tab"
             title=tab.path.clone()
             on:click=move |_| workspace.activate_tab(tab_for_click.clone())
