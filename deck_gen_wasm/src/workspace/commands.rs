@@ -5,8 +5,8 @@ use leptos::prelude::*;
 use super::{OpenTab, TabKind, Workspace};
 
 impl Workspace {
-    /// Context-menu command (`rename` / `delete` / `preview`) on an explorer entry.
-    pub fn run_entry_command(&self, id: &str, path: &str) {
+    /// Context-menu command (`rename` / `delete` / `preview` / `load_files`) on an explorer entry.
+    pub fn run_entry_command(&self, id: &str, path: &str, warning: RwSignal<Option<String>>) {
         match id {
             "delete" => self.delete_entry(path),
             "rename" => self.rename_entry(path),
@@ -14,6 +14,7 @@ impl Workspace {
                 path: path.to_string(),
                 kind: TabKind::Preview,
             }),
+            "load_files" => self.load_files_into_folder(path, warning),
             other => self.status.set(format!("Unknown command {other}")),
         }
     }

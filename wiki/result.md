@@ -1,88 +1,57 @@
-# Отчёт: tainted canvas при Prepare PDF
+# Отчёт: картинки в `deck_gen_wasm`
 
-## Ошибка
-```
-Cannot prepare PDF
-Failed to execute 'toBlob' on 'HTMLCanvasElement': Tainted canvases may not be exported.
-```
-Chrome и Edge (Blink). Firefox — без ошибки.
+Формат: было → стало (почему).
 
-## Где чинили
-Кнопка в `deck_gen_wasm` только вызывает `prepare_pdf_web::WebPdfEngine`.
-`toBlob` жил в `prepare_pdf_web/src/html_to_jpeg_pages.js`.
-Меняли этот JS и комментарии крейта `prepare_pdf_web`.
+## Конфиг импорта
+- Было: `ALLOWED_EXTENSIONS = md, json, json5, html, scss`, лимита размера нет.
+- Стало: рядом `IMAGE_EXTENSIONS = jpg, jpeg, png, ico, icon` и `MAX_IMAGE_BYTES = 100 MiB`.
+- Почему: задача требует jpg/png/icon и потолок 100 МБ; jpeg/ico — те же форматы под обычными расширениями.
 
-## Было → стало (почему)
+## Политика файлов
+- Было: `extension_allowed` только по текстовому списку; reject-текст захардкожен.
+- Стало: текст + картинки; `classify(path, size)` → Text / Image / Rejected / Oversized; сообщения собираются из констант.
+- Почему: один источник правды для Load Game и «load file(s)», unit-тесты без DOM.
 
-1. Растр карточки: SVG + `<foreignObject>` → `Image` → `canvas.drawImage` → `toBlob`.
-   → Растр с уже свёрстанного DOM в iframe (`getBoundingClientRect`, `getComputedStyle`, `fillText`).
-   Почему: в Blink SVG-картинка с `<foreignObject>` делает canvas «tainted»; `toBlob` запрещён. Firefox canvas не портит. HTML карточек без внешних картинок — taint даёт сам foreignObject.
+## Загрузка папки с игрой
+- Было: все файлы читались как UTF-8 `String`; чужое расширение валило весь импорт.
+- Стало: картинки читаются как байты (`FileBody::Bytes`) и кладутся в VFS через `put_bytes`; превышение 100 МБ — модалка со списком файлов; прочие расширения по-прежнему валят импорт.
+- Почему: PNG/JPEG/ICO не UTF-8; бинарный узел VFS уже был для PDF.
 
-2. Стили карточки копировались в SVG через `XMLSerializer` + теги `<style>`.
-   → Стили читаются с live-элемента (`getComputedStyle`).
-   Почему: отдельная SVG-копия больше не нужна; браузер уже посчитал layout в iframe.
+## Пункт ПКМ `load file(s)`
+- Было: у папки только Rename / Delete.
+- Стало: первый пункт `load file(s)` открывает `<input type="file" multiple accept=…>` с `ALLOWED_EXTENSIONS` + картинками; файлы пишутся в кликнутую папку; ошибка расширения/размера — модалка в explorer.
+- Почему: так сформулирована задача; accept режет диалог ОС, серверная проверка та же, что у папки.
 
-3. Масштаб 300 dpi: `transform: scale()` внутри SVG.
-   → `ctx.scale(dpi/96)` на canvas.
-   Почему: тот же PRINT_DPI, без SVG.
+## Preview
+- Было: Preview в меню и панели только для html/md/pdf.
+- Стало: jpg/jpeg/png/ico/icon тоже Preview; панель рисует `<img>` с blob URL (тот же helper, что у PDF).
+- Почему: как у уже существующих preview-типов; клик по файлу по-прежнему открывает edit (для binary — заглушка с размером).
 
-4. `styleText` собирался из всех `<style>` документа и передавался в растр.
-   → Параметр убран.
-   Почему: painter не сериализует HTML.
+## Скрытый file input
+- Было: разметка `<input>` продублирована в directory-picker.
+- Стало: общий `load_folder/input.rs`; папка и «load file(s)» только конфигурируют input.
+- Почему: одна ответственность, без новой абстракции «на будущее».
 
-5. Фон карточки: белая заливка canvas + CSS в SVG.
-   → Белая заливка canvas + `backgroundColor` каждого узла (прозрачный пропускаем).
-   Почему: белая подложка JPEG сохранена; непрозрачные боксы рисуются сами.
+## Инсталляция в VFS
+- Было: `install_folder(..., files: &[(String, String)])`.
+- Стало: `FileBody` + `install_files` для целевой папки (имя файла без подпутей).
+- Почему: текст и картинки в одном проходе; path traversal с `file.name()` отсекается `file_name()`.
 
-6. Рамки: CSS в SVG (в т.ч. только `border-bottom` / `border-right`).
-   → Равномерная рамка — `roundRect`+stroke; разные стороны — отдельные линии.
-   Почему: шапка и ячейки часто имеют одну сторону рамки.
+## UI-тексты
+- Было: confirm Load Game: «only md, json, json5, html and scss».
+- Стало: явно перечислены картинки и 100 MB.
+- Почему: пользователь должен видеть актуальные правила до выбора папки.
 
-7. Скругления: CSS `border-radius` в SVG.
-   → `borderRadii` + `ctx.roundRect`.
-   Почему: `.card` и `.box` со скруглением.
+## Тесты
+- Было: 25 тестов, картинок нет.
+- Стало: 28; политика расширений/размера/`classify`; install text+png; меню Preview и `load file(s)`.
+- Почему: логика классификации и записи в VFS проверяется без браузера.
 
-8. Текст: браузер рисовал его внутри foreignObject.
-   → По символу: `Range.getBoundingClientRect` + `fillText` (`text-transform` uppercase/lowercase).
-   Почему: переносы, выравнивание и letter-spacing уже есть в layout iframe.
+## Сборка
+- `cargo test -p deck_gen_wasm`: 28 passed.
+- `cargo check -p deck_gen_wasm --target wasm32-unknown-unknown`: ok.
 
-9. Списки `<ul><li>`: маркеры CSS в SVG.
-   → Диск / круг / квадрат слева от `li`, если `list-style-type !== none`.
-   Почему: foreignObject больше не рисует `::marker`.
-
-10. `overflow: hidden` (карточка, блоки текста).
-    → `clip` по прямоугольнику/скруглению элемента.
-    Почему: длинный текст не должен вылезать за карточку.
-
-11. `<img>` в SVG foreignObject (если появится) тоже травил canvas в Chrome.
-    → `drawImage` только для `data:`, `blob:` и same-origin.
-    Почему: чужой origin снова даёт taint; в текущих views картинок нет.
-
-12. `iframe srcdoc` + sandbox, `fonts.ready`, `__fitHeaderNames`.
-    → Без изменений.
-    Почему: вёрстка и подгонка кегля те же, меняется только съём пикселей.
-
-13. `WebPdfEngine` / `html_to_pdf` / `parse_pages` / `pdf_from_jpeg_pages`.
-    → Без изменений.
-    Почему: ошибка была в экспорте canvas, не в сборке PDF.
-
-14. Кнопка `PreparePdfButton` и `Workspace::prepare_pdf`.
-    → Без изменений.
-    Почему: текст «Cannot prepare PDF» — заголовок алерта; тело — исключение JS.
-
-15. `prepare_pdf_web/Cargo.toml`: зависимости без пояснений.
-    → Короткий комментарий над каждой зависимостью.
-    Почему: правило рефакторинга.
-
-16. Шапка `prepare_pdf_web/src/lib.rs`: одна строка.
-    → Зачем iframe, зачем paint DOM, зачем JPEG→PDF.
-    Почему: правило рефакторинга про комментарий модуля.
-
-## Проверки
-- `cargo build -p prepare_pdf_web --target wasm32-unknown-unknown` — ок.
-- `cargo test -p prepare_pdf_web` (native) — ок, тестов в крейте нет.
-- `cargo test -p prepare_pdf_web --target wasm32-unknown-unknown` — wasm-тест на Windows не запускается (ожидаемо).
-- DOM-painter в headless Chrome/Edge отсюда не гонялся.
-
-## Что не трогали
-`deck_gen`, `games/`, хостовый Chrome PDF, UI wasm кроме транзитивной зависимости на JS сниппет.
+## Сознательно не трогали
+- Другие крейты (`deck_gen`, PDF engine) — по todo анализировать только wasm-крейт.
+- Persist: binary (как PDF) не пишутся в localStorage — 100 МБ туда нельзя.
+- Авто-preview по клику на картинку — у md/html/pdf клик тоже открывает edit.

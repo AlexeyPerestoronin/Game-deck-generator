@@ -1,9 +1,10 @@
-//! Open-file pane: tab strip plus source editor or HTML/Markdown/PDF preview.
+//! Open-file pane: tab strip plus source editor or HTML/Markdown/PDF/image preview.
 //!
 //! Tabs come from [`Workspace::tabs`](crate::workspace::Workspace::tabs).
 //! Markdown / JSON / HTML / SCSS use syntect HTML behind a transparent
 //! textarea; everything else is a plain `<textarea>`. Preview tabs render
-//! HTML in an iframe, Markdown as HTML, and PDF via a blob-URL iframe.
+//! HTML in an iframe, Markdown as HTML, PDF via a blob-URL iframe, and
+//! images via a blob-URL `<img>`.
 
 use leptos::prelude::*;
 

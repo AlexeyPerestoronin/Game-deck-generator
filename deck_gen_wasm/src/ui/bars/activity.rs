@@ -57,7 +57,7 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
             <ConfirmModal
                 open=show_load
                 title="Load Game"
-                message="Choose a folder on disk. The whole folder will be copied into games/. Only md, json, json5, html and scss files are allowed."
+                message="Choose a folder on disk. The whole folder will be copied into games/. Allowed files: md, json, json5, html, scss, and images jpg/png/icon (max 100 MB each)."
                 confirm_label="Select folder"
                 on_cancel=move |_| show_load.set(false)
                 on_confirm=move |_| {

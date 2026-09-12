@@ -1,4 +1,5 @@
-//! Rendered preview of HTML (`srcdoc` iframe), Markdown (inner HTML), or PDF (blob URL).
+//! Rendered preview of HTML (`srcdoc` iframe), Markdown (inner HTML),
+//! PDF (blob URL iframe), or images (blob URL `<img>`).
 
 use js_sys::{Array, Uint8Array};
 use leptos::prelude::*;
@@ -8,13 +9,16 @@ use super::iframe::inline_relative_iframes;
 use crate::fs::file_ext;
 use crate::workspace::Workspace;
 
-/// Active-tab preview: HTML, Markdown, or PDF, chosen by file extension.
+/// Active-tab preview: HTML, Markdown, PDF, or image, chosen by file extension.
 #[component]
 pub(super) fn PreviewPane(workspace: Workspace, path: String) -> impl IntoView {
     let ext = file_ext(&path).unwrap_or("").to_ascii_lowercase();
     match ext.as_str() {
         "html" | "htm" => view! { <HtmlPreview workspace=workspace path=path /> }.into_any(),
         "pdf" => view! { <PdfPreview workspace=workspace path=path /> }.into_any(),
+        "jpg" | "jpeg" | "png" | "ico" | "icon" => {
+            view! { <ImagePreview workspace=workspace path=path /> }.into_any()
+        }
         _ => view! { <MarkdownPreview workspace=workspace path=path /> }.into_any(),
     }
 }
@@ -76,12 +80,47 @@ fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
     }
 }
 
+#[component]
+fn ImagePreview(workspace: Workspace, path: String) -> impl IntoView {
+    let mime = image_mime(&path);
+    let alt = path.clone();
+    let bytes = Memo::new(move |_| workspace.vfs.get().read_bytes(&path).map(Vec::from));
+    let src = RwSignal::new(String::new());
+    Effect::new(move |_| {
+        let next = bytes
+            .get()
+            .as_deref()
+            .and_then(|data| blob_url(data, mime))
+            .unwrap_or_default();
+        replace_object_url(src, next);
+    });
+    on_cleanup(move || revoke_object_url(&src.get_untracked()));
+    view! {
+        <div class="preview-image-wrap">
+            <img class="preview-image" prop:src=move || src.get() alt=alt />
+        </div>
+    }
+}
+
+fn image_mime(path: &str) -> &'static str {
+    match file_ext(path).unwrap_or("").to_ascii_lowercase().as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "ico" | "icon" => "image/x-icon",
+        _ => "application/octet-stream",
+    }
+}
+
 fn pdf_blob_url(bytes: &[u8]) -> Option<String> {
+    blob_url(bytes, "application/pdf")
+}
+
+fn blob_url(bytes: &[u8], mime: &str) -> Option<String> {
     let array = Uint8Array::from(bytes);
     let parts = Array::new();
     parts.push(&array);
     let opts = BlobPropertyBag::new();
-    opts.set_type("application/pdf");
+    opts.set_type(mime);
     let blob = Blob::new_with_u8_array_sequence_and_options(&parts, &opts).ok()?;
     Url::create_object_url_with_blob(&blob).ok()
 }

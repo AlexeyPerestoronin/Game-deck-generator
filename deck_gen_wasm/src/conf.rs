@@ -38,10 +38,16 @@ pub mod session {
     pub const STORAGE_KEY: &str = "deck_gen_wasm.session";
 }
 
-/// Folder-import rules for “Load Game”.
+/// Folder-import rules for “Load Game” and folder “load file(s)”.
 pub mod import {
-    /// Extensions accepted when copying a disk folder into `games/`.
+    /// Text extensions accepted when copying files from disk into the workspace.
+    /// Image types are listed separately in [`IMAGE_EXTENSIONS`].
     pub const ALLOWED_EXTENSIONS: &[&str] = &["md", "json", "json5", "html", "scss"];
+    /// Image extensions accepted alongside [`ALLOWED_EXTENSIONS`].
+    /// `jpeg` is the same format as `jpg`; `ico` is the usual name for icon files.
+    pub const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "ico", "icon"];
+    /// Images larger than this are refused (100 MiB).
+    pub const MAX_IMAGE_BYTES: u64 = 100 * 1024 * 1024;
     /// Fallback folder name when the picker does not supply one.
     pub const DEFAULT_FOLDER_NAME: &str = "game";
     /// How many blocked paths are listed in the reject dialog.

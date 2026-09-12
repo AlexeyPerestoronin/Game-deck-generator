@@ -1,7 +1,7 @@
-//! Overlay dialogs used by the activity bar.
+//! Overlay dialogs used by the activity bar and explorer.
 //!
 //! [`ConfirmModal`] is yes/no (clear workspace, load-game warning).
-//! [`AlertModal`] is a single OK for prepare-html / import errors.
+//! [`AlertModal`] is a single OK for prepare-html / import / load-files errors.
 
 mod alert;
 mod confirm;

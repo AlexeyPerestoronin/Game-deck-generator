@@ -1,12 +1,15 @@
 //! Right-click menu for explorer entries.
 //!
 //! File and folder command lists are independent tables so they can grow
-//! apart without shared match arms. The menu is positioned at the click and
+//! apart without shared match arms. Files that can be rendered (HTML,
+//! Markdown, PDF, images) get a Preview row. Folders get `load file(s)` to
+//! copy disk files into that folder. The menu is positioned at the click and
 //! dismissed by backdrop click or choosing a command.
 
 use leptos::prelude::*;
 
 use crate::fs::file_ext;
+use crate::load_folder::is_image;
 
 /// Whether the context menu was opened on a file or a folder.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,6 +55,10 @@ const FILE_PREVIEW_COMMANDS: &[MenuCommand] = &[
 
 const FOLDER_COMMANDS: &[MenuCommand] = &[
     MenuCommand {
+        id: "load_files",
+        label: "load file(s)",
+    },
+    MenuCommand {
         id: "rename",
         label: "Rename",
     },
@@ -62,13 +69,16 @@ const FOLDER_COMMANDS: &[MenuCommand] = &[
 ];
 
 fn is_previewable(path: &str) -> bool {
+    if is_image(path) {
+        return true;
+    }
     matches!(
         file_ext(path).map(str::to_ascii_lowercase).as_deref(),
         Some("html" | "htm" | "md" | "markdown" | "pdf")
     )
 }
 
-/// Command table for `kind` (files with html/md/pdf also get Preview).
+/// Command table for `kind` (files with html/md/pdf/images also get Preview).
 pub fn commands_for(kind: EntryKind, path: &str) -> &'static [MenuCommand] {
     match kind {
         EntryKind::File if is_previewable(path) => FILE_PREVIEW_COMMANDS,
@@ -156,7 +166,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn preview_menu_for_html_md_pdf() {
+    fn preview_menu_for_html_md_pdf_and_images() {
         assert_eq!(
             commands_for(EntryKind::File, "games/a/preview.html")[0].id,
             "preview"
@@ -170,6 +180,25 @@ mod tests {
             commands_for(EntryKind::File, "games/a/data.json5")[0].id,
             "rename"
         );
-        assert_eq!(commands_for(EntryKind::Folder, "games/a")[0].id, "rename");
+        assert_eq!(
+            commands_for(EntryKind::File, "games/a/logo.png")[0].id,
+            "preview"
+        );
+        assert_eq!(
+            commands_for(EntryKind::File, "games/a/mark.JPG")[0].id,
+            "preview"
+        );
+        assert_eq!(
+            commands_for(EntryKind::File, "games/a/app.icon")[0].id,
+            "preview"
+        );
+        assert_eq!(
+            commands_for(EntryKind::Folder, "games/a")[0].id,
+            "load_files"
+        );
+        assert_eq!(
+            commands_for(EntryKind::Folder, "games/a")[0].label,
+            "load file(s)"
+        );
     }
 }

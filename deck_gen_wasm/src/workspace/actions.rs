@@ -15,7 +15,10 @@ use crate::conf;
 use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
 use crate::fs::VfsFs;
 use crate::help;
-use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
+use crate::load_folder::{
+    install_files, install_folder, pick_and_read_files, pick_and_read_folder, PickFilesResult,
+    PickResult,
+};
 use crate::persist::save_session;
 use crate::template::install_new_game;
 
@@ -66,6 +69,47 @@ impl Workspace {
         self.expanded.set(HashSet::new());
         self.status.set("Workspace cleared".into());
         let _ = save_session(&self.snapshot());
+    }
+
+    /// Pick local files and copy them into an existing workspace `folder`.
+    pub fn load_files_into_folder(&self, folder: &str, warning: RwSignal<Option<String>>) {
+        if self.loading.get() {
+            return;
+        }
+        if !self.vfs.get().is_dir(folder) {
+            warning.set(Some(format!("'{folder}' is not a folder")));
+            return;
+        }
+        self.loading.set(true);
+        self.status.set("Select file(s)…".into());
+        let workspace = *self;
+        let folder = folder.to_string();
+        spawn_local(async move {
+            match pick_and_read_files().await {
+                PickFilesResult::Cancelled => {
+                    workspace.status.set(String::new());
+                }
+                PickFilesResult::Rejected(reason) => {
+                    warning.set(Some(reason));
+                    workspace.status.set(String::new());
+                }
+                PickFilesResult::Ready { files } => {
+                    let mut vfs = workspace.vfs.get_untracked();
+                    match install_files(&mut vfs, &folder, &files) {
+                        Ok(n) => {
+                            workspace.vfs.set(vfs);
+                            workspace.expand_ancestors(&folder);
+                            workspace.selected.set(Some(folder.clone()));
+                            workspace
+                                .status
+                                .set(format!("Loaded {n} file(s) into {folder}"));
+                        }
+                        Err(err) => workspace.status.set(err),
+                    }
+                }
+            }
+            workspace.loading.set(false);
+        });
     }
 
     /// Pick a local folder and copy it under `games/` with a unique name.
