@@ -1,7 +1,7 @@
 //! GitHub git-tree listing and raw file URLs.
 //!
 //! The “new game” action needs every blob under `games/new-game/` plus
-//! `games/conf.json5`. First visit also pulls [`crate::conf::help::PATH`] via
+//! `games/conf.json5`. Help also pulls [`crate::conf::help::PATH`] via
 //! [`raw_url`]. This module talks to the GitHub HTTP API and
 //! `raw.githubusercontent.com`; it does not install files into the VFS — that
 //! stays in [`crate::template`] and [`crate::help`].

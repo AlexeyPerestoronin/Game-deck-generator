@@ -24,7 +24,11 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
         <nav class="activity-bar" aria-label="Actions">
             <SaveButton workspace=workspace />
             <DownloadButton workspace=workspace />
-            <NewGameButton workspace=workspace />
+            <NewGameButton
+                workspace=workspace
+                warning=warning
+                warning_title=warning_title
+            />
             <LoadGameButton workspace=workspace on_open=move |_| show_load.set(true) />
             <PrepareHtmlButton
                 workspace=workspace

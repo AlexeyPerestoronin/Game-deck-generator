@@ -1,8 +1,8 @@
-//! HTTP GET used by GitHub and the local Trunk copies (template and help).
+//! HTTP GET used by GitHub and the local Trunk copy of help.
 //!
-//! Template and first-visit help both need the same “fetch URL → UTF-8 body”
+//! GitHub blobs and first-load help need the same “fetch URL → UTF-8 body”
 //! path. Keeping it here avoids duplicating status-code handling in
-//! [`crate::github`], [`crate::template`], and [`crate::help`].
+//! [`crate::github`] and [`crate::help`].
 
 use gloo_net::http::Request;
 

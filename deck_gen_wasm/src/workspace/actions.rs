@@ -28,8 +28,15 @@ impl Workspace {
         }
     }
 
-    /// Fetch first-visit help from GitHub (or the local copy) and open its preview.
-    pub fn open_first_visit_help(&self) {
+    /// Download help if the VFS lacks it; open its preview if no tab is open.
+    pub fn ensure_user_help(&self) {
+        let open_preview = help::should_open_preview(self.tabs.get().len());
+        if !help::needs_download(&self.vfs.get()) {
+            if open_preview {
+                self.open_help_preview();
+            }
+            return;
+        }
         if self.loading.get() {
             return;
         }
@@ -43,14 +50,11 @@ impl Workspace {
                     match help::install_user_help(&mut vfs, content) {
                         Ok(()) => {
                             workspace.vfs.set(vfs);
-                            let path = conf::help::PATH.to_string();
-                            workspace.expand_ancestors(&path);
-                            workspace.selected.set(Some(path.clone()));
-                            workspace.open_tab(OpenTab {
-                                path,
-                                kind: TabKind::Preview,
-                            });
-                            workspace.status.set(format!("Opened {}", conf::help::PATH));
+                            if open_preview {
+                                workspace.open_help_preview();
+                            } else {
+                                workspace.status.set(format!("Loaded {}", conf::help::PATH));
+                            }
                         }
                         Err(err) => workspace.status.set(err),
                     }
@@ -59,6 +63,17 @@ impl Workspace {
             }
             workspace.loading.set(false);
         });
+    }
+
+    fn open_help_preview(&self) {
+        let path = conf::help::PATH.to_string();
+        self.expand_ancestors(&path);
+        self.selected.set(Some(path.clone()));
+        self.open_tab(OpenTab {
+            path,
+            kind: TabKind::Preview,
+        });
+        self.status.set(format!("Opened {}", conf::help::PATH));
     }
 
     /// Empty the tree and persist that empty session.
@@ -159,8 +174,8 @@ impl Workspace {
         });
     }
 
-    /// Fetch the `new-game` template and install it under `games/`.
-    pub fn add_new_game(&self) {
+    /// Fetch the `new-game` template from GitHub and install it under `games/`.
+    pub fn add_new_game(&self, warning: RwSignal<Option<String>>) {
         if self.loading.get() {
             return;
         }
@@ -180,7 +195,10 @@ impl Workspace {
                         .status
                         .set(format!("Added {path} from {}", installed.source));
                 }
-                Err(err) => workspace.status.set(err),
+                Err(err) => {
+                    warning.set(Some(err));
+                    workspace.status.set(String::new());
+                }
             }
             workspace.loading.set(false);
         });

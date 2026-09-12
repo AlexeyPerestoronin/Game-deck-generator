@@ -1,20 +1,18 @@
 //! Install the `new-game` sample into the workspace VFS.
 //!
-//! GitHub is tried first ([`crate::github`]); if that set is incomplete, the
-//! Trunk `/template/…` copy is used. Deck `name` fields are retargeted when the
-//! unique folder is not literally `new-game`. This module owns install and
-//! fallback policy, not HTTP details.
+//! Blobs come from GitHub only ([`crate::github`]). Deck `name` fields are
+//! retargeted when the unique folder is not literally `new-game`. This module
+//! owns install policy, not HTTP details.
 
 use crate::conf;
 use crate::fs::{unique_name, Vfs};
 use crate::github;
-use crate::http::fetch_text;
 
 /// Result of copying the template into the workspace.
 pub struct InstalledGame {
     /// Folder name under `games/` (may be `new-game-N`).
     pub folder: String,
-    /// [`conf::template::GITHUB_SOURCE_LABEL`] or [`conf::template::LOCAL_SOURCE_LABEL`].
+    /// [`conf::template::GITHUB_SOURCE_LABEL`].
     pub source: &'static str,
 }
 
@@ -57,23 +55,9 @@ fn retarget_game_id(content: &str, from: &str, to: &str) -> String {
 }
 
 async fn load_template_files() -> Result<(&'static str, Vec<(String, String)>), String> {
-    let listed = github::list_template_blob_paths().await;
-    match load_from_github(&listed).await {
-        Ok(files) => Ok((conf::template::GITHUB_SOURCE_LABEL, files)),
-        github_result => match load_from_local(&listed).await {
-            Ok(files) => Ok((conf::template::LOCAL_SOURCE_LABEL, files)),
-            local_result => Err(format!(
-                "Could not load new-game from GitHub ({}) or local copy ({})",
-                describe(github_result),
-                describe(local_result)
-            )),
-        },
-    }
-}
-
-fn local_template_url(path: &str) -> String {
-    // Relative to the page URL so GitHub Pages project sites (`/repo/…`) work.
-    format!("template/{path}")
+    let paths = github::list_template_blob_paths().await?;
+    let files = finish_files(github::fetch_listed_blobs(&paths).await?)?;
+    Ok((conf::template::GITHUB_SOURCE_LABEL, files))
 }
 
 fn has_both_components(files: &[(String, String)]) -> bool {
@@ -84,43 +68,6 @@ fn has_both_components(files: &[(String, String)]) -> bool {
         .iter()
         .any(|(path, _)| path.starts_with(conf::template::PREFIX));
     conf_ok && game
-}
-
-fn describe(result: Result<Vec<(String, String)>, String>) -> String {
-    match result {
-        Ok(files) => format!(
-            "{} files, missing games/new-game or games/conf.json5",
-            files.len()
-        ),
-        Err(err) => err,
-    }
-}
-
-async fn load_from_github(
-    listed: &Result<Vec<String>, String>,
-) -> Result<Vec<(String, String)>, String> {
-    let paths = listed.as_ref().map_err(|err| err.clone())?;
-    finish_files(github::fetch_listed_blobs(paths).await?)
-}
-
-async fn load_from_local(
-    listed: &Result<Vec<String>, String>,
-) -> Result<Vec<(String, String)>, String> {
-    let mut files = Vec::new();
-    if let Ok(content) = fetch_text(&local_template_url(conf::template::GAMES_CONF)).await {
-        files.push((conf::template::GAMES_CONF.to_string(), content));
-    }
-    if let Ok(paths) = listed {
-        for path in paths {
-            if !path.starts_with(conf::template::PREFIX) {
-                continue;
-            }
-            if let Ok(content) = fetch_text(&local_template_url(path)).await {
-                files.push((path.clone(), content));
-            }
-        }
-    }
-    finish_files(files)
 }
 
 fn finish_files(files: Vec<(String, String)>) -> Result<Vec<(String, String)>, String> {

@@ -1,10 +1,9 @@
-//! First-visit help Markdown: GitHub master, then the Trunk local copy.
+//! Help Markdown: GitHub master, then the Trunk local copy.
 //!
-//! On an empty browser session the UI asks this module for
-//! [`crate::conf::help::PATH`]. GitHub raw is tried first (same origin policy
-//! as the `new-game` template). If that GET fails, the file Trunk copies next
-//! to `index.html` is used. Installing into the VFS is a plain `put_file`;
-//! opening the preview tab stays in [`crate::workspace`].
+//! The UI asks this module for [`crate::conf::help::PATH`] when that file is
+//! not already in the VFS. GitHub raw is tried first. If that GET fails, the
+//! file Trunk copies next to `index.html` is used. Installing into the VFS is
+//! a plain `put_file`; opening the preview tab stays in [`crate::workspace`].
 
 use crate::conf;
 use crate::fs::Vfs;
@@ -30,6 +29,16 @@ pub fn install_user_help(vfs: &mut Vfs, content: String) -> Result<(), String> {
     vfs.put_file(conf::help::PATH, content)
 }
 
+/// Whether the VFS still needs a download of [`conf::help::PATH`].
+pub fn needs_download(vfs: &Vfs) -> bool {
+    !vfs.is_file(conf::help::PATH)
+}
+
+/// Whether help preview should open (no editor tabs yet).
+pub fn should_open_preview(tab_count: usize) -> bool {
+    tab_count == 0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,5 +50,14 @@ mod tests {
         assert_eq!(vfs.read_file(conf::help::PATH), Some("# Hello"));
         assert!(vfs.is_dir("deck_gen_wasm"));
         assert!(vfs.is_file("deck_gen_wasm/user-help.md"));
+        assert!(!needs_download(&vfs));
+    }
+
+    #[test]
+    fn download_when_missing_preview_when_no_tabs() {
+        let vfs = Vfs::default();
+        assert!(needs_download(&vfs));
+        assert!(should_open_preview(0));
+        assert!(!should_open_preview(1));
     }
 }

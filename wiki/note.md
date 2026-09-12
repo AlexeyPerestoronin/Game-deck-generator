@@ -1,5 +1,5 @@
 # Что сделать с вашей стороны
 
-1. Закоммитить и запушить в `master` файл `deck_gen_wasm/user-help.md` (и правки WASM). Пока файла нет на GitHub, первый заход на Pages возьмёт его только если сработает локальный fallback; на уже задеплоенном сайте fallback — тот `user-help.md`, который Trunk положил в `dist`.
-2. Чтобы снова увидеть first-visit preview: в DevTools → Application → Local Storage удалить ключ `deck_gen_wasm.session` и обновить страницу. Clear в UI пустую сессию сохраняет, поэтому reload после Clear help сам не откроет.
-3. Для локальной проверки fallback пересоберите Trunk (`serve.bat` / `trunk serve`), чтобы `copy-file` скопировал `user-help.md` в `dist`.
+1. **New game** теперь только с GitHub `master` (`games/new-game/` и `games/conf.json5`). Локальной копии в `dist` больше нет: без сети или при 404 кнопка покажет модалку, не подставит файлы из репозитория на диске.
+2. Чтобы снова увидеть help preview: закройте все вкладки и обновите страницу, либо удалите `deck_gen_wasm/user-help.md` из дерева (или ключ `deck_gen_wasm.session`) и обновите. Если в сессии выбран файл, откроется его Edit, не help.
+3. Пересоберите Trunk: из `dist` должны пропасть `template/games/…`. `user-help.md` в `dist` по-прежнему нужен как запасной GET, если GitHub не ответил.

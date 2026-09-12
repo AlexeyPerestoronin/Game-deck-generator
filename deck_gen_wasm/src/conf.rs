@@ -24,11 +24,9 @@ pub mod template {
     pub const GAMES_CONF: &str = "games/conf.json5";
     /// Status text when blobs came from GitHub.
     pub const GITHUB_SOURCE_LABEL: &str = "GitHub master";
-    /// Status text when blobs came from the Trunk `/template/` copy.
-    pub const LOCAL_SOURCE_LABEL: &str = "local template";
 }
 
-/// First-visit help file fetched from GitHub (local Trunk copy as fallback).
+/// Help Markdown: GitHub when missing from the VFS (local Trunk copy as fallback).
 pub mod help {
     /// Repo path and VFS path of the help Markdown.
     pub const PATH: &str = "deck_gen_wasm/user-help.md";
