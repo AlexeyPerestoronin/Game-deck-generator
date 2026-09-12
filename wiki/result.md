@@ -1,61 +1,65 @@
-# Почему в preview был index.html, и что исправлено
+# Help только локально, в корне VFS
 
-Краткий отчёт в формате было→стало(почему). Менялся только `deck_gen_wasm`.
+Краткий отчёт в формате было→стало(почему). Менялся только `deck_gen_wasm`. Задача на доработку №2.
 
-## Почему так случилось
+## Источник текста
 
-- **Было:** GitHub `raw` для `deck_gen_wasm/user-help.md`, при ошибке GET относительного `user-help.md` на Trunk.
-- **Стало:** то же GitHub, но локальный HTTP больше не используется.
-- **Почему:** локальный GET и вернул тот HTML, который вы видели.
+- **Было:** `fetch_user_help` сначала GET GitHub raw, иначе `include_str`.
+- **Стало:** только `bundled_help()` = `include_str!("../user-help.md")`. Сети нет.
+- **Почему:** пункт 1 — help не должен приходить с GitHub.
 
-Цепочка:
+- **Было:** `ensure_user_help` ставил `loading`, `spawn_local`, ждал HTTP.
+- **Стало:** синхронный `put_file` бандла в VFS.
+- **Почему:** копирование строки из WASM не async; нечего блокировать кнопки.
 
-1. GitHub, скорее всего, не отдал файл (его ещё нет на `master`, сеть, CORS) → код пошёл в fallback.
-2. `data-trunk rel="copy-file" data-target-path="user-help.md"`: у Trunk `data-target-path` — **каталог**, не имя файла. В `dist` получилось `user-help.md/user-help.md`, не `dist/user-help.md`.
-3. Запрос `GET /user-help.md` попал в каталог / неизвестный путь. Dev-сервер Trunk в SPA-режиме отвечает **HTTP 200** и телом `index.html` (websocket overlay `localhost.:8080` — это он).
-4. `fetch_text` считает любой 200 успехом → HTML записали в VFS как Markdown.
-5. Preview честно показал «исходник». Сессия сохранила яд в localStorage.
+- **Было:** `github.rs` собирал raw URL для help; тест `help_raw_url_uses_master_and_repo_path`.
+- **Стало:** help из GitHub-модуля убран; тест удалён.
+- **Почему:** висячая связь help ↔ GitHub.
 
-## Fetch
+- **Было:** `http.rs` описан как «template + help».
+- **Стало:** только template blobs.
+- **Почему:** help больше не вызывает `fetch_text`.
 
-- **Было:** `Ok(body)` с GitHub или с `/user-help.md` без проверки содержимого.
-- **Стало:** тело с `<!DOCTYPE html` / `<html` отбрасывается; запас — `include_str!("../user-help.md")` в WASM.
-- **Почему:** бандл не ходит на Trunk HTTP и не может подменить help оболочкой приложения.
+## Путь в дереве
 
-- **Было:** `conf::help::LOCAL_URL`.
-- **Стало:** константа удалена.
-- **Почему:** локального URL больше нет.
+- **Было:** `conf::help::PATH` = `deck_gen_wasm/user-help.md` (папка под крейт).
+- **Стало:** `user-help.md` в корне workspace.
+- **Почему:** пункт 2 — «в самом корне» локальной (виртуальной) ФС.
 
-## copy-file
+- **Было:** `install_user_help` создавал каталог `deck_gen_wasm/`.
+- **Стало:** файл лежит рядом с `games/`, без лишней папки.
+- **Почему:** корень VFS — пустой prefix у `put_file("user-help.md")`.
 
-- **Было:** `index.html` копировал `user-help.md` в `data-target-path="user-help.md"`.
-- **Стало:** этой строки нет.
-- **Почему:** копирование было сломано семантикой Trunk и больше не нужно.
+- **Было:** тест ждал `is_dir("deck_gen_wasm")`.
+- **Стало:** `installs_at_workspace_root` проверяет `user-help.md` и отсутствие `deck_gen_wasm`.
+- **Почему:** регресс пути.
 
-## Уже отравленный VFS
+## Имена
 
-- **Было:** `needs_download` = «файла нет».
-- **Стало:** качаем и если файла нет, и если тело — HTML-документ.
-- **Почему:** иначе после фикса reload снова открывал бы сохранённый index.html.
+- **Было:** `needs_download`.
+- **Стало:** `needs_install`.
+- **Почему:** это не HTTP download, а копия бандла.
 
-## Тесты
+- **Было:** в help.md «from GitHub master».
+- **Стало:** «`user-help.md` at the workspace root (shipped with the app)».
+- **Почему:** текст не должен врать про источник.
 
-- **Было:** не отличали Markdown от HTML.
-- **Стало:** `html_shell_is_not_help`, `redownload_if_stored_help_is_html`; бандл не HTML.
-- **Почему:** регресс «SPA 200» ловится без браузера.
+## Что оставили
 
-## Что не меняли
+- **Было:** HTML-оболочка в VFS считалась битым help и переустанавливалась.
+- **Стало:** то же для корневого `user-help.md`.
+- **Почему:** старые сессии могли хранить index.html; не тащить его как help.
 
-- **Было:** GitHub первым источником help.
-- **Стало:** по-прежнему первый; бандл только если raw пустой/HTML/ошибка.
-- **Почему:** как у шаблона игры: master — канон.
-
-- **Было:** New game только с GitHub + модалка.
+- **Было:** preview, если вкладок нет.
 - **Стало:** без изменений.
-- **Почему:** баг только в help fallback.
+- **Почему:** не входит в №2.
+
+- **Было:** New game с GitHub + модалка.
+- **Стало:** без изменений.
+- **Почему:** игровые данные по-прежнему с master.
 
 ## Проверки
 
-- **Было:** 23 теста.
-- **Стало:** 25; `cargo test -p deck_gen_wasm` ok; wasm32 check ok.
+- **Было:** 25 тестов (включая GitHub URL help).
+- **Стало:** 24; `cargo test -p deck_gen_wasm` ok; wasm32 check ok.
 - **Почему:** изменённый крейт должен собираться и проходить unit-тесты.

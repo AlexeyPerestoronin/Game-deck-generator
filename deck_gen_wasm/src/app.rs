@@ -1,9 +1,10 @@
 //! Root Leptos view: activity bar, explorer, and editor over one [`Workspace`].
 //!
 //! Session restore happens once at construction. If
-//! [`crate::conf::help::PATH`] is missing from the VFS it is fetched; if no
-//! editor tab is open, that file is shown as a preview. An effect writes the
-//! snapshot back to localStorage whenever any of the workspace signals change.
+//! [`crate::conf::help::PATH`] is missing from the VFS the bundled help file
+//! is copied to the workspace root; if no editor tab is open, that file is
+//! shown as a preview. An effect writes the snapshot back to localStorage
+//! whenever any of the workspace signals change.
 
 use leptos::prelude::*;
 

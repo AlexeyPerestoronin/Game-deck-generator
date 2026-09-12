@@ -1,10 +1,9 @@
-//! GitHub git-tree listing and raw file URLs.
+//! GitHub git-tree listing and raw file URLs for the sample game.
 //!
 //! The “new game” action needs every blob under `games/new-game/` plus
-//! `games/conf.json5`. Help also pulls [`crate::conf::help::PATH`] via
-//! [`raw_url`]. This module talks to the GitHub HTTP API and
+//! `games/conf.json5`. This module talks to the GitHub HTTP API and
 //! `raw.githubusercontent.com`; it does not install files into the VFS — that
-//! stays in [`crate::template`] and [`crate::help`].
+//! stays in [`crate::template`].
 
 use serde::Deserialize;
 
@@ -61,23 +60,4 @@ pub async fn fetch_listed_blobs(paths: &[String]) -> Result<Vec<(String, String)
         }
     }
     Ok(files)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn help_raw_url_uses_master_and_repo_path() {
-        let url = raw_url(conf::help::PATH);
-        assert!(
-            url.contains(&format!(
-                "raw.githubusercontent.com/{}/{}",
-                conf::github::REPO,
-                conf::github::BRANCH
-            )),
-            "{url}"
-        );
-        assert!(url.ends_with("/deck_gen_wasm/user-help.md"), "{url}");
-    }
 }

@@ -1,49 +1,27 @@
-//! Help Markdown: GitHub master, then the file compiled into this crate.
+//! Bundled help Markdown copied into the workspace root.
 //!
-//! The UI asks this module for [`crate::conf::help::PATH`] when that file is
-//! missing from the VFS or when the stored body is the app’s HTML shell (Trunk
-//! SPA fallback). GitHub raw is tried first. If that GET fails or returns HTML,
-//! [`include_str`] of `user-help.md` is used. Installing into the VFS is a
-//! plain `put_file`; opening the preview tab stays in [`crate::workspace`].
+//! [`crate::conf::help::PATH`] is `user-help.md` at the VFS root. The text is
+//! the crate file compiled in with [`include_str`]; there is no GitHub GET.
+//! The UI copies it when the path is missing or when the stored body is the
+//! app HTML shell. Opening the preview tab stays in [`crate::workspace`].
 
 use crate::conf;
 use crate::fs::Vfs;
-use crate::github;
-use crate::http::fetch_text;
 
 const BUNDLED_HELP: &str = include_str!("../user-help.md");
 
-/// Fetch help text from GitHub, or the Markdown compiled into this WASM.
-pub async fn fetch_user_help() -> Result<String, String> {
-    match fetch_text(&github::raw_url(conf::help::PATH)).await {
-        Ok(body) if !looks_like_html_document(&body) => Ok(body),
-        github_result => {
-            if looks_like_html_document(BUNDLED_HELP) {
-                return Err(format!(
-                    "Could not load {} from GitHub ({}) and bundled copy is not Markdown",
-                    conf::help::PATH,
-                    describe_github(github_result)
-                ));
-            }
-            Ok(BUNDLED_HELP.to_string())
-        }
-    }
+/// Markdown compiled into this WASM from `user-help.md`.
+pub fn bundled_help() -> &'static str {
+    BUNDLED_HELP
 }
 
-fn describe_github(result: Result<String, String>) -> String {
-    match result {
-        Ok(_) => "got HTML instead of Markdown".into(),
-        Err(err) => err,
-    }
-}
-
-/// Write help Markdown at [`conf::help::PATH`], creating parent folders.
+/// Write `content` at [`conf::help::PATH`] (workspace root).
 pub fn install_user_help(vfs: &mut Vfs, content: String) -> Result<(), String> {
     vfs.put_file(conf::help::PATH, content)
 }
 
-/// Whether the VFS still needs a download of [`conf::help::PATH`].
-pub fn needs_download(vfs: &Vfs) -> bool {
+/// Whether the VFS still needs a copy of the bundled help file.
+pub fn needs_install(vfs: &Vfs) -> bool {
     match vfs.read_file(conf::help::PATH) {
         Some(body) => looks_like_html_document(body),
         None => true,
@@ -55,7 +33,7 @@ pub fn should_open_preview(tab_count: usize) -> bool {
     tab_count == 0
 }
 
-/// Trunk’s SPA fallback returns `index.html` with HTTP 200 for unknown paths.
+/// True when `body` is an HTML document, not Markdown help.
 pub fn looks_like_html_document(body: &str) -> bool {
     let t = body.trim_start().to_ascii_lowercase();
     t.starts_with("<!doctype html") || t.starts_with("<html")
@@ -66,19 +44,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn installs_at_configured_path() {
+    fn installs_at_workspace_root() {
         let mut vfs = Vfs::default();
         install_user_help(&mut vfs, "# Hello".into()).unwrap();
+        assert_eq!(vfs.read_file("user-help.md"), Some("# Hello"));
         assert_eq!(vfs.read_file(conf::help::PATH), Some("# Hello"));
-        assert!(vfs.is_dir("deck_gen_wasm"));
-        assert!(vfs.is_file("deck_gen_wasm/user-help.md"));
-        assert!(!needs_download(&vfs));
+        assert!(!vfs.is_dir("deck_gen_wasm"));
+        assert!(!needs_install(&vfs));
     }
 
     #[test]
-    fn download_when_missing_preview_when_no_tabs() {
+    fn install_when_missing_preview_when_no_tabs() {
         let vfs = Vfs::default();
-        assert!(needs_download(&vfs));
+        assert!(needs_install(&vfs));
         assert!(should_open_preview(0));
         assert!(!should_open_preview(1));
     }
@@ -94,9 +72,9 @@ mod tests {
     }
 
     #[test]
-    fn redownload_if_stored_help_is_html() {
+    fn reinstall_if_stored_help_is_html() {
         let mut vfs = Vfs::default();
         install_user_help(&mut vfs, "<!DOCTYPE html>\n<html></html>".into()).unwrap();
-        assert!(needs_download(&vfs));
+        assert!(needs_install(&vfs));
     }
 }

@@ -1,8 +1,8 @@
-//! HTTP GET used by GitHub (template blobs and help Markdown).
+//! HTTP GET used by GitHub for template blobs.
 //!
-//! GitHub blobs and help need the same “fetch URL → UTF-8 body” path. Keeping
-//! it here avoids duplicating status-code handling in [`crate::github`] and
-//! [`crate::help`].
+//! The “new game” action needs the same “fetch URL → UTF-8 body” path for the
+//! git tree and raw files. Keeping it here avoids duplicating status-code
+//! handling in [`crate::github`].
 
 use gloo_net::http::Request;
 

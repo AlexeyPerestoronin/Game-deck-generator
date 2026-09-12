@@ -57,4 +57,4 @@ Placeholders are substituted before JSON5 is parsed. `$s{words}` keeps a phrase 
 
 - Work stays in this browser until you download it.
 - PDFs are not stored in localStorage (too large); generate them again after a reload.
-- This file is `deck_gen_wasm/user-help.md` from GitHub `master` (downloaded if missing; preview if no tab is open).
+- This file is `user-help.md` at the workspace root (shipped with the app; preview if no tab is open).

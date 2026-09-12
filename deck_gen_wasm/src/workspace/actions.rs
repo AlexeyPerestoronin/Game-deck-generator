@@ -28,41 +28,22 @@ impl Workspace {
         }
     }
 
-    /// Download help if the VFS lacks it; open its preview if no tab is open.
+    /// Copy bundled help into the VFS root if missing; preview if no tab is open.
     pub fn ensure_user_help(&self) {
         let open_preview = help::should_open_preview(self.tabs.get().len());
-        if !help::needs_download(&self.vfs.get()) {
-            if open_preview {
-                self.open_help_preview();
-            }
-            return;
-        }
-        if self.loading.get() {
-            return;
-        }
-        self.loading.set(true);
-        self.status.set("Loading help…".into());
-        let workspace = *self;
-        spawn_local(async move {
-            match help::fetch_user_help().await {
-                Ok(content) => {
-                    let mut vfs = workspace.vfs.get_untracked();
-                    match help::install_user_help(&mut vfs, content) {
-                        Ok(()) => {
-                            workspace.vfs.set(vfs);
-                            if open_preview {
-                                workspace.open_help_preview();
-                            } else {
-                                workspace.status.set(format!("Loaded {}", conf::help::PATH));
-                            }
-                        }
-                        Err(err) => workspace.status.set(err),
-                    }
+        if help::needs_install(&self.vfs.get()) {
+            let mut vfs = self.vfs.get_untracked();
+            match help::install_user_help(&mut vfs, help::bundled_help().to_string()) {
+                Ok(()) => self.vfs.set(vfs),
+                Err(err) => {
+                    self.status.set(err);
+                    return;
                 }
-                Err(err) => workspace.status.set(err),
             }
-            workspace.loading.set(false);
-        });
+        }
+        if open_preview {
+            self.open_help_preview();
+        }
     }
 
     fn open_help_preview(&self) {
