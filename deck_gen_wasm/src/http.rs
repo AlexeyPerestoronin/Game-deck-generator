@@ -15,8 +15,5 @@ pub async fn fetch_text(url: &str) -> Result<String, String> {
     if !response.ok() {
         return Err(format!("{url}: HTTP {}", response.status()));
     }
-    response
-        .text()
-        .await
-        .map_err(|err| format!("{url}: {err}"))
+    response.text().await.map_err(|err| format!("{url}: {err}"))
 }

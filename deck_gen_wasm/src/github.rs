@@ -45,7 +45,9 @@ pub async fn list_template_blob_paths() -> Result<Vec<String>, String> {
         .into_iter()
         .filter(|item| item.kind == "blob")
         .map(|item| item.path)
-        .filter(|path| path == conf::template::GAMES_CONF || path.starts_with(conf::template::PREFIX))
+        .filter(|path| {
+            path == conf::template::GAMES_CONF || path.starts_with(conf::template::PREFIX)
+        })
         .collect())
 }
 

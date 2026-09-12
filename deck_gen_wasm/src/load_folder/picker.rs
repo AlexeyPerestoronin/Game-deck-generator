@@ -37,11 +37,9 @@ fn finish_collect(
     result: Result<(Vec<(String, String)>, Vec<String>, Vec<String>), String>,
 ) -> PickResult {
     match result {
-        Ok((files, dirs, rejected)) if rejected.is_empty() => PickResult::Ready {
-            name,
-            files,
-            dirs,
-        },
+        Ok((files, dirs, rejected)) if rejected.is_empty() => {
+            PickResult::Ready { name, files, dirs }
+        }
         Ok((_, _, rejected)) => PickResult::Rejected(reject_message(&rejected)),
         Err(err) => PickResult::Rejected(err),
     }
@@ -51,11 +49,9 @@ fn finish_collect_from_list(
     result: Result<(String, Vec<(String, String)>, Vec<String>, Vec<String>), String>,
 ) -> PickResult {
     match result {
-        Ok((name, files, dirs, rejected)) if rejected.is_empty() => PickResult::Ready {
-            name,
-            files,
-            dirs,
-        },
+        Ok((name, files, dirs, rejected)) if rejected.is_empty() => {
+            PickResult::Ready { name, files, dirs }
+        }
         Ok((_, _, _, rejected)) => PickResult::Rejected(reject_message(&rejected)),
         Err(err) => PickResult::Rejected(err),
     }
@@ -126,7 +122,8 @@ async fn pick_with_input() -> PickDir {
             let _ = resolve_cancel.call1(&JsValue::NULL, &JsValue::NULL);
         });
         input.set_onchange(Some(on_change.as_ref().unchecked_ref()));
-        let _ = input.add_event_listener_with_callback("cancel", on_cancel.as_ref().unchecked_ref());
+        let _ =
+            input.add_event_listener_with_callback("cancel", on_cancel.as_ref().unchecked_ref());
         on_change.forget();
         on_cancel.forget();
     });

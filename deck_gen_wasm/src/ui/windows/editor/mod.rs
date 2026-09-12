@@ -1,9 +1,9 @@
-//! Open-file pane: tab strip plus source editor or HTML/Markdown preview.
+//! Open-file pane: tab strip plus source editor or HTML/Markdown/PDF preview.
 //!
 //! Tabs come from [`Workspace::tabs`](crate::workspace::Workspace::tabs).
 //! Markdown / JSON / HTML / SCSS use syntect HTML behind a transparent
 //! textarea; everything else is a plain `<textarea>`. Preview tabs render
-//! HTML in an iframe and Markdown as HTML.
+//! HTML in an iframe, Markdown as HTML, and PDF via a blob-URL iframe.
 
 use leptos::prelude::*;
 
@@ -47,6 +47,10 @@ pub fn Editor(workspace: Workspace) -> impl IntoView {
                     <div class="editor-empty">"Select a file to edit, or create one in the explorer."</div>
                 }
                 .into_any(),
+                Some(tab) if tab.kind == TabKind::Preview => view! {
+                    <PreviewPane workspace=workspace path=tab.path />
+                }
+                .into_any(),
                 Some(tab) if workspace.vfs.get().is_binary(&tab.path) => view! {
                     <div class="editor-empty">
                         {format!(
@@ -54,10 +58,6 @@ pub fn Editor(workspace: Workspace) -> impl IntoView {
                             workspace.vfs.get().read_bytes(&tab.path).map(|b| b.len()).unwrap_or(0)
                         )}
                     </div>
-                }
-                .into_any(),
-                Some(tab) if tab.kind == TabKind::Preview => view! {
-                    <PreviewPane workspace=workspace path=tab.path />
                 }
                 .into_any(),
                 Some(tab) if can_highlight(&tab.path) => view! {

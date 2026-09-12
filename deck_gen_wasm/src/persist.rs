@@ -43,7 +43,10 @@ impl Session {
 
 /// Read and deserialize the session, or `None` if missing/invalid.
 pub fn load_session() -> Option<Session> {
-    let raw = local_storage()?.get_item(conf::session::STORAGE_KEY).ok().flatten()?;
+    let raw = local_storage()?
+        .get_item(conf::session::STORAGE_KEY)
+        .ok()
+        .flatten()?;
     serde_json::from_str(&raw).ok()
 }
 

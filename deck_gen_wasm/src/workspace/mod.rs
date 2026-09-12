@@ -21,7 +21,7 @@ use crate::persist::Session;
 pub enum TabKind {
     /// Editable source.
     Edit,
-    /// Rendered HTML / Markdown preview.
+    /// Rendered HTML / Markdown / PDF preview.
     Preview,
 }
 

@@ -70,7 +70,8 @@ async fn call_async(
     method: &str,
     arg: Option<JsValue>,
 ) -> Result<JsValue, JsValue> {
-    let func = Reflect::get(receiver, &JsValue::from_str(method))?.dyn_into::<js_sys::Function>()?;
+    let func =
+        Reflect::get(receiver, &JsValue::from_str(method))?.dyn_into::<js_sys::Function>()?;
     let promise = match arg {
         Some(value) => func.call1(receiver, &value)?,
         None => func.call0(receiver)?,

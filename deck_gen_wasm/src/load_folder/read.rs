@@ -138,8 +138,7 @@ fn call0(receiver: &JsValue, method: &str) -> Result<JsValue, String> {
         .map_err(|_| format!("missing {method}"))?
         .dyn_into::<Function>()
         .map_err(|_| format!("{method} is not a function"))?;
-    func.call0(receiver)
-        .map_err(|_| format!("{method} failed"))
+    func.call0(receiver).map_err(|_| format!("{method} failed"))
 }
 
 async fn call_async(receiver: &JsValue, method: &str) -> Result<JsValue, String> {

@@ -224,11 +224,7 @@ impl Vfs {
 }
 
 fn is_single_segment_name(name: &str) -> bool {
-    !name.is_empty()
-        && name != "."
-        && name != ".."
-        && !name.contains('/')
-        && !name.contains('\\')
+    !name.is_empty() && name != "." && name != ".." && !name.contains('/') && !name.contains('\\')
 }
 
 fn parent_map_mut<'a>(
@@ -267,9 +263,11 @@ fn ensure_dir<'a>(
     }
     let name = parts[0];
     let rest = &parts[1..];
-    let node = children.entry(name.to_string()).or_insert_with(|| Node::Dir {
-        children: BTreeMap::new(),
-    });
+    let node = children
+        .entry(name.to_string())
+        .or_insert_with(|| Node::Dir {
+            children: BTreeMap::new(),
+        });
     match node {
         Node::Dir { children } => ensure_dir(children, rest),
         Node::File { .. } | Node::Binary { .. } => Err(format!("'{name}' is a file")),
@@ -329,11 +327,15 @@ mod vfs_tests {
     #[test]
     fn binary_files_round_trip_and_strip() {
         let mut vfs = Vfs::default();
-        vfs.put_bytes("games/a/face.pdf", vec![0x25, 0x50, 0x44, 0x46]).unwrap();
+        vfs.put_bytes("games/a/face.pdf", vec![0x25, 0x50, 0x44, 0x46])
+            .unwrap();
         assert!(vfs.is_file("games/a/face.pdf"));
         assert!(vfs.is_binary("games/a/face.pdf"));
         assert!(vfs.read_file("games/a/face.pdf").is_none());
-        assert_eq!(vfs.read_bytes("games/a/face.pdf"), Some(&[0x25, 0x50, 0x44, 0x46][..]));
+        assert_eq!(
+            vfs.read_bytes("games/a/face.pdf"),
+            Some(&[0x25, 0x50, 0x44, 0x46][..])
+        );
         let stripped = vfs.without_binaries();
         assert!(!stripped.exists("games/a/face.pdf"));
         assert!(stripped.is_dir("games/a"));

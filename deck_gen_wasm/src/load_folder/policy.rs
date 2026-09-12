@@ -10,9 +10,7 @@ use crate::fs::file_ext;
 /// Whether `path` has an allowed source-file extension.
 pub fn extension_allowed(path: &str) -> bool {
     match file_ext(path).map(|ext| ext.to_ascii_lowercase()) {
-        Some(ext) => conf::import::ALLOWED_EXTENSIONS
-            .iter()
-            .any(|ok| ext == *ok),
+        Some(ext) => conf::import::ALLOWED_EXTENSIONS.iter().any(|ok| ext == *ok),
         None => false,
     }
 }

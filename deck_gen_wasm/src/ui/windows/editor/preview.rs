@@ -1,16 +1,20 @@
-//! Rendered preview of HTML (`srcdoc` iframe) or Markdown (inner HTML).
+//! Rendered preview of HTML (`srcdoc` iframe), Markdown (inner HTML), or PDF (blob URL).
 
+use js_sys::{Array, Uint8Array};
 use leptos::prelude::*;
+use web_sys::{Blob, BlobPropertyBag, Url};
 
 use super::iframe::inline_relative_iframes;
 use crate::fs::file_ext;
 use crate::workspace::Workspace;
 
+/// Active-tab preview: HTML, Markdown, or PDF, chosen by file extension.
 #[component]
 pub(super) fn PreviewPane(workspace: Workspace, path: String) -> impl IntoView {
     let ext = file_ext(&path).unwrap_or("").to_ascii_lowercase();
     match ext.as_str() {
         "html" | "htm" => view! { <HtmlPreview workspace=workspace path=path /> }.into_any(),
+        "pdf" => view! { <PdfPreview workspace=workspace path=path /> }.into_any(),
         _ => view! { <MarkdownPreview workspace=workspace path=path /> }.into_any(),
     }
 }
@@ -52,4 +56,46 @@ fn markdown_to_html(src: &str) -> String {
     let mut html = String::new();
     pulldown_cmark::html::push_html(&mut html, parser);
     html
+}
+
+#[component]
+fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
+    let bytes = Memo::new(move |_| workspace.vfs.get().read_bytes(&path).map(Vec::from));
+    let src = RwSignal::new(String::new());
+    Effect::new(move |_| {
+        let next = bytes
+            .get()
+            .as_deref()
+            .and_then(pdf_blob_url)
+            .unwrap_or_default();
+        replace_object_url(src, next);
+    });
+    on_cleanup(move || revoke_object_url(&src.get_untracked()));
+    view! {
+        <iframe class="preview-frame" prop:src=move || src.get() />
+    }
+}
+
+fn pdf_blob_url(bytes: &[u8]) -> Option<String> {
+    let array = Uint8Array::from(bytes);
+    let parts = Array::new();
+    parts.push(&array);
+    let opts = BlobPropertyBag::new();
+    opts.set_type("application/pdf");
+    let blob = Blob::new_with_u8_array_sequence_and_options(&parts, &opts).ok()?;
+    Url::create_object_url_with_blob(&blob).ok()
+}
+
+fn replace_object_url(slot: RwSignal<String>, next: String) {
+    let prev = slot.get_untracked();
+    slot.set(next.clone());
+    if prev != next {
+        revoke_object_url(&prev);
+    }
+}
+
+fn revoke_object_url(url: &str) {
+    if !url.is_empty() {
+        let _ = Url::revoke_object_url(url);
+    }
 }

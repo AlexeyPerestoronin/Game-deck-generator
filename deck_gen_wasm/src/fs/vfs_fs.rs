@@ -132,10 +132,7 @@ mod tests {
     fn empty_workspace_errors() {
         let fs: Arc<dyn FileSystem> = Arc::new(VfsFs::new(Vfs::default()));
         let err = deck_gen::prepare_html(fs).unwrap_err();
-        assert!(
-            err.to_string().contains("No deck data files"),
-            "{err}"
-        );
+        assert!(err.to_string().contains("No deck data files"), "{err}");
     }
 
     #[test]

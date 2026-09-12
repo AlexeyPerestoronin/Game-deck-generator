@@ -88,7 +88,10 @@ fn resolve_relative(from_file: &str, href: &str) -> Option<String> {
         return None;
     }
     let href = href.strip_prefix("./").unwrap_or(href);
-    if href.starts_with('/') || href.split('/').any(|part| part.is_empty() || part == "." || part == "..")
+    if href.starts_with('/')
+        || href
+            .split('/')
+            .any(|part| part.is_empty() || part == "." || part == "..")
     {
         return None;
     }

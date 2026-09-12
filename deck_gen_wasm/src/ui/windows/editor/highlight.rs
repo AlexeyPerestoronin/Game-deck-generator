@@ -30,9 +30,7 @@ fn syntax_name_for_ext(ext: &str) -> Option<&'static str> {
 
 /// Whether `path` has a grammar this module will highlight.
 pub fn can_highlight(path: &str) -> bool {
-    file_ext(path)
-        .and_then(syntax_name_for_ext)
-        .is_some()
+    file_ext(path).and_then(syntax_name_for_ext).is_some()
 }
 
 /// Classed HTML for `code`, or `None` if the extension is unknown / parse fails.
@@ -41,10 +39,11 @@ pub fn highlight_html(path: &str, code: &str) -> Option<String> {
     let name = syntax_name_for_ext(ext)?;
     let set = syntax_set();
     let syntax = set.find_syntax_by_extension(name)?;
-    let mut generator =
-        ClassedHTMLGenerator::new_with_class_style(syntax, set, ClassStyle::Spaced);
+    let mut generator = ClassedHTMLGenerator::new_with_class_style(syntax, set, ClassStyle::Spaced);
     for line in LinesWithEndings::from(code) {
-        generator.parse_html_for_line_which_includes_newline(line).ok()?;
+        generator
+            .parse_html_for_line_which_includes_newline(line)
+            .ok()?;
     }
     Some(generator.finalize())
 }

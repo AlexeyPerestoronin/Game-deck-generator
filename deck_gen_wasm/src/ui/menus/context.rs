@@ -64,11 +64,11 @@ const FOLDER_COMMANDS: &[MenuCommand] = &[
 fn is_previewable(path: &str) -> bool {
     matches!(
         file_ext(path).map(str::to_ascii_lowercase).as_deref(),
-        Some("html" | "htm" | "md" | "markdown")
+        Some("html" | "htm" | "md" | "markdown" | "pdf")
     )
 }
 
-/// Command table for `kind` (files with html/md also get Preview).
+/// Command table for `kind` (files with html/md/pdf also get Preview).
 pub fn commands_for(kind: EntryKind, path: &str) -> &'static [MenuCommand] {
     match kind {
         EntryKind::File if is_previewable(path) => FILE_PREVIEW_COMMANDS,
@@ -148,5 +148,28 @@ pub fn ContextMenu(
                     .collect_view()}
             </div>
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preview_menu_for_html_md_pdf() {
+        assert_eq!(
+            commands_for(EntryKind::File, "games/a/preview.html")[0].id,
+            "preview"
+        );
+        assert_eq!(commands_for(EntryKind::File, "help.MD")[0].id, "preview");
+        assert_eq!(
+            commands_for(EntryKind::File, "games/a/face.pdf")[0].id,
+            "preview"
+        );
+        assert_eq!(
+            commands_for(EntryKind::File, "games/a/data.json5")[0].id,
+            "rename"
+        );
+        assert_eq!(commands_for(EntryKind::Folder, "games/a")[0].id, "rename");
     }
 }

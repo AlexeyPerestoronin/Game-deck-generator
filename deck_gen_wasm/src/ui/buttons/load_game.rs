@@ -8,10 +8,7 @@ use crate::workspace::Workspace;
 
 /// Ask the user to confirm, then pick a disk folder into `games/`.
 #[component]
-pub fn LoadGameButton(
-    workspace: Workspace,
-    #[prop(into)] on_open: Callback<()>,
-) -> impl IntoView {
+pub fn LoadGameButton(workspace: Workspace, #[prop(into)] on_open: Callback<()>) -> impl IntoView {
     view! {
         <DelayedTooltip text="Load a game folder from disk into games/.">
             <button
