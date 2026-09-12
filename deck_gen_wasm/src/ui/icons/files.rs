@@ -1,20 +1,53 @@
 //! Explorer glyphs keyed by file-name extension.
+//!
+//! Each known source type (Markdown, JSON, HTML, SCSS, PDF, images) gets a
+//! 16×16 SVG. Unknown names render an empty slot so the tree columns stay
+//! aligned.
 
 use leptos::prelude::*;
 
+use crate::conf;
 use crate::fs::file_ext;
+
+/// Explorer glyph chosen from a file name’s extension.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum IconKind {
+    Md,
+    Json,
+    Json5,
+    Html,
+    Scss,
+    Pdf,
+    Image,
+}
+
+/// Which explorer glyph `name` should use (`None` = empty slot).
+fn icon_kind(name: &str) -> Option<IconKind> {
+    let ext = file_ext(name)?.to_ascii_lowercase();
+    match ext.as_str() {
+        "md" => Some(IconKind::Md),
+        "json" => Some(IconKind::Json),
+        "json5" => Some(IconKind::Json5),
+        "html" => Some(IconKind::Html),
+        "scss" => Some(IconKind::Scss),
+        "pdf" => Some(IconKind::Pdf),
+        _ if conf::import::IMAGE_EXTENSIONS.iter().any(|ok| ext == *ok) => Some(IconKind::Image),
+        _ => None,
+    }
+}
 
 /// Explorer glyph for `name`’s extension, or an empty slot.
 #[component]
 pub fn FileTypeIcon(name: String) -> impl IntoView {
-    match file_ext(&name).map(|ext| ext.to_ascii_lowercase()) {
-        Some(ext) if ext == "md" => view! { <MdFileIcon /> }.into_any(),
-        Some(ext) if ext == "json" => view! { <JsonFileIcon /> }.into_any(),
-        Some(ext) if ext == "json5" => view! { <Json5FileIcon /> }.into_any(),
-        Some(ext) if ext == "html" => view! { <HtmlFileIcon /> }.into_any(),
-        Some(ext) if ext == "scss" => view! { <ScssFileIcon /> }.into_any(),
-        Some(ext) if ext == "pdf" => view! { <PdfFileIcon /> }.into_any(),
-        _ => view! { <span class="file-icon-slot" aria-hidden="true"></span> }.into_any(),
+    match icon_kind(&name) {
+        Some(IconKind::Md) => view! { <MdFileIcon /> }.into_any(),
+        Some(IconKind::Json) => view! { <JsonFileIcon /> }.into_any(),
+        Some(IconKind::Json5) => view! { <Json5FileIcon /> }.into_any(),
+        Some(IconKind::Html) => view! { <HtmlFileIcon /> }.into_any(),
+        Some(IconKind::Scss) => view! { <ScssFileIcon /> }.into_any(),
+        Some(IconKind::Pdf) => view! { <PdfFileIcon /> }.into_any(),
+        Some(IconKind::Image) => view! { <ImageFileIcon /> }.into_any(),
+        None => view! { <span class="file-icon-slot" aria-hidden="true"></span> }.into_any(),
     }
 }
 
@@ -82,5 +115,35 @@ fn PdfFileIcon() -> impl IntoView {
             <path fill="#e8e8e8" d="M9 0v4h4L9 0z"/>
             <text x="8" y="12.5" text-anchor="middle" fill="#fff" font-size="4.2" font-family="Segoe UI, sans-serif" font-weight="700">PDF</text>
         </svg>
+    }
+}
+
+/// Explorer icon for image files (jpg, png, icon and aliases).
+#[component]
+fn ImageFileIcon() -> impl IntoView {
+    view! {
+        <svg class="file-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path fill="#4ec9b0" d="M3 1.5A1.5 1.5 0 0 1 4.5 0h7A1.5 1.5 0 0 1 13 1.5v13A1.5 1.5 0 0 1 11.5 16h-7A1.5 1.5 0 0 1 3 14.5v-13z"/>
+            <circle fill="#1e1e1e" cx="6.1" cy="6" r="1.15"/>
+            <path fill="#1e1e1e" d="M4.2 12.3 6.5 9.5l1.5 1.7 2.1-2.6 1.7 2.1v1.6H4.2z"/>
+        </svg>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn image_names_get_image_kind() {
+        assert_eq!(icon_kind("logo.png"), Some(IconKind::Image));
+        assert_eq!(icon_kind("photo.JPG"), Some(IconKind::Image));
+        assert_eq!(icon_kind("photo.jpeg"), Some(IconKind::Image));
+        assert_eq!(icon_kind("app.icon"), Some(IconKind::Image));
+        assert_eq!(icon_kind("app.ico"), Some(IconKind::Image));
+        assert_eq!(icon_kind("help.md"), Some(IconKind::Md));
+        assert_eq!(icon_kind("face.pdf"), Some(IconKind::Pdf));
+        assert_eq!(icon_kind("notes.txt"), None);
+        assert_eq!(icon_kind("LICENSE"), None);
     }
 }
