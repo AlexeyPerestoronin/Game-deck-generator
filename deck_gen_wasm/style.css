@@ -162,6 +162,7 @@ body {
   cursor: pointer;
   padding: 3px 8px;
   font: inherit;
+  user-select: none;
 }
 
 .tree-row:hover {
@@ -170,6 +171,15 @@ body {
 
 .tree-row.selected {
   background: var(--selected);
+}
+
+.tree-row.copy-planned {
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: rgba(0, 122, 204, 0.16);
+}
+
+.tree-row.selected.copy-planned {
+  background: #2b3d4f;
 }
 
 .chevron {
@@ -511,4 +521,12 @@ body {
 
 .context-item:hover {
   background: var(--hover);
+}
+
+.context-item.copy-marked {
+  background: rgba(0, 122, 204, 0.28);
+}
+
+.context-item.copy-marked:hover {
+  background: rgba(0, 122, 204, 0.4);
 }

@@ -2,7 +2,8 @@
 //!
 //! [`Vfs`] is a `BTreeMap` of [`Node`] (file or directory). Paths are the
 //! `/`-separated strings from [`path`]. Mutating methods return `Result<_, String>`
-//! so the UI can show the message as status. [`VfsFs`] adapts this tree to
+//! so the UI can show the message as status. Copy clones nodes into a target
+//! folder without touching the OS clipboard. [`VfsFs`] adapts this tree to
 //! [`deck_gen::FileSystem`] for HTML generation.
 
 use std::collections::BTreeMap;
@@ -235,6 +236,52 @@ impl Vfs {
         parent.insert(new_name.to_string(), node);
         Ok(join_path(&parent_path(path), new_name))
     }
+
+    /// Copy each `sources` entry into `dest_dir`, cloning nodes first.
+    ///
+    /// Name clashes get a `unique_name` suffix. Sources are cloned before any
+    /// insert so pasting a folder into itself (or a descendant) is safe.
+    pub fn copy_entries_into(
+        &mut self,
+        sources: &[String],
+        dest_dir: &str,
+    ) -> Result<usize, String> {
+        if !self.is_dir(dest_dir) {
+            return Err(format!("'{dest_dir}' is not a folder"));
+        }
+        let mut clones = Vec::new();
+        for src in sources {
+            clones.push((file_name(src).to_string(), self.clone_node(src)?));
+        }
+        for (name, node) in clones {
+            let dest_name = unique_name(&name, |candidate| {
+                self.exists(&join_path(dest_dir, candidate))
+            });
+            self.insert_node(&join_path(dest_dir, &dest_name), node)?;
+        }
+        Ok(sources.len())
+    }
+
+    fn clone_node(&self, path: &str) -> Result<Node, String> {
+        let parts = split_path(path)?;
+        if parts.is_empty() {
+            return Err("Cannot copy the workspace root".into());
+        }
+        node_at(&self.root, &parts).cloned()
+    }
+
+    fn insert_node(&mut self, path: &str, node: Node) -> Result<(), String> {
+        let parts = split_path(path)?;
+        let Some((name, parent_parts)) = parts.split_last() else {
+            return Err("Cannot write at the workspace root".into());
+        };
+        let parent = parent_map_mut(&mut self.root, parent_parts)?;
+        if parent.contains_key(*name) {
+            return Err(format!("'{path}' already exists"));
+        }
+        parent.insert(name.to_string(), node);
+        Ok(())
+    }
 }
 
 fn is_single_segment_name(name: &str) -> bool {
@@ -375,6 +422,82 @@ mod vfs_tests {
             Some(&[0x89, 0x50][..])
         );
         assert_eq!(stripped.read_file("games/a/data.json5"), Some("x"));
+    }
+
+    #[test]
+    fn copy_file_into_folder_keeps_source() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/data.json5", "x".into()).unwrap();
+        vfs.mkdir("games/b").unwrap();
+        let n = vfs
+            .copy_entries_into(&["games/a/data.json5".into()], "games/b")
+            .unwrap();
+        assert_eq!(n, 1);
+        assert_eq!(vfs.read_file("games/b/data.json5"), Some("x"));
+        assert_eq!(vfs.read_file("games/a/data.json5"), Some("x"));
+    }
+
+    #[test]
+    fn copy_folder_duplicates_tree() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/n/x.txt", "hi".into()).unwrap();
+        vfs.mkdir("games/b").unwrap();
+        vfs.copy_entries_into(&["games/a".into()], "games/b")
+            .unwrap();
+        assert_eq!(vfs.read_file("games/b/a/n/x.txt"), Some("hi"));
+        assert_eq!(vfs.read_file("games/a/n/x.txt"), Some("hi"));
+    }
+
+    #[test]
+    fn copy_name_conflict_gets_suffix() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/f.txt", "1".into()).unwrap();
+        vfs.put_file("games/b/f.txt", "2".into()).unwrap();
+        vfs.copy_entries_into(&["games/a/f.txt".into()], "games/b")
+            .unwrap();
+        assert_eq!(vfs.read_file("games/b/f.txt"), Some("2"));
+        assert_eq!(vfs.read_file("games/b/f.txt-1"), Some("1"));
+    }
+
+    #[test]
+    fn copy_binary_file() {
+        let mut vfs = Vfs::default();
+        vfs.put_bytes("games/a/face.pdf", vec![0x25, 0x50]).unwrap();
+        vfs.mkdir("games/b").unwrap();
+        vfs.copy_entries_into(&["games/a/face.pdf".into()], "games/b")
+            .unwrap();
+        assert_eq!(vfs.read_bytes("games/b/face.pdf"), Some(&[0x25, 0x50][..]));
+        assert!(vfs.is_binary("games/b/face.pdf"));
+    }
+
+    #[test]
+    fn copy_folder_into_itself_nests_a_clone() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/x.txt", "hi".into()).unwrap();
+        vfs.copy_entries_into(&["games/a".into()], "games/a")
+            .unwrap();
+        assert_eq!(vfs.read_file("games/a/x.txt"), Some("hi"));
+        assert_eq!(vfs.read_file("games/a/a/x.txt"), Some("hi"));
+    }
+
+    #[test]
+    fn copy_into_missing_folder_errors() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/x.txt", "hi".into()).unwrap();
+        let err = vfs
+            .copy_entries_into(&["games/a/x.txt".into()], "games/missing")
+            .unwrap_err();
+        assert!(err.contains("not a folder"), "{err}");
+    }
+
+    #[test]
+    fn copy_missing_source_errors() {
+        let mut vfs = Vfs::default();
+        vfs.mkdir("games/b").unwrap();
+        let err = vfs
+            .copy_entries_into(&["games/nope".into()], "games/b")
+            .unwrap_err();
+        assert!(err.contains("not found"), "{err}");
     }
 }
 

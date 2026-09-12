@@ -3,8 +3,9 @@
 //! File and folder command lists are independent tables so they can grow
 //! apart without shared match arms. Files that can be rendered (HTML,
 //! Markdown, PDF, images) get a Preview row. Folders get `load file(s)` to
-//! copy disk files into that folder. The menu is positioned at the click and
-//! dismissed by backdrop click or choosing a command.
+//! copy disk files into that folder, plus `copy` / `past` for in-workspace
+//! copies. The menu is positioned at the click and dismissed by backdrop
+//! click or choosing a command.
 
 use leptos::prelude::*;
 
@@ -36,6 +37,10 @@ const FILE_COMMANDS: &[MenuCommand] = &[
         id: "delete",
         label: "Delete",
     },
+    MenuCommand {
+        id: "copy",
+        label: "Copy",
+    },
 ];
 
 const FILE_PREVIEW_COMMANDS: &[MenuCommand] = &[
@@ -51,6 +56,10 @@ const FILE_PREVIEW_COMMANDS: &[MenuCommand] = &[
         id: "delete",
         label: "Delete",
     },
+    MenuCommand {
+        id: "copy",
+        label: "Copy",
+    },
 ];
 
 const FOLDER_COMMANDS: &[MenuCommand] = &[
@@ -65,6 +74,14 @@ const FOLDER_COMMANDS: &[MenuCommand] = &[
     MenuCommand {
         id: "delete",
         label: "Delete",
+    },
+    MenuCommand {
+        id: "copy",
+        label: "Copy",
+    },
+    MenuCommand {
+        id: "past",
+        label: "Past",
     },
 ];
 
@@ -98,6 +115,8 @@ pub struct MenuState {
     pub x: f64,
     /// Viewport Y of the click.
     pub y: f64,
+    /// True when `path` is already marked for copy (highlights the copy row).
+    pub copy_marked: bool,
 }
 
 /// Command the user picked, plus the path it applies to.
@@ -139,9 +158,11 @@ pub fn ContextMenu(
                     .copied()
                     .map(|command| {
                         let path = path.clone();
+                        let copy_marked = command.id == "copy" && state.copy_marked;
                         view! {
                             <button
                                 class="context-item"
+                                class:copy-marked=copy_marked
                                 role="menuitem"
                                 on:click=move |_| {
                                     on_command.run(ChosenCommand {
@@ -199,6 +220,32 @@ mod tests {
         assert_eq!(
             commands_for(EntryKind::Folder, "games/a")[0].label,
             "load file(s)"
+        );
+        let file_ids: Vec<_> = commands_for(EntryKind::File, "games/a/data.json5")
+            .iter()
+            .map(|c| c.id)
+            .collect();
+        assert!(file_ids.contains(&"copy"));
+        assert!(!file_ids.contains(&"past"));
+        let folder_ids: Vec<_> = commands_for(EntryKind::Folder, "games/a")
+            .iter()
+            .map(|c| c.id)
+            .collect();
+        assert!(folder_ids.contains(&"copy"));
+        assert!(folder_ids.contains(&"past"));
+        assert_eq!(
+            commands_for(EntryKind::File, "games/a/data.json5")
+                .iter()
+                .find(|c| c.id == "copy")
+                .map(|c| c.label),
+            Some("copy")
+        );
+        assert_eq!(
+            commands_for(EntryKind::Folder, "games/a")
+                .iter()
+                .find(|c| c.id == "past")
+                .map(|c| c.label),
+            Some("past")
         );
     }
 }

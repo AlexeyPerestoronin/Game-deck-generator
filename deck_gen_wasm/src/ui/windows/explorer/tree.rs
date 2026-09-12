@@ -1,4 +1,9 @@
 //! Flattened explorer rows: one button per visible file or folder.
+//!
+//! Click selects a single row (and toggles folders). Ctrl+click adds or
+//! removes a row from the multi-selection without opening files. A selected
+//! folder also paints its visible children. Right-click opens the context
+//! menu; copy marks are a separate blue highlight.
 
 use std::collections::HashSet;
 
@@ -7,6 +12,7 @@ use leptos::prelude::*;
 use crate::fs::{join_path, Vfs};
 use crate::ui::icons::FileTypeIcon;
 use crate::ui::menus::{EntryKind, MenuState};
+use crate::workspace::copy_plan::row_looks_selected;
 use crate::workspace::Workspace;
 
 #[component]
@@ -17,28 +23,44 @@ pub(super) fn TreeRows(workspace: Workspace, menu: RwSignal<Option<MenuState>>) 
             key=|row| row.path.clone()
             children=move |row| {
                 let path_for_selected = row.path.clone();
+                let path_for_copy = row.path.clone();
                 let path_for_click = row.path.clone();
                 let path_for_menu = row.path.clone();
                 let is_dir = row.is_dir;
                 let kind = if is_dir { EntryKind::Folder } else { EntryKind::File };
-                let selected = move || workspace.selected.get().as_deref() == Some(path_for_selected.as_str());
+                let selected = move || {
+                    row_looks_selected(&path_for_selected, &workspace.multi_selected.get())
+                };
+                let copy_planned = move || {
+                    workspace.copy_planned.get().contains(&path_for_copy)
+                };
                 view! {
                     <button
                         class="tree-row"
                         class:selected=selected
+                        class:copy-planned=copy_planned
                         class:dir=is_dir
                         style=format!("padding-left: {}px", 8 + row.depth * 14)
                         role="treeitem"
-                        on:click=move |_| workspace.select(path_for_click.clone(), is_dir)
+                        on:click=move |ev| {
+                            if ev.ctrl_key() {
+                                workspace.toggle_select(path_for_click.clone());
+                            } else {
+                                workspace.select(path_for_click.clone(), is_dir);
+                            }
+                        }
                         on:contextmenu=move |ev| {
                             ev.prevent_default();
                             ev.stop_propagation();
-                            workspace.select(path_for_menu.clone(), is_dir);
+                            if !workspace.multi_selected.get().contains(&path_for_menu) {
+                                workspace.select(path_for_menu.clone(), is_dir);
+                            }
                             menu.set(Some(MenuState {
                                 path: path_for_menu.clone(),
                                 kind,
                                 x: f64::from(ev.client_x()),
                                 y: f64::from(ev.client_y()),
+                                copy_marked: workspace.copy_planned.get().contains(&path_for_menu),
                             }));
                         }
                     >

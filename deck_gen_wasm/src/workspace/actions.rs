@@ -61,7 +61,7 @@ impl Workspace {
     fn open_help_preview(&self) {
         let path = conf::help::PATH.to_string();
         self.expand_ancestors(&path);
-        self.selected.set(Some(path.clone()));
+        self.set_primary_selection(Some(path.clone()));
         self.open_tab(OpenTab {
             path,
             kind: TabKind::Preview,
@@ -72,7 +72,8 @@ impl Workspace {
     /// Empty the tree and persist that empty session.
     pub fn clear(&self) {
         self.vfs.set(crate::fs::Vfs::default());
-        self.selected.set(None);
+        self.set_primary_selection(None);
+        self.copy_planned.set(HashSet::new());
         self.tabs.set(Vec::new());
         self.active_tab.set(None);
         self.expanded.set(HashSet::new());
@@ -111,7 +112,7 @@ impl Workspace {
                         Ok(n) => {
                             workspace.vfs.set(vfs);
                             workspace.expand_ancestors(&folder);
-                            workspace.selected.set(Some(folder.clone()));
+                            workspace.set_primary_selection(Some(folder.clone()));
                             workspace
                                 .status
                                 .set(format!("Loaded {n} file(s) into {folder}"));
@@ -149,7 +150,7 @@ impl Workspace {
                             workspace.vfs.set(vfs);
                             let path = format!("games/{folder}");
                             workspace.expand_ancestors(&path);
-                            workspace.selected.set(Some(path.clone()));
+                            workspace.set_primary_selection(Some(path.clone()));
                             workspace.status.set(format!("Loaded {path}"));
                         }
                         Err(err) => workspace.status.set(err),
@@ -227,7 +228,7 @@ impl Workspace {
                     workspace.vfs.set(vfs);
                     let path = format!("games/{}", installed.folder);
                     workspace.expand_ancestors(&path);
-                    workspace.selected.set(Some(path.clone()));
+                    workspace.set_primary_selection(Some(path.clone()));
                     workspace
                         .status
                         .set(format!("Added {path} from {}", installed.source));

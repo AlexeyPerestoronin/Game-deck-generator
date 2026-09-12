@@ -1,13 +1,15 @@
 //! Reactive workspace: tree, selection, and the actions the UI triggers.
 //!
 //! [`Workspace`] is a cheap `Copy` handle to Leptos signals (VFS, selection,
-//! expanded folders, status, loading). Explorer, editor, and the activity bar
-//! all clone it. Mutations go through the VFS; async work (`prepare_html`,
-//! `prepare_pdf`, folder pick, template fetch, ZIP) uses `spawn_local` and the
-//! `loading` flag so two long actions cannot overlap.
+//! multi-selection, copy plan, expanded folders, status, loading). Explorer,
+//! editor, and the activity bar all clone it. Mutations go through the VFS;
+//! async work (`prepare_html`, `prepare_pdf`, folder pick, template fetch,
+//! ZIP) uses `spawn_local` and the `loading` flag so two long actions cannot
+//! overlap.
 
 mod actions;
 mod commands;
+pub(crate) mod copy_plan;
 
 use std::collections::HashSet;
 
@@ -39,8 +41,12 @@ pub struct OpenTab {
 pub struct Workspace {
     /// In-memory file tree.
     pub vfs: RwSignal<Vfs>,
-    /// Explorer selection (file or folder path).
+    /// Primary explorer selection (last clicked path, used by create/tabs).
     pub selected: RwSignal<Option<String>>,
+    /// All explorer paths in the current multi-selection.
+    pub multi_selected: RwSignal<HashSet<String>>,
+    /// Paths marked for copy (in-app plan, not the OS clipboard).
+    pub copy_planned: RwSignal<HashSet<String>>,
     /// Open editor tabs, left to right.
     pub tabs: RwSignal<Vec<OpenTab>>,
     /// Focused tab, if any.
@@ -58,9 +64,12 @@ impl Workspace {
     pub fn from_session(session: Session) -> Self {
         let expanded = session.expanded_set();
         let (tabs, active_tab) = initial_tabs(&session.vfs, &session.selected);
+        let multi_selected = session.selected.iter().cloned().collect();
         Self {
             vfs: RwSignal::new(session.vfs),
             selected: RwSignal::new(session.selected),
+            multi_selected: RwSignal::new(multi_selected),
+            copy_planned: RwSignal::new(HashSet::new()),
             tabs: RwSignal::new(tabs),
             active_tab: RwSignal::new(active_tab),
             expanded: RwSignal::new(expanded),
@@ -76,7 +85,7 @@ impl Workspace {
 
     /// Select `path`; folders also toggle expansion. Files open an edit tab.
     pub fn select(&self, path: String, is_dir: bool) {
-        self.selected.set(Some(path.clone()));
+        self.set_primary_selection(Some(path.clone()));
         self.status.set(String::new());
         if is_dir {
             self.expanded.update(|set| {
@@ -90,6 +99,30 @@ impl Workspace {
                 kind: TabKind::Edit,
             });
         }
+    }
+
+    /// Ctrl+click: add or remove `path` from the multi-selection.
+    pub fn toggle_select(&self, path: String) {
+        self.status.set(String::new());
+        self.multi_selected.update(|set| {
+            if !set.remove(&path) {
+                set.insert(path.clone());
+            }
+        });
+        let set = self.multi_selected.get();
+        if set.contains(&path) {
+            self.selected.set(Some(path));
+        } else {
+            self.selected.set(set.iter().next().cloned());
+        }
+    }
+
+    fn set_primary_selection(&self, path: Option<String>) {
+        match &path {
+            Some(path) => self.multi_selected.set(HashSet::from([path.clone()])),
+            None => self.multi_selected.set(HashSet::new()),
+        }
+        self.selected.set(path);
     }
 
     /// Focus `tab`, creating it if it is not already open.
@@ -108,7 +141,7 @@ impl Workspace {
     /// Make an existing tab active and select its path in the explorer.
     pub fn activate_tab(&self, tab: OpenTab) {
         self.active_tab.set(Some(tab.clone()));
-        self.selected.set(Some(tab.path));
+        self.set_primary_selection(Some(tab.path));
     }
 
     /// Close `tab`. If it was active, activate the neighbor to the right (else left).
@@ -129,9 +162,7 @@ impl Workspace {
             }
         });
         self.active_tab.set(next.clone());
-        if let Some(next) = next {
-            self.selected.set(Some(next.path));
-        }
+        self.set_primary_selection(next.map(|tab| tab.path));
     }
 
     /// Prompt for a name and create an empty file under the creation parent.
@@ -144,7 +175,7 @@ impl Workspace {
         match self.vfs.try_update(|vfs| vfs.create_file(&path)) {
             Some(Ok(())) => {
                 self.expand_ancestors(&parent);
-                self.selected.set(Some(path.clone()));
+                self.set_primary_selection(Some(path.clone()));
                 self.open_tab(OpenTab {
                     path,
                     kind: TabKind::Edit,
@@ -166,7 +197,7 @@ impl Workspace {
         match self.vfs.try_update(|vfs| vfs.mkdir(&path)) {
             Some(Ok(())) => {
                 self.expand_ancestors(&path);
-                self.selected.set(Some(path));
+                self.set_primary_selection(Some(path));
                 self.status.set(String::new());
             }
             Some(Err(err)) => self.status.set(err),
@@ -181,6 +212,12 @@ impl Workspace {
             if selected.as_ref().is_some_and(|current| gone(current)) {
                 *selected = None;
             }
+        });
+        self.multi_selected.update(|set| {
+            set.retain(|current| !gone(current));
+        });
+        self.copy_planned.update(|set| {
+            set.retain(|current| !gone(current));
         });
         self.expanded.update(|set| {
             set.retain(|current| !gone(current));
@@ -206,7 +243,7 @@ impl Workspace {
         self.tabs.set(remaining);
         self.active_tab.set(next.clone());
         if let Some(next) = next {
-            self.selected.set(Some(next.path));
+            self.set_primary_selection(Some(next.path));
         }
     }
 
@@ -215,6 +252,18 @@ impl Workspace {
             if let Some(current) = selected.as_ref() {
                 *selected = Some(rewrite_prefix(current, old, new));
             }
+        });
+        self.multi_selected.update(|set| {
+            *set = set
+                .iter()
+                .map(|current| rewrite_prefix(current, old, new))
+                .collect();
+        });
+        self.copy_planned.update(|set| {
+            *set = set
+                .iter()
+                .map(|current| rewrite_prefix(current, old, new))
+                .collect();
         });
         self.expanded.update(|set| {
             *set = set

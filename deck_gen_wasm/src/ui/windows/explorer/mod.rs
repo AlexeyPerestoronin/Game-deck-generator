@@ -1,9 +1,10 @@
 //! File tree for the in-memory workspace.
 //!
 //! Rows are a flattened walk of expanded directories. Click selects (and
-//! toggles folders); right-click opens the explorer context menu (including
-//! folder “load file(s)”). Create-file / create-folder buttons live in the
-//! header; status is the footer. Import errors from load-files use an alert.
+//! toggles folders); Ctrl+click multi-selects; right-click opens the explorer
+//! context menu (including folder “load file(s)”, `copy`, and `past`).
+//! Create-file / create-folder buttons live in the header; status is the
+//! footer. Import errors from load-files use an alert.
 
 use leptos::prelude::*;
 
