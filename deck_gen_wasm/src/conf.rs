@@ -26,12 +26,10 @@ pub mod template {
     pub const GITHUB_SOURCE_LABEL: &str = "GitHub master";
 }
 
-/// Help Markdown: GitHub when missing from the VFS (local Trunk copy as fallback).
+/// Help Markdown: GitHub when missing from the VFS (bundled file as fallback).
 pub mod help {
     /// Repo path and VFS path of the help Markdown.
     pub const PATH: &str = "deck_gen_wasm/user-help.md";
-    /// Trunk-served copy next to `index.html` (`copy-file` in that page).
-    pub const LOCAL_URL: &str = "user-help.md";
 }
 
 /// localStorage snapshot of the in-memory workspace.
