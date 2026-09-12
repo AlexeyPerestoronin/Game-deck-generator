@@ -11,6 +11,7 @@ mod conf;
 mod export;
 mod fs;
 mod github;
+mod help;
 mod http;
 mod load_folder;
 mod persist;

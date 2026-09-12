@@ -3,8 +3,8 @@
 //! [`Workspace`] is a cheap `Copy` handle to Leptos signals (VFS, selection,
 //! expanded folders, status, loading). Explorer, editor, and the activity bar
 //! all clone it. Mutations go through the VFS; async work (`prepare_html`,
-//! `prepare_pdf`, folder pick, template fetch, ZIP) uses `spawn_local` and the
-//! `loading` flag so two long actions cannot overlap.
+//! `prepare_pdf`, folder pick, template fetch, first-visit help, ZIP) uses
+//! `spawn_local` and the `loading` flag so two long actions cannot overlap.
 
 mod actions;
 mod commands;

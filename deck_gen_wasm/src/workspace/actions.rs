@@ -1,4 +1,4 @@
-//! Long-running workspace actions: persist, import, template, prepare, ZIP.
+//! Long-running workspace actions: persist, help, import, template, prepare, ZIP.
 //!
 //! These methods share the [`Workspace`](super::Workspace) `loading` flag so
 //! the activity bar can disable overlapping work. Async paths yield once before
@@ -10,9 +10,11 @@ use std::sync::Arc;
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-use super::Workspace;
+use super::{OpenTab, TabKind, Workspace};
+use crate::conf;
 use crate::export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
 use crate::fs::VfsFs;
+use crate::help;
 use crate::load_folder::{install_folder, pick_and_read_folder, PickResult};
 use crate::persist::save_session;
 use crate::template::install_new_game;
@@ -24,6 +26,39 @@ impl Workspace {
             Ok(()) => self.status.set("Saved in this browser".into()),
             Err(err) => self.status.set(err),
         }
+    }
+
+    /// Fetch first-visit help from GitHub (or the local copy) and open its preview.
+    pub fn open_first_visit_help(&self) {
+        if self.loading.get() {
+            return;
+        }
+        self.loading.set(true);
+        self.status.set("Loading help…".into());
+        let workspace = *self;
+        spawn_local(async move {
+            match help::fetch_user_help().await {
+                Ok(content) => {
+                    let mut vfs = workspace.vfs.get_untracked();
+                    match help::install_user_help(&mut vfs, content) {
+                        Ok(()) => {
+                            workspace.vfs.set(vfs);
+                            let path = conf::help::PATH.to_string();
+                            workspace.expand_ancestors(&path);
+                            workspace.selected.set(Some(path.clone()));
+                            workspace.open_tab(OpenTab {
+                                path,
+                                kind: TabKind::Preview,
+                            });
+                            workspace.status.set(format!("Opened {}", conf::help::PATH));
+                        }
+                        Err(err) => workspace.status.set(err),
+                    }
+                }
+                Err(err) => workspace.status.set(err),
+            }
+            workspace.loading.set(false);
+        });
     }
 
     /// Empty the tree and persist that empty session.

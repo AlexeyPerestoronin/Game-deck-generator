@@ -28,6 +28,14 @@ pub mod template {
     pub const LOCAL_SOURCE_LABEL: &str = "local template";
 }
 
+/// First-visit help file fetched from GitHub (local Trunk copy as fallback).
+pub mod help {
+    /// Repo path and VFS path of the help Markdown.
+    pub const PATH: &str = "deck_gen_wasm/user-help.md";
+    /// Trunk-served copy next to `index.html` (`copy-file` in that page).
+    pub const LOCAL_URL: &str = "user-help.md";
+}
+
 /// localStorage snapshot of the in-memory workspace.
 pub mod session {
     /// Key under which [`crate::persist::Session`] JSON is stored.
