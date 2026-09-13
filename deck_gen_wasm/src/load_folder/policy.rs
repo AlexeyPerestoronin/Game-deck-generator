@@ -6,35 +6,7 @@
 //! [`import_block_message`].
 
 use crate::conf;
-use crate::fs::file_ext;
-
-/// Lowercased extension of `path`, if any.
-fn ext_of(path: &str) -> Option<String> {
-    file_ext(path).map(|ext| ext.to_ascii_lowercase())
-}
-
-fn ext_in(ext: &str, list: &[&str]) -> bool {
-    list.iter().any(|ok| ext == *ok)
-}
-
-/// Whether `path` has an allowed text or image extension.
-pub fn extension_allowed(path: &str) -> bool {
-    match ext_of(path) {
-        Some(ext) => {
-            ext_in(&ext, conf::import::ALLOWED_EXTENSIONS)
-                || ext_in(&ext, conf::import::IMAGE_EXTENSIONS)
-        }
-        None => false,
-    }
-}
-
-/// Whether `path` is an accepted image type (jpg / png / icon and aliases).
-pub fn is_image(path: &str) -> bool {
-    match ext_of(path) {
-        Some(ext) => ext_in(&ext, conf::import::IMAGE_EXTENSIONS),
-        None => false,
-    }
-}
+use crate::fs::kind;
 
 /// How one disk path should be imported, given its size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,11 +23,11 @@ pub enum ImportClass {
 
 /// Classify `path` for import using `size_bytes` (from the File API).
 pub fn classify(path: &str, size_bytes: u64) -> ImportClass {
-    if !extension_allowed(path) {
+    if !kind::extension_allowed(path) {
         ImportClass::Rejected
-    } else if is_image(path) && image_too_large(size_bytes) {
+    } else if kind::is_image(path) && image_too_large(size_bytes) {
         ImportClass::Oversized
-    } else if is_image(path) {
+    } else if kind::is_image(path) {
         ImportClass::Image
     } else {
         ImportClass::Text
@@ -133,15 +105,15 @@ mod tests {
 
     #[test]
     fn allows_listed_text_and_image_extensions() {
-        assert!(extension_allowed("help.md"));
-        assert!(extension_allowed("data.json5"));
-        assert!(extension_allowed("views/simple-front.html"));
-        assert!(extension_allowed("art/logo.png"));
-        assert!(extension_allowed("art/photo.JPG"));
-        assert!(extension_allowed("art/app.icon"));
-        assert!(!extension_allowed("print.pdf"));
-        assert!(!extension_allowed("notes.txt"));
-        assert!(!extension_allowed("LICENSE"));
+        assert!(kind::extension_allowed("help.md"));
+        assert!(kind::extension_allowed("data.json5"));
+        assert!(kind::extension_allowed("views/simple-front.html"));
+        assert!(kind::extension_allowed("art/logo.png"));
+        assert!(kind::extension_allowed("art/photo.JPG"));
+        assert!(kind::extension_allowed("art/app.icon"));
+        assert!(!kind::extension_allowed("print.pdf"));
+        assert!(!kind::extension_allowed("notes.txt"));
+        assert!(!kind::extension_allowed("LICENSE"));
     }
 
     #[test]
@@ -149,9 +121,9 @@ mod tests {
         assert!(!image_too_large(conf::import::MAX_IMAGE_BYTES));
         assert!(!image_too_large(0));
         assert!(image_too_large(conf::import::MAX_IMAGE_BYTES + 1));
-        assert!(is_image("face.jpg"));
-        assert!(is_image("mark.PNG"));
-        assert!(!is_image("help.md"));
+        assert!(kind::is_image("face.jpg"));
+        assert!(kind::is_image("mark.PNG"));
+        assert!(!kind::is_image("help.md"));
         assert_eq!(classify("help.md", 10), ImportClass::Text);
         assert_eq!(classify("logo.png", 10), ImportClass::Image);
         assert_eq!(

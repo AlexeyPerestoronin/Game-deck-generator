@@ -10,14 +10,9 @@ use crate::fs::Vfs;
 
 const BUNDLED_HELP: &str = include_str!("../user-help.md");
 
-/// Markdown compiled into this WASM from `user-help.md`.
-pub fn bundled_help() -> &'static str {
-    BUNDLED_HELP
-}
-
-/// Write `content` at [`conf::help::PATH`] (workspace root).
-pub fn install_user_help(vfs: &mut Vfs, content: String) -> Result<(), String> {
-    vfs.put_file(conf::help::PATH, content)
+/// Write the bundled help at [`conf::help::PATH`] (workspace root).
+pub fn install_user_help(vfs: &mut Vfs) -> Result<(), String> {
+    vfs.put_file(conf::help::PATH, BUNDLED_HELP.to_string())
 }
 
 /// Whether the VFS still needs a copy of the bundled help file.
@@ -28,15 +23,12 @@ pub fn needs_install(vfs: &Vfs) -> bool {
     }
 }
 
-/// Whether help preview should open (no editor tabs yet).
-pub fn should_open_preview(tab_count: usize) -> bool {
-    tab_count == 0
-}
-
-/// True when `body` is an HTML document, not Markdown help.
-pub fn looks_like_html_document(body: &str) -> bool {
-    let t = body.trim_start().to_ascii_lowercase();
-    t.starts_with("<!doctype html") || t.starts_with("<html")
+/// True when the start of `body` is an HTML document, not Markdown help.
+fn looks_like_html_document(body: &str) -> bool {
+    let t = body.trim_start();
+    let n = t.len().min(32);
+    let prefix = t.get(..n).unwrap_or(t).to_ascii_lowercase();
+    prefix.starts_with("<!doctype html") || prefix.starts_with("<html")
 }
 
 #[cfg(test)]
@@ -46,19 +38,19 @@ mod tests {
     #[test]
     fn installs_at_workspace_root() {
         let mut vfs = Vfs::default();
-        install_user_help(&mut vfs, "# Hello".into()).unwrap();
-        assert_eq!(vfs.read_file("user-help.md"), Some("# Hello"));
-        assert_eq!(vfs.read_file(conf::help::PATH), Some("# Hello"));
+        install_user_help(&mut vfs).unwrap();
+        assert!(vfs
+            .read_file("user-help.md")
+            .is_some_and(|body| body.starts_with('#')));
+        assert_eq!(vfs.read_file(conf::help::PATH), vfs.read_file("user-help.md"));
         assert!(!vfs.is_dir("deck_gen_wasm"));
         assert!(!needs_install(&vfs));
     }
 
     #[test]
-    fn install_when_missing_preview_when_no_tabs() {
+    fn install_when_missing() {
         let vfs = Vfs::default();
         assert!(needs_install(&vfs));
-        assert!(should_open_preview(0));
-        assert!(!should_open_preview(1));
     }
 
     #[test]
@@ -74,7 +66,8 @@ mod tests {
     #[test]
     fn reinstall_if_stored_help_is_html() {
         let mut vfs = Vfs::default();
-        install_user_help(&mut vfs, "<!DOCTYPE html>\n<html></html>".into()).unwrap();
+        vfs.put_file(conf::help::PATH, "<!DOCTYPE html>\n<html></html>".into())
+            .unwrap();
         assert!(needs_install(&vfs));
     }
 }

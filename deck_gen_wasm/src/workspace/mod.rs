@@ -16,7 +16,9 @@ use std::collections::HashSet;
 
 use leptos::prelude::*;
 
-use crate::fs::{join_path, parent_path, rewrite_prefix, Vfs};
+use crate::fs::{
+    join_path, parent_path, retain_not_under, rewrite_prefix, rewrite_set, Vfs,
+};
 use crate::persist::Session;
 
 /// Whether an editor tab shows the source or a rendered preview.
@@ -90,7 +92,9 @@ impl Workspace {
 
     /// Serializable snapshot for localStorage (binaries omitted; they go to IndexedDB).
     pub fn snapshot(&self) -> Session {
-        Session::from_workspace(self.vfs.get(), self.selected.get(), &self.expanded.get())
+        self.vfs.with(|vfs| {
+            Session::from_workspace(vfs, self.selected.get(), &self.expanded.get())
+        })
     }
 
     /// Select `path`; folders also toggle expansion. Files open an edit tab.
@@ -176,22 +180,15 @@ impl Workspace {
     }
 
     fn forget_path(&self, path: &str) {
-        let prefix = format!("{path}/");
-        let gone = |current: &str| current == path || current.starts_with(&prefix);
+        let gone = |current: &str| crate::fs::path_is_or_under(current, path);
         self.selected.update(|selected| {
             if selected.as_ref().is_some_and(|current| gone(current)) {
                 *selected = None;
             }
         });
-        self.multi_selected.update(|set| {
-            set.retain(|current| !gone(current));
-        });
-        self.copy_planned.update(|set| {
-            set.retain(|current| !gone(current));
-        });
-        self.expanded.update(|set| {
-            set.retain(|current| !gone(current));
-        });
+        self.multi_selected.update(|set| retain_not_under(set, path));
+        self.copy_planned.update(|set| retain_not_under(set, path));
+        self.expanded.update(|set| retain_not_under(set, path));
         let (remaining, next) = split::forget_tabs(self.tabs.get(), self.active_tab.get(), &gone);
         let (preview_remaining, preview_next) = split::forget_tabs(
             self.preview_tabs.get(),
@@ -213,24 +210,9 @@ impl Workspace {
                 *selected = Some(rewrite_prefix(current, old, new));
             }
         });
-        self.multi_selected.update(|set| {
-            *set = set
-                .iter()
-                .map(|current| rewrite_prefix(current, old, new))
-                .collect();
-        });
-        self.copy_planned.update(|set| {
-            *set = set
-                .iter()
-                .map(|current| rewrite_prefix(current, old, new))
-                .collect();
-        });
-        self.expanded.update(|set| {
-            *set = set
-                .iter()
-                .map(|current| rewrite_prefix(current, old, new))
-                .collect();
-        });
+        self.multi_selected.update(|set| rewrite_set(set, old, new));
+        self.copy_planned.update(|set| rewrite_set(set, old, new));
+        self.expanded.update(|set| rewrite_set(set, old, new));
         self.tabs.update(|tabs| {
             for tab in tabs.iter_mut() {
                 tab.path = rewrite_prefix(&tab.path, old, new);
@@ -255,20 +237,54 @@ impl Workspace {
 
     fn creation_parent(&self) -> String {
         match self.selected.get() {
-            Some(path) if self.vfs.get().is_dir(&path) => path,
-            Some(path) => parent_path(&path),
+            Some(path) if self.vfs.with(|vfs| vfs.is_dir(&path)) => path,
+            Some(path) => parent_path(&path).to_string(),
             None => String::new(),
         }
     }
 
     fn expand_ancestors(&self, path: &str) {
         self.expanded.update(|set| {
-            let mut current = path.to_string();
+            let mut current = path;
             while !current.is_empty() {
-                set.insert(current.clone());
-                current = parent_path(&current);
+                set.insert(current.to_string());
+                current = parent_path(current);
             }
         });
+    }
+
+    /// True if an async action may start; sets `loading` and the status line.
+    fn try_begin_async(&self, status: impl Into<String>) -> bool {
+        if self.loading.get() {
+            return false;
+        }
+        self.loading.set(true);
+        self.status.set(status.into());
+        true
+    }
+
+    fn finish_async(&self) {
+        self.loading.set(false);
+    }
+
+    fn take_pick<T>(
+        &self,
+        warning: RwSignal<Option<String>>,
+        result: crate::load_folder::PickOutcome<T>,
+    ) -> Option<T> {
+        use crate::load_folder::PickOutcome;
+        match result {
+            PickOutcome::Cancelled => {
+                self.status.set(String::new());
+                None
+            }
+            PickOutcome::Rejected(reason) => {
+                warning.set(Some(reason));
+                self.status.set(String::new());
+                None
+            }
+            PickOutcome::Ready(value) => Some(value),
+        }
     }
 }
 

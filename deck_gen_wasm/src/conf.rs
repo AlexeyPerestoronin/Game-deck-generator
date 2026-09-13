@@ -1,10 +1,10 @@
 //! Compile-time knobs for the browser editor.
 //!
-//! URLs, storage keys, import policy, and UI delays used to live next to the
-//! code that read them. They are gathered here so a value can be changed in one
-//! place without hunting through GitHub, picker, persist, and tooltip modules.
-//! Nothing here is mutated at runtime; the WASM build has no process-wide
-//! writable statics for these settings.
+//! URLs, storage keys, import policy, file-extension tables, and UI delays used
+//! to live next to the code that read them. They are gathered here so a value
+//! can be changed in one place without hunting through GitHub, picker, persist,
+//! and tooltip modules. Nothing here is mutated at runtime; the WASM build has
+//! no process-wide writable statics for these settings.
 
 /// GitHub repository used to list and fetch the `new-game` template.
 pub mod github {
@@ -46,14 +46,37 @@ pub mod session {
     pub const IDB_VERSION: u32 = 1;
 }
 
+/// Lowercased file-extension tables (no dots). Import, preview, highlight, and
+/// icons all read from here so a new type is not added in four match arms.
+pub mod ext {
+    /// Markdown source (preview + highlight). Disk import allows only `md`.
+    pub const MARKDOWN: &[&str] = &["md", "markdown"];
+    /// HTML source. Disk import allows only `html`.
+    pub const HTML: &[&str] = &["html", "htm"];
+    /// JSON.
+    pub const JSON: &[&str] = &["json"];
+    /// JSON5.
+    pub const JSON5: &[&str] = &["json5"];
+    /// SCSS (import, icon, highlight).
+    pub const SCSS: &[&str] = &["scss"];
+    /// Extra CSS-family extensions highlighted like SCSS (not imported).
+    pub const SASS_CSS: &[&str] = &["sass", "css"];
+    /// PDF (preview + icon; not imported from disk).
+    pub const PDF: &[&str] = &["pdf"];
+    /// Raster / icon images accepted as binary files.
+    pub const IMAGE: &[&str] = &["jpg", "jpeg", "png", "ico", "icon"];
+    /// Text extensions accepted when copying files from disk into the workspace.
+    pub const IMPORT_TEXT: &[&str] = &["md", "json", "json5", "html", "scss"];
+}
+
 /// Folder-import rules for “Load Game” and folder “load file(s)”.
 pub mod import {
     /// Text extensions accepted when copying files from disk into the workspace.
     /// Image types are listed separately in [`IMAGE_EXTENSIONS`].
-    pub const ALLOWED_EXTENSIONS: &[&str] = &["md", "json", "json5", "html", "scss"];
+    pub const ALLOWED_EXTENSIONS: &[&str] = super::ext::IMPORT_TEXT;
     /// Image extensions accepted alongside [`ALLOWED_EXTENSIONS`].
     /// `jpeg` is the same format as `jpg`; `ico` is the usual name for icon files.
-    pub const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "ico", "icon"];
+    pub const IMAGE_EXTENSIONS: &[&str] = super::ext::IMAGE;
     /// Images larger than this are refused (100 MiB).
     pub const MAX_IMAGE_BYTES: u64 = 100 * 1024 * 1024;
     /// Fallback folder name when the picker does not supply one.
@@ -68,8 +91,20 @@ pub mod export {
     pub const ZIP_FILENAME: &str = "workspace.zip";
 }
 
+/// Bounded async I/O concurrency (WASM has no CPU threads).
+pub mod io {
+    /// Simultaneous GitHub raw-file fetches when installing `new-game`.
+    pub const FETCH_PARALLEL: usize = 8;
+    /// Simultaneous `File.text` / `arrayBuffer` reads after import classify.
+    pub const FILE_READ_PARALLEL: usize = 8;
+}
+
 /// Chrome timing that is not layout CSS.
 pub mod ui {
     /// Pointer must stay on an activity-bar control this long before a tooltip.
     pub const TOOLTIP_HOVER_DELAY_MS: u32 = 1500;
+    /// Wait this long after the last VFS/selection change before autosave.
+    pub const AUTOSAVE_DEBOUNCE_MS: u32 = 300;
+    /// Wait this long after the last edit before re-running syntect.
+    pub const HIGHLIGHT_DEBOUNCE_MS: u32 = 150;
 }

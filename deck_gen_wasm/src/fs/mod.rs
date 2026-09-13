@@ -10,11 +10,13 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+pub mod kind;
 mod path;
 mod vfs_fs;
 
 pub use path::{
-    file_ext, file_name, join_path, parent_path, rewrite_prefix, split_path, unique_name,
+    file_ext, file_name, join_path, parent_path, path_is_or_under, retain_not_under, rewrite_prefix,
+    rewrite_set, split_path, unique_name,
 };
 pub use vfs_fs::VfsFs;
 
@@ -146,11 +148,15 @@ impl Vfs {
         }
     }
 
-    /// Paths and bytes of every [`Node::Binary`] file, in tree order.
-    pub fn binary_entries(&self) -> Vec<(String, Vec<u8>)> {
-        let mut files = Vec::new();
-        collect_binaries("", &self.root, &mut files);
-        files
+    /// Walk every [`Node::Binary`] in tree order without copying bytes.
+    pub fn visit_binaries(&self, mut visit: impl FnMut(&str, &[u8])) {
+        visit_binaries("", &self.root, &mut visit);
+    }
+
+    /// Walk directories then files in tree order; file bodies are borrowed.
+    /// `content` is `None` for a directory and `Some(bytes)` for a file.
+    pub fn visit_entries(&self, mut visit: impl FnMut(&str, Option<&[u8]>)) {
+        visit_entries("", &self.root, &mut visit);
     }
 
     /// Write binary files back onto a tree that was stripped for localStorage.
@@ -183,21 +189,11 @@ impl Vfs {
     }
 
     /// Immediate children as `(name, is_dir)`, sorted by [`BTreeMap`] order.
-    pub fn children(&self, path: &str) -> Vec<(String, bool)> {
-        let Some(map) = dir_children(&self.root, path) else {
-            return Vec::new();
-        };
-        map.iter()
-            .map(|(name, node)| (name.clone(), matches!(node, Node::Dir { .. })))
-            .collect()
-    }
-
-    /// Depth-first listing: directory paths, then `(path, bytes)` files.
-    pub fn files_and_dirs(&self) -> (Vec<String>, Vec<(String, Vec<u8>)>) {
-        let mut dirs = Vec::new();
-        let mut files = Vec::new();
-        collect_entries("", &self.root, &mut dirs, &mut files);
-        (dirs, files)
+    pub fn children<'a>(&'a self, path: &'a str) -> impl Iterator<Item = (&'a str, bool)> + 'a {
+        dir_children(&self.root, path)
+            .into_iter()
+            .flat_map(|map| map.iter())
+            .map(|(name, node)| (name.as_str(), matches!(node, Node::Dir { .. })))
     }
 
     /// Delete a file or directory (and its descendants).
@@ -234,7 +230,7 @@ impl Vfs {
             .remove(*old_name)
             .ok_or_else(|| format!("'{path}' not found"))?;
         parent.insert(new_name.to_string(), node);
-        Ok(join_path(&parent_path(path), new_name))
+        Ok(join_path(parent_path(path), new_name))
     }
 
     /// Copy each `sources` entry into `dest_dir`, cloning nodes first.
@@ -408,7 +404,8 @@ mod vfs_tests {
         vfs.put_file("games/a/data.json5", "x".into()).unwrap();
         vfs.put_bytes("games/a/face.pdf", vec![0x25, 0x50]).unwrap();
         vfs.put_bytes("games/a/logo.png", vec![0x89, 0x50]).unwrap();
-        let entries = vfs.binary_entries();
+        let mut entries = Vec::new();
+        vfs.visit_binaries(|path, data| entries.push((path.to_string(), data.to_vec())));
         assert_eq!(entries.len(), 2);
         let mut stripped = vfs.without_binaries();
         assert!(!stripped.exists("games/a/face.pdf"));
@@ -501,35 +498,34 @@ mod vfs_tests {
     }
 }
 
-fn collect_entries(
+fn visit_entries(
     prefix: &str,
     children: &BTreeMap<String, Node>,
-    dirs: &mut Vec<String>,
-    files: &mut Vec<(String, Vec<u8>)>,
+    visit: &mut impl FnMut(&str, Option<&[u8]>),
 ) {
     for (name, node) in children {
         let path = join_path(prefix, name);
         match node {
             Node::Dir { children } => {
-                dirs.push(path.clone());
-                collect_entries(&path, children, dirs, files);
+                visit(&path, None);
+                visit_entries(&path, children, visit);
             }
-            Node::File { content } => files.push((path, content.as_bytes().to_vec())),
-            Node::Binary { data } => files.push((path, data.clone())),
+            Node::File { content } => visit(&path, Some(content.as_bytes())),
+            Node::Binary { data } => visit(&path, Some(data)),
         }
     }
 }
 
-fn collect_binaries(
+fn visit_binaries(
     prefix: &str,
     children: &BTreeMap<String, Node>,
-    files: &mut Vec<(String, Vec<u8>)>,
+    visit: &mut impl FnMut(&str, &[u8]),
 ) {
     for (name, node) in children {
         let path = join_path(prefix, name);
         match node {
-            Node::Dir { children } => collect_binaries(&path, children, files),
-            Node::Binary { data } => files.push((path, data.clone())),
+            Node::Dir { children } => visit_binaries(&path, children, visit),
+            Node::Binary { data } => visit(&path, data),
             Node::File { .. } => {}
         }
     }

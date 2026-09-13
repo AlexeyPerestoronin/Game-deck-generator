@@ -9,18 +9,11 @@
 use leptos::prelude::*;
 
 use super::{OpenTab, TabKind, Workspace};
-use crate::fs::file_ext;
-use crate::load_folder::is_image;
+use crate::fs::kind;
 
 /// HTML, Markdown, PDF, and images can render in a preview tab.
 pub(crate) fn is_previewable(path: &str) -> bool {
-    if is_image(path) {
-        return true;
-    }
-    matches!(
-        file_ext(path).map(str::to_ascii_lowercase).as_deref(),
-        Some("html" | "htm" | "md" | "markdown" | "pdf")
-    )
+    kind::is_previewable(path)
 }
 
 /// Split a mixed tab bar into edit (left) and preview (right) lists.

@@ -5,24 +5,20 @@
 //! Nested embed keeps the viewer chrome and white paper but paints raster
 //! card images as black rectangles.
 
-use js_sys::{Array, Uint8Array};
 use leptos::prelude::*;
-use web_sys::{Blob, BlobPropertyBag, Url};
 
 use super::iframe::inline_relative_iframes;
-use crate::fs::file_ext;
+use crate::fs::kind::{self, FileKind};
+use crate::js;
 use crate::workspace::Workspace;
 
 /// Active-tab preview: HTML, Markdown, PDF, or image, chosen by file extension.
 #[component]
 pub(super) fn PreviewPane(workspace: Workspace, path: String) -> impl IntoView {
-    let ext = file_ext(&path).unwrap_or("").to_ascii_lowercase();
-    match ext.as_str() {
-        "html" | "htm" => view! { <HtmlPreview workspace=workspace path=path /> }.into_any(),
-        "pdf" => view! { <PdfPreview workspace=workspace path=path /> }.into_any(),
-        "jpg" | "jpeg" | "png" | "ico" | "icon" => {
-            view! { <ImagePreview workspace=workspace path=path /> }.into_any()
-        }
+    match kind::kind_of(&path) {
+        FileKind::Html => view! { <HtmlPreview workspace=workspace path=path /> }.into_any(),
+        FileKind::Pdf => view! { <PdfPreview workspace=workspace path=path /> }.into_any(),
+        FileKind::Image => view! { <ImagePreview workspace=workspace path=path /> }.into_any(),
         _ => view! { <MarkdownPreview workspace=workspace path=path /> }.into_any(),
     }
 }
@@ -34,11 +30,12 @@ fn HtmlPreview(workspace: Workspace, path: String) -> impl IntoView {
             <iframe
                 class="preview-frame"
                 prop:srcdoc=move || {
-                    let vfs = workspace.vfs.get();
-                    let Some(html) = vfs.read_file(&path) else {
-                        return String::new();
-                    };
-                    inline_relative_iframes(&vfs, &path, html)
+                    workspace.vfs.with(|vfs| {
+                        let Some(html) = vfs.read_file(&path) else {
+                            return String::new();
+                        };
+                        inline_relative_iframes(vfs, &path, html)
+                    })
                 }
             />
         </div>
@@ -51,8 +48,7 @@ fn MarkdownPreview(workspace: Workspace, path: String) -> impl IntoView {
         <div
             class="preview-md"
             inner_html=move || {
-                let vfs = workspace.vfs.get();
-                markdown_to_html(vfs.read_file(&path).unwrap_or(""))
+                workspace.vfs.with(|vfs| markdown_to_html(vfs.read_file(&path).unwrap_or("")))
             }
         ></div>
     }
@@ -70,17 +66,17 @@ fn markdown_to_html(src: &str) -> String {
 
 #[component]
 fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
-    let bytes = Memo::new(move |_| workspace.vfs.get().read_bytes(&path).map(Vec::from));
+    let bytes = Memo::new(move |_| workspace.vfs.with(|vfs| vfs.read_bytes(&path).map(Vec::from)));
     let src = RwSignal::new(String::new());
     Effect::new(move |_| {
         let next = bytes
             .get()
             .as_deref()
-            .and_then(pdf_blob_url)
+            .and_then(|data| js::blob_url(data, "application/pdf"))
             .unwrap_or_default();
         replace_object_url(src, next);
     });
-    on_cleanup(move || revoke_object_url(&src.get_untracked()));
+    on_cleanup(move || js::revoke_object_url(&src.get_untracked()));
     view! {
         <div class="preview-host">
             <Show when=move || !src.get().is_empty()>
@@ -92,19 +88,19 @@ fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
 
 #[component]
 fn ImagePreview(workspace: Workspace, path: String) -> impl IntoView {
-    let mime = image_mime(&path);
+    let mime = kind::image_mime(&path);
     let alt = path.clone();
-    let bytes = Memo::new(move |_| workspace.vfs.get().read_bytes(&path).map(Vec::from));
+    let bytes = Memo::new(move |_| workspace.vfs.with(|vfs| vfs.read_bytes(&path).map(Vec::from)));
     let src = RwSignal::new(String::new());
     Effect::new(move |_| {
         let next = bytes
             .get()
             .as_deref()
-            .and_then(|data| blob_url(data, mime))
+            .and_then(|data| js::blob_url(data, mime))
             .unwrap_or_default();
         replace_object_url(src, next);
     });
-    on_cleanup(move || revoke_object_url(&src.get_untracked()));
+    on_cleanup(move || js::revoke_object_url(&src.get_untracked()));
     view! {
         <div class="preview-image-wrap">
             <img class="preview-image" prop:src=move || src.get() alt=alt />
@@ -112,39 +108,10 @@ fn ImagePreview(workspace: Workspace, path: String) -> impl IntoView {
     }
 }
 
-fn image_mime(path: &str) -> &'static str {
-    match file_ext(path).unwrap_or("").to_ascii_lowercase().as_str() {
-        "jpg" | "jpeg" => "image/jpeg",
-        "png" => "image/png",
-        "ico" | "icon" => "image/x-icon",
-        _ => "application/octet-stream",
-    }
-}
-
-fn pdf_blob_url(bytes: &[u8]) -> Option<String> {
-    blob_url(bytes, "application/pdf")
-}
-
-fn blob_url(bytes: &[u8], mime: &str) -> Option<String> {
-    let array = Uint8Array::from(bytes);
-    let parts = Array::new();
-    parts.push(&array);
-    let opts = BlobPropertyBag::new();
-    opts.set_type(mime);
-    let blob = Blob::new_with_u8_array_sequence_and_options(&parts, &opts).ok()?;
-    Url::create_object_url_with_blob(&blob).ok()
-}
-
 fn replace_object_url(slot: RwSignal<String>, next: String) {
     let prev = slot.get_untracked();
     slot.set(next.clone());
     if prev != next {
-        revoke_object_url(&prev);
-    }
-}
-
-fn revoke_object_url(url: &str) {
-    if !url.is_empty() {
-        let _ = Url::revoke_object_url(url);
+        js::revoke_object_url(&prev);
     }
 }

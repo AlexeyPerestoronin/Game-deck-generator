@@ -13,11 +13,12 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{IdbDatabase, IdbOpenDbRequest, IdbRequest, IdbTransactionMode};
 
 use crate::conf;
+use crate::fs::Vfs;
 
 /// Stable hash of binary path/length/edges so autosave can skip unchanged blobs.
-pub fn binaries_fingerprint(entries: &[(String, Vec<u8>)]) -> u64 {
+pub fn binaries_fingerprint(vfs: &Vfs) -> u64 {
     let mut h = 0xcbf29ce484222325u64;
-    for (path, data) in entries {
+    vfs.visit_binaries(|path, data| {
         for byte in path.as_bytes() {
             h ^= u64::from(*byte);
             h = h.wrapping_mul(0x100000001b3);
@@ -32,8 +33,19 @@ pub fn binaries_fingerprint(entries: &[(String, Vec<u8>)]) -> u64 {
             h ^= u64::from(byte);
             h = h.wrapping_mul(0x100000001b3);
         }
-    }
+    });
     h
+}
+
+/// Encode binary files as a JS object of path → `Uint8Array` (copies into JS).
+pub fn encode_binaries(vfs: &Vfs) -> Object {
+    let obj = Object::new();
+    vfs.visit_binaries(|path, data| {
+        let array = Uint8Array::new_with_length(data.len() as u32);
+        array.copy_from(data);
+        let _ = Reflect::set(&obj, &JsValue::from_str(path), &array);
+    });
+    obj
 }
 
 /// Read every stored binary, or an empty list if the DB/record is missing.
@@ -55,8 +67,13 @@ pub async fn load_binaries() -> Result<Vec<(String, Vec<u8>)>, String> {
     Ok(decode_binaries(&value))
 }
 
-/// Replace the stored binary map with `entries` (empty list clears them).
-pub async fn save_binaries(entries: &[(String, Vec<u8>)]) -> Result<(), String> {
+/// Replace the stored binary map with the binaries currently in `vfs`.
+pub async fn save_binaries(vfs: &Vfs) -> Result<(), String> {
+    save_encoded(encode_binaries(vfs)).await
+}
+
+/// Write a JS object already encoded from a VFS walk.
+pub async fn save_encoded(value: Object) -> Result<(), String> {
     let db = open_db().await?;
     let tx = db
         .transaction_with_str_and_mode(conf::session::IDB_STORE, IdbTransactionMode::Readwrite)
@@ -64,7 +81,6 @@ pub async fn save_binaries(entries: &[(String, Vec<u8>)]) -> Result<(), String> 
     let store = tx
         .object_store(conf::session::IDB_STORE)
         .map_err(|_| "indexedDB store missing".to_string())?;
-    let value = encode_binaries(entries);
     let request = store
         .put_with_key(&value, &JsValue::from_str(conf::session::IDB_KEY))
         .map_err(|_| "indexedDB put failed".to_string())?;
@@ -105,16 +121,6 @@ async fn open_db() -> Result<IdbDatabase, String> {
     value
         .dyn_into::<IdbDatabase>()
         .map_err(|_| "indexedDB open did not return a database".to_string())
-}
-
-fn encode_binaries(entries: &[(String, Vec<u8>)]) -> Object {
-    let obj = Object::new();
-    for (path, data) in entries {
-        let array = Uint8Array::new_with_length(data.len() as u32);
-        array.copy_from(data);
-        let _ = Reflect::set(&obj, &JsValue::from_str(path), &array);
-    }
-    obj
 }
 
 fn decode_binaries(value: &JsValue) -> Vec<(String, Vec<u8>)> {
@@ -172,16 +178,24 @@ async fn await_request(request: &IdbRequest) -> Result<JsValue, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fs::Vfs;
 
     #[test]
     fn fingerprint_changes_when_bytes_or_path_change() {
-        let a = vec![("a.pdf".into(), vec![1, 2, 3])];
-        let b = vec![("a.pdf".into(), vec![1, 2, 3])];
-        let c = vec![("a.pdf".into(), vec![1, 2, 4])];
-        let d = vec![("b.pdf".into(), vec![1, 2, 3])];
+        let mut a = Vfs::default();
+        a.put_bytes("a.pdf", vec![1, 2, 3]).unwrap();
+        let mut b = Vfs::default();
+        b.put_bytes("a.pdf", vec![1, 2, 3]).unwrap();
+        let mut c = Vfs::default();
+        c.put_bytes("a.pdf", vec![1, 2, 4]).unwrap();
+        let mut d = Vfs::default();
+        d.put_bytes("b.pdf", vec![1, 2, 3]).unwrap();
         assert_eq!(binaries_fingerprint(&a), binaries_fingerprint(&b));
         assert_ne!(binaries_fingerprint(&a), binaries_fingerprint(&c));
         assert_ne!(binaries_fingerprint(&a), binaries_fingerprint(&d));
-        assert_eq!(binaries_fingerprint(&[]), binaries_fingerprint(&[]));
+        assert_eq!(
+            binaries_fingerprint(&Vfs::default()),
+            binaries_fingerprint(&Vfs::default())
+        );
     }
 }

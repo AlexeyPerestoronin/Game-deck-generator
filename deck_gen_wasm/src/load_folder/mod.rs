@@ -18,7 +18,6 @@ mod read;
 pub use install::{install_files, install_folder};
 pub use pick_files::pick_and_read_files;
 pub use picker::pick_and_read_folder;
-pub use policy::is_image;
 
 /// UTF-8 source body or raw image bytes read from disk.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -29,26 +28,34 @@ pub enum FileBody {
     Bytes(Vec<u8>),
 }
 
-/// Outcome of the directory picker, including extension/size rejects.
-pub enum PickResult {
+/// Outcome of a directory or file picker, including extension/size rejects.
+pub enum PickOutcome<T> {
     /// User dismissed the picker.
     Cancelled,
     /// I/O failure, disallowed extensions, or oversized images.
     Rejected(String),
-    /// Folder name plus relative files and directories.
-    Ready {
-        name: String,
-        files: Vec<(String, FileBody)>,
-        dirs: Vec<String>,
-    },
+    /// Successful payload (`PickedFolder` or `PickedFiles`).
+    Ready(T),
 }
 
-/// Outcome of the multi-file picker used by folder “load file(s)”.
-pub enum PickFilesResult {
-    /// User dismissed the picker.
-    Cancelled,
-    /// I/O failure, disallowed extensions, or oversized images.
-    Rejected(String),
-    /// File names (no directories) plus bodies.
-    Ready { files: Vec<(String, FileBody)> },
+/// Folder name plus relative files and directories from a directory pick.
+pub struct PickedFolder {
+    /// Chosen folder name (unique-name suffix applied later at install).
+    pub name: String,
+    /// Relative files and bodies.
+    pub files: Vec<(String, FileBody)>,
+    /// Relative directory paths.
+    pub dirs: Vec<String>,
 }
+
+/// File names (no directories) plus bodies from a multi-file pick.
+pub struct PickedFiles {
+    /// File names and bodies.
+    pub files: Vec<(String, FileBody)>,
+}
+
+/// Outcome of the directory picker.
+pub type PickResult = PickOutcome<PickedFolder>;
+
+/// Outcome of the multi-file picker used by folder “load file(s)”.
+pub type PickFilesResult = PickOutcome<PickedFiles>;

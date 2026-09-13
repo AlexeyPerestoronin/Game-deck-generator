@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 use crate::conf;
 use crate::fs::Vfs;
 
-pub use binaries::{binaries_fingerprint, load_binaries, save_binaries};
+pub use binaries::{
+    binaries_fingerprint, encode_binaries, load_binaries, save_binaries, save_encoded,
+};
 
 /// Serializable workspace snapshot stored under `deck_gen_wasm.session`.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -29,8 +31,8 @@ pub struct Session {
 }
 
 impl Session {
-    /// Build a snapshot; expanded dirs are sorted for stable JSON.
-    pub fn from_workspace(vfs: Vfs, selected: Option<String>, expanded: &HashSet<String>) -> Self {
+    /// Build a snapshot; expanded dirs are sorted for stable JSON. Binaries stripped.
+    pub fn from_workspace(vfs: &Vfs, selected: Option<String>, expanded: &HashSet<String>) -> Self {
         let mut dirs: Vec<String> = expanded.iter().cloned().collect();
         dirs.sort();
         Self {

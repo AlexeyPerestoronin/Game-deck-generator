@@ -5,14 +5,13 @@
 //! the workspace tree are inlined instead.
 
 use crate::fs::{join_path, parent_path, Vfs};
+use crate::html_escape::srcdoc_attr;
 
 /// Rewrite relative iframe `src` attributes in `html` using VFS siblings of `html_path`.
 pub fn inline_relative_iframes(vfs: &Vfs, html_path: &str, html: &str) -> String {
-    let lower = html.to_ascii_lowercase();
     let mut out = String::with_capacity(html.len());
     let mut i = 0;
-    while let Some(rel) = lower[i..].find("<iframe") {
-        let start = i + rel;
+    while let Some(start) = find_ignore_ascii_case(html, "<iframe", i) {
         out.push_str(&html[i..start]);
         let Some(gt) = html[start..].find('>') else {
             out.push_str(&html[start..]);
@@ -44,7 +43,7 @@ fn rewrite_iframe_tag(vfs: &Vfs, html_path: &str, tag: &str) -> String {
     out.push_str(&tag[..span.start]);
     out.push_str("srcdoc=");
     out.push(quote);
-    out.push_str(&escape_srcdoc(content));
+    out.push_str(&srcdoc_attr(content));
     out.push(quote);
     out.push_str(&tag[span.end..]);
     out
@@ -55,11 +54,9 @@ fn attr_value<'a>(tag: &'a str, name: &str) -> Option<&'a str> {
 }
 
 fn attr_span<'a>(tag: &'a str, name: &str) -> Option<(char, &'a str, std::ops::Range<usize>)> {
-    let lower = tag.to_ascii_lowercase();
     let needle = format!("{name}=");
     let mut from = 0;
-    while let Some(rel) = lower[from..].find(&needle) {
-        let start = from + rel;
+    while let Some(start) = find_ignore_ascii_case(tag, &needle, from) {
         if start > 0 {
             let prev = tag.as_bytes()[start - 1];
             if !prev.is_ascii_whitespace() {
@@ -82,6 +79,19 @@ fn attr_span<'a>(tag: &'a str, name: &str) -> Option<(char, &'a str, std::ops::R
     None
 }
 
+fn find_ignore_ascii_case(haystack: &str, needle: &str, from: usize) -> Option<usize> {
+    let h = haystack.as_bytes();
+    let n = needle.as_bytes();
+    if n.is_empty() || from > h.len() {
+        return None;
+    }
+    let last = h.len().saturating_sub(n.len());
+    if from > last {
+        return None;
+    }
+    (from..=last).find(|&i| h[i..i + n.len()].eq_ignore_ascii_case(n))
+}
+
 fn resolve_relative(from_file: &str, href: &str) -> Option<String> {
     let href = href.trim();
     if href.is_empty() || is_external_src(href) {
@@ -95,7 +105,7 @@ fn resolve_relative(from_file: &str, href: &str) -> Option<String> {
     {
         return None;
     }
-    Some(join_path(&parent_path(from_file), href))
+    Some(join_path(parent_path(from_file), href))
 }
 
 fn is_external_src(src: &str) -> bool {
@@ -106,12 +116,6 @@ fn is_external_src(src: &str) -> bool {
         || src.starts_with("blob:")
         || src.starts_with("about:")
         || src.starts_with("javascript:")
-}
-
-fn escape_srcdoc(html: &str) -> String {
-    html.replace('&', "&amp;")
-        .replace('"', "&quot;")
-        .replace('<', "&lt;")
 }
 
 #[cfg(test)]
@@ -135,5 +139,14 @@ mod tests {
         let preview = r#"<iframe src="https://example.com"></iframe>"#;
         let out = inline_relative_iframes(&vfs, "d/preview.html", preview);
         assert_eq!(out, preview);
+    }
+
+    #[test]
+    fn finds_uppercase_iframe() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("d/face.html", "<p>x</p>".into()).unwrap();
+        let preview = r#"<IFRAME SRC="face.html"></IFRAME>"#;
+        let out = inline_relative_iframes(&vfs, "d/preview.html", preview);
+        assert!(out.contains("srcdoc="));
     }
 }

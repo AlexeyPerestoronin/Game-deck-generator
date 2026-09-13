@@ -17,6 +17,8 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 gloo-net = "0.6"
 # Delayed tooltips and a 0ms yield before `prepare_html` so the UI can paint.
 gloo-timers = { version = "0.3", features = ["futures"] }
+# Bounded `join_all` for parallel GitHub fetches and File reads (WASM has no threads).
+futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 # `Reflect` / `Function` / typed arrays for the directory picker and ZIP save.
 js-sys = "0.3"
 # Client-side reactive UI (explorer, editor, activity bar).

@@ -6,21 +6,11 @@
 
 use std::collections::HashSet;
 
-use crate::fs::parent_path;
+use crate::fs::{parent_path, path_is_or_under};
 
 /// True when `path` itself or an ancestor folder is in `selected`.
 pub fn row_looks_selected(path: &str, selected: &HashSet<String>) -> bool {
-    if selected.contains(path) {
-        return true;
-    }
-    let mut current = parent_path(path);
-    while !current.is_empty() {
-        if selected.contains(&current) {
-            return true;
-        }
-        current = parent_path(&current);
-    }
-    false
+    selected.iter().any(|sel| path_is_or_under(path, sel))
 }
 
 /// Drop paths whose ancestor is also in `paths` (sorted for stable paste order).

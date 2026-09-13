@@ -19,20 +19,25 @@ use crate::workspace::Workspace;
 pub(super) fn TreeRows(workspace: Workspace, menu: RwSignal<Option<MenuState>>) -> impl IntoView {
     view! {
         <For
-            each=move || flatten_tree(&workspace.vfs.get(), &workspace.expanded.get())
+            each=move || {
+                workspace.vfs.with(|vfs| {
+                    workspace.expanded.with(|expanded| flatten_tree(vfs, expanded))
+                })
+            }
             key=|row| row.path.clone()
             children=move |row| {
-                let path_for_selected = row.path.clone();
-                let path_for_copy = row.path.clone();
-                let path_for_click = row.path.clone();
-                let path_for_menu = row.path.clone();
+                let path = row.path.clone();
                 let is_dir = row.is_dir;
                 let kind = if is_dir { EntryKind::Folder } else { EntryKind::File };
+                let selected_path = path.clone();
+                let copy_path = path.clone();
+                let click_path = path.clone();
+                let menu_path = path.clone();
                 let selected = move || {
-                    row_looks_selected(&path_for_selected, &workspace.multi_selected.get())
+                    row_looks_selected(&selected_path, &workspace.multi_selected.get())
                 };
                 let copy_planned = move || {
-                    workspace.copy_planned.get().contains(&path_for_copy)
+                    workspace.copy_planned.get().contains(&copy_path)
                 };
                 view! {
                     <button
@@ -43,24 +48,25 @@ pub(super) fn TreeRows(workspace: Workspace, menu: RwSignal<Option<MenuState>>) 
                         style=format!("padding-left: {}px", 8 + row.depth * 14)
                         role="treeitem"
                         on:click=move |ev| {
+                            let path = click_path.to_string();
                             if ev.ctrl_key() {
-                                workspace.toggle_select(path_for_click.clone());
+                                workspace.toggle_select(path);
                             } else {
-                                workspace.select(path_for_click.clone(), is_dir);
+                                workspace.select(path, is_dir);
                             }
                         }
                         on:contextmenu=move |ev| {
                             ev.prevent_default();
                             ev.stop_propagation();
-                            if !workspace.multi_selected.get().contains(&path_for_menu) {
-                                workspace.select(path_for_menu.clone(), is_dir);
+                            if !workspace.multi_selected.get().contains(&menu_path) {
+                                workspace.select(menu_path.clone(), is_dir);
                             }
                             menu.set(Some(MenuState {
-                                path: path_for_menu.clone(),
+                                path: menu_path.clone(),
                                 kind,
                                 x: f64::from(ev.client_x()),
                                 y: f64::from(ev.client_y()),
-                                copy_marked: workspace.copy_planned.get().contains(&path_for_menu),
+                                copy_marked: workspace.copy_planned.get().contains(&menu_path),
                             }));
                         }
                     >
@@ -101,11 +107,11 @@ fn push_children(
     rows: &mut Vec<TreeRow>,
 ) {
     for (name, is_dir) in vfs.children(parent) {
-        let path = join_path(parent, &name);
+        let path = join_path(parent, name);
         let is_open = is_dir && expanded.contains(&path);
         rows.push(TreeRow {
             path: path.clone(),
-            name,
+            name: name.to_string(),
             depth,
             is_dir,
             expanded: is_open,

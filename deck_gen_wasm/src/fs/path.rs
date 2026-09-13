@@ -5,11 +5,13 @@
 //! join/parent/name/ext, a strict splitter, prefix rewrite on rename, and a
 //! generic unique-name allocator shared by “new game” and “load folder”.
 
+use std::collections::HashSet;
+
 /// Parent of `path`, or `""` for a top-level name.
-pub fn parent_path(path: &str) -> String {
+pub fn parent_path(path: &str) -> &str {
     match path.rsplit_once('/') {
-        Some((parent, _)) => parent.to_string(),
-        None => String::new(),
+        Some((parent, _)) => parent,
+        None => "",
     }
 }
 
@@ -56,6 +58,12 @@ pub fn split_path(path: &str) -> Result<Vec<&str>, String> {
     Ok(parts)
 }
 
+/// True when `path` is `ancestor` or a descendant (`ancestor/...`).
+pub fn path_is_or_under(path: &str, ancestor: &str) -> bool {
+    path == ancestor
+        || path.starts_with(ancestor) && path.as_bytes().get(ancestor.len()) == Some(&b'/')
+}
+
 /// If `path` is `old` or lives under it, rewrite the prefix to `new`.
 pub fn rewrite_prefix(path: &str, old: &str, new: &str) -> String {
     if path == old {
@@ -66,6 +74,19 @@ pub fn rewrite_prefix(path: &str, old: &str, new: &str) -> String {
         Some(rest) => format!("{new}/{rest}"),
         None => path.to_string(),
     }
+}
+
+/// Rewrite every path in `set` with [`rewrite_prefix`].
+pub fn rewrite_set(set: &mut HashSet<String>, old: &str, new: &str) {
+    *set = set
+        .iter()
+        .map(|current| rewrite_prefix(current, old, new))
+        .collect();
+}
+
+/// Drop `path` and every descendant from `set`.
+pub fn retain_not_under(set: &mut HashSet<String>, path: &str) {
+    set.retain(|current| !path_is_or_under(current, path));
 }
 
 /// First name in the series `base`, `base-1`, `base-2`, … that `taken` rejects.
@@ -124,5 +145,30 @@ mod tests {
         let taken = |name: &str| name == "demo" || name == "demo-1";
         assert_eq!(unique_name("demo", taken), "demo-2");
         assert_eq!(unique_name("fresh", taken), "fresh");
+    }
+
+    #[test]
+    fn path_is_or_under_needs_slash_boundary() {
+        assert!(path_is_or_under("games/a", "games/a"));
+        assert!(path_is_or_under("games/a/b.txt", "games/a"));
+        assert!(!path_is_or_under("games/ab", "games/a"));
+        assert!(!path_is_or_under("games", "games/a"));
+    }
+
+    #[test]
+    fn retain_not_under_drops_descendants() {
+        let mut set = HashSet::from(["games/a".into(), "games/a/b".into(), "games/c".into()]);
+        retain_not_under(&mut set, "games/a");
+        assert_eq!(set, HashSet::from(["games/c".into()]));
+    }
+
+    #[test]
+    fn rewrite_set_rewrites_prefix() {
+        let mut set = HashSet::from(["games/a".into(), "games/a/b".into(), "other".into()]);
+        rewrite_set(&mut set, "games/a", "games/z");
+        assert!(set.contains("games/z"));
+        assert!(set.contains("games/z/b"));
+        assert!(set.contains("other"));
+        assert!(!set.contains("games/a"));
     }
 }

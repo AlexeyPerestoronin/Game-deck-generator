@@ -53,11 +53,16 @@ pub async fn list_template_blob_paths() -> Result<Vec<String>, String> {
 
 /// Fetch each listed path from GitHub raw; skip individual HTTP failures.
 pub async fn fetch_listed_blobs(paths: &[String]) -> Result<Vec<(String, String)>, String> {
-    let mut files = Vec::new();
-    for path in paths {
-        if let Ok(content) = fetch_text(&raw_url(path)).await {
-            files.push((path.clone(), content));
-        }
-    }
-    Ok(files)
+    let results = crate::task::map_join(
+        paths.iter().cloned(),
+        conf::io::FETCH_PARALLEL,
+        |path| async move {
+            fetch_text(&raw_url(&path))
+                .await
+                .ok()
+                .map(|content| (path, content))
+        },
+    )
+    .await;
+    Ok(results.into_iter().flatten().collect())
 }

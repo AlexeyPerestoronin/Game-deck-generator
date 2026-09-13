@@ -12,48 +12,43 @@ use web_sys::FileList;
 
 use super::input::pick_with_hidden_input;
 use super::read::{collect_from_file_list, collect_tree, CollectedEntries, CollectedFolder};
-use super::PickResult;
+use super::{PickOutcome, PickResult, PickedFolder};
 use crate::conf;
+use crate::js;
 
 /// Open a directory picker and read allowed files (or a reject/cancel).
 pub async fn pick_and_read_folder() -> PickResult {
     match pick_directory().await {
-        PickDir::Cancelled => PickResult::Cancelled,
+        PickDir::Cancelled => PickOutcome::Cancelled,
         PickDir::Handle(handle) => {
             let name = Reflect::get(&handle, &JsValue::from_str("name"))
                 .ok()
                 .and_then(|value| value.as_string())
                 .filter(|name| !name.is_empty())
                 .unwrap_or_else(|| conf::import::DEFAULT_FOLDER_NAME.to_string());
-            finish_collect(name, collect_tree(&handle, "").await)
+            finish_entries(name, collect_tree(&handle, "").await)
         }
-        PickDir::FileList(list) => finish_collect_from_list(collect_from_file_list(list).await),
+        PickDir::FileList(list) => match collect_from_file_list(list).await {
+            Ok(CollectedFolder { name, entries }) => finish_entries(name, Ok(entries)),
+            Err(err) => PickOutcome::Rejected(err),
+        },
     }
 }
 
-fn finish_collect(name: String, result: Result<CollectedEntries, String>) -> PickResult {
+fn finish_entries(name: String, result: Result<CollectedEntries, String>) -> PickResult {
     match result {
-        Ok(entries) => finish_entries(name, entries),
-        Err(err) => PickResult::Rejected(err),
-    }
-}
-
-fn finish_collect_from_list(result: Result<CollectedFolder, String>) -> PickResult {
-    match result {
-        Ok(folder) => finish_entries(folder.name, folder.entries),
-        Err(err) => PickResult::Rejected(err),
-    }
-}
-
-fn finish_entries(name: String, entries: CollectedEntries) -> PickResult {
-    if let Some(reason) = entries.reject_reason() {
-        PickResult::Rejected(reason)
-    } else {
-        PickResult::Ready {
-            name,
-            files: entries.files,
-            dirs: entries.dirs,
+        Ok(entries) => {
+            if let Some(reason) = entries.reject_reason() {
+                PickOutcome::Rejected(reason)
+            } else {
+                PickOutcome::Ready(PickedFolder {
+                    name,
+                    files: entries.files,
+                    dirs: entries.dirs,
+                })
+            }
         }
+        Err(err) => PickOutcome::Rejected(err),
     }
 }
 
@@ -71,12 +66,10 @@ async fn pick_directory() -> PickDir {
 }
 
 async fn pick_with_directory_picker() -> Option<PickDir> {
-    let window = web_sys::window()?;
-    let has_picker =
-        Reflect::has(&window, &JsValue::from_str("showDirectoryPicker")).unwrap_or(false);
-    if !has_picker {
+    if !js::has_window_fn("showDirectoryPicker") {
         return None;
     }
+    let window = web_sys::window()?;
     let picker = Reflect::get(&window, &JsValue::from_str("showDirectoryPicker")).ok()?;
     let picker_fn = picker.dyn_into::<Function>().ok()?;
     let promise = picker_fn.call0(&window).ok()?;

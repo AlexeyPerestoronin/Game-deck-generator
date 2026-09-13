@@ -14,9 +14,7 @@ pub(super) fn PlainEditor(workspace: Workspace, path: String) -> impl IntoView {
             prop:value=move || {
                 workspace
                     .vfs
-                    .get()
-                    .read_file(&path_for_value)
-                    .map(str::to_string)
+                    .with(|vfs| vfs.read_file(&path_for_value).map(str::to_string))
                     .unwrap_or_default()
             }
             on:input=move |ev| {

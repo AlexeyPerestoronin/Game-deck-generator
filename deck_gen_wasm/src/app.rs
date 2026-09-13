@@ -5,14 +5,15 @@
 //! [`crate::conf::help::PATH`] is missing from the VFS the bundled help file
 //! is copied to the workspace root; if no editor tab is open, that file is
 //! shown as a preview. An effect writes the text snapshot back to localStorage
-//! whenever any of the workspace signals change, and rewrites IndexedDB only
-//! when the binary fingerprint changes.
+//! whenever any of the workspace signals change (debounced), and rewrites
+//! IndexedDB only when the binary fingerprint changes.
 
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
+use crate::conf;
 use crate::persist::{
-    binaries_fingerprint, load_binaries, load_session, save_binaries, save_session,
+    binaries_fingerprint, encode_binaries, load_binaries, load_session, save_encoded, save_session,
 };
 use crate::ui::{ActivityBar, Editor, Explorer};
 use crate::workspace::Workspace;
@@ -47,19 +48,30 @@ pub fn App() -> impl IntoView {
 /// Autosave + three panes once localStorage and IndexedDB have been merged.
 #[component]
 fn LoadedApp(workspace: Workspace) -> impl IntoView {
-    let last_fp = RwSignal::new(binaries_fingerprint(
-        &workspace.vfs.get_untracked().binary_entries(),
-    ));
+    let last_fp = RwSignal::new(workspace.vfs.with_untracked(binaries_fingerprint));
+    let generation = RwSignal::new(0u32);
     Effect::new(move |_| {
-        let _ = save_session(&workspace.snapshot());
-        let entries = workspace.vfs.get().binary_entries();
-        let fp = binaries_fingerprint(&entries);
-        if fp != last_fp.get_untracked() {
-            last_fp.set(fp);
-            spawn_local(async move {
-                let _ = save_binaries(&entries).await;
+        workspace.vfs.with(|_| {});
+        workspace.selected.with(|_| {});
+        workspace.expanded.with(|_| {});
+        let token = generation.get_untracked().wrapping_add(1);
+        generation.set(token);
+        spawn_local(async move {
+            gloo_timers::future::TimeoutFuture::new(conf::ui::AUTOSAVE_DEBOUNCE_MS).await;
+            if generation.get_untracked() != token {
+                return;
+            }
+            let _ = save_session(&workspace.snapshot());
+            let (fp, encoded) = workspace.vfs.with_untracked(|vfs| {
+                (binaries_fingerprint(vfs), encode_binaries(vfs))
             });
-        }
+            if fp != last_fp.get_untracked() {
+                last_fp.set(fp);
+                spawn_local(async move {
+                    let _ = save_encoded(encoded).await;
+                });
+            }
+        });
     });
 
     view! {

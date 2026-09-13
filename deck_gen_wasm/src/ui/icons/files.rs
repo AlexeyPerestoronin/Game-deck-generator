@@ -6,47 +6,19 @@
 
 use leptos::prelude::*;
 
-use crate::conf;
-use crate::fs::file_ext;
-
-/// Explorer glyph chosen from a file name’s extension.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum IconKind {
-    Md,
-    Json,
-    Json5,
-    Html,
-    Scss,
-    Pdf,
-    Image,
-}
-
-/// Which explorer glyph `name` should use (`None` = empty slot).
-fn icon_kind(name: &str) -> Option<IconKind> {
-    let ext = file_ext(name)?.to_ascii_lowercase();
-    match ext.as_str() {
-        "md" => Some(IconKind::Md),
-        "json" => Some(IconKind::Json),
-        "json5" => Some(IconKind::Json5),
-        "html" => Some(IconKind::Html),
-        "scss" => Some(IconKind::Scss),
-        "pdf" => Some(IconKind::Pdf),
-        _ if conf::import::IMAGE_EXTENSIONS.iter().any(|ok| ext == *ok) => Some(IconKind::Image),
-        _ => None,
-    }
-}
+use crate::fs::kind::{self, ExplorerIcon};
 
 /// Explorer glyph for `name`’s extension, or an empty slot.
 #[component]
 pub fn FileTypeIcon(name: String) -> impl IntoView {
-    match icon_kind(&name) {
-        Some(IconKind::Md) => view! { <MdFileIcon /> }.into_any(),
-        Some(IconKind::Json) => view! { <JsonFileIcon /> }.into_any(),
-        Some(IconKind::Json5) => view! { <Json5FileIcon /> }.into_any(),
-        Some(IconKind::Html) => view! { <HtmlFileIcon /> }.into_any(),
-        Some(IconKind::Scss) => view! { <ScssFileIcon /> }.into_any(),
-        Some(IconKind::Pdf) => view! { <PdfFileIcon /> }.into_any(),
-        Some(IconKind::Image) => view! { <ImageFileIcon /> }.into_any(),
+    match kind::explorer_icon(&name) {
+        Some(ExplorerIcon::Md) => view! { <MdFileIcon /> }.into_any(),
+        Some(ExplorerIcon::Json) => view! { <JsonFileIcon /> }.into_any(),
+        Some(ExplorerIcon::Json5) => view! { <Json5FileIcon /> }.into_any(),
+        Some(ExplorerIcon::Html) => view! { <HtmlFileIcon /> }.into_any(),
+        Some(ExplorerIcon::Scss) => view! { <ScssFileIcon /> }.into_any(),
+        Some(ExplorerIcon::Pdf) => view! { <PdfFileIcon /> }.into_any(),
+        Some(ExplorerIcon::Image) => view! { <ImageFileIcon /> }.into_any(),
         None => view! { <span class="file-icon-slot" aria-hidden="true"></span> }.into_any(),
     }
 }
@@ -136,14 +108,14 @@ mod tests {
 
     #[test]
     fn image_names_get_image_kind() {
-        assert_eq!(icon_kind("logo.png"), Some(IconKind::Image));
-        assert_eq!(icon_kind("photo.JPG"), Some(IconKind::Image));
-        assert_eq!(icon_kind("photo.jpeg"), Some(IconKind::Image));
-        assert_eq!(icon_kind("app.icon"), Some(IconKind::Image));
-        assert_eq!(icon_kind("app.ico"), Some(IconKind::Image));
-        assert_eq!(icon_kind("help.md"), Some(IconKind::Md));
-        assert_eq!(icon_kind("face.pdf"), Some(IconKind::Pdf));
-        assert_eq!(icon_kind("notes.txt"), None);
-        assert_eq!(icon_kind("LICENSE"), None);
+        assert_eq!(kind::explorer_icon("logo.png"), Some(ExplorerIcon::Image));
+        assert_eq!(kind::explorer_icon("photo.JPG"), Some(ExplorerIcon::Image));
+        assert_eq!(kind::explorer_icon("photo.jpeg"), Some(ExplorerIcon::Image));
+        assert_eq!(kind::explorer_icon("app.icon"), Some(ExplorerIcon::Image));
+        assert_eq!(kind::explorer_icon("app.ico"), Some(ExplorerIcon::Image));
+        assert_eq!(kind::explorer_icon("help.md"), Some(ExplorerIcon::Md));
+        assert_eq!(kind::explorer_icon("face.pdf"), Some(ExplorerIcon::Pdf));
+        assert_eq!(kind::explorer_icon("notes.txt"), None);
+        assert_eq!(kind::explorer_icon("LICENSE"), None);
     }
 }

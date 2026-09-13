@@ -90,8 +90,7 @@ impl FileSystem for VfsFs {
         Ok(self
             .lock()
             .children(&key)
-            .into_iter()
-            .map(|(name, _)| PathBuf::from(join_path(&key, &name)))
+            .map(|(name, _)| PathBuf::from(join_path(&key, name)))
             .collect())
     }
 

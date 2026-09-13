@@ -2,12 +2,12 @@
 //!
 //! The File System Access tree is an async iterator of `[name, handle]` pairs.
 //! The `<input webkitdirectory>` path is a flat list with `webkitRelativePath`.
-//! Both produce files (text or image bytes), directories, extension rejects,
-//! and oversized-image paths for the installer.
+//! Classification (extension / size) is synchronous; allowed files are then
+//! read in a bounded parallel join.
 
 use std::collections::BTreeSet;
 
-use js_sys::{Array, Function, Reflect, Uint8Array};
+use js_sys::{Array, Reflect, Uint8Array};
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
@@ -17,6 +17,7 @@ use super::policy::{classify, ImportClass};
 use super::FileBody;
 use crate::conf;
 use crate::fs::parent_path;
+use crate::js;
 
 /// Files, directories, extension rejects, and oversized images from one walk.
 pub(super) struct CollectedEntries {
@@ -46,6 +47,12 @@ pub(super) struct CollectedFolder {
     pub entries: CollectedEntries,
 }
 
+struct PendingRead {
+    path: String,
+    file: File,
+    class: ImportClass,
+}
+
 pub(super) fn split_webkit_path(path: &str) -> (Option<String>, String) {
     let path = path.replace('\\', "/");
     match path.split_once('/') {
@@ -58,7 +65,7 @@ pub(super) fn split_webkit_path(path: &str) -> (Option<String>, String) {
 
 pub(super) async fn collect_from_file_list(list: FileList) -> Result<CollectedFolder, String> {
     let mut folder_name = conf::import::DEFAULT_FOLDER_NAME.to_string();
-    let mut files = Vec::new();
+    let mut pending = Vec::new();
     let mut dirs = BTreeSet::new();
     let mut rejected = Vec::new();
     let mut oversized = Vec::new();
@@ -73,15 +80,15 @@ pub(super) async fn collect_from_file_list(list: FileList) -> Result<CollectedFo
         }
         let mut parent = parent_path(&rel);
         while !parent.is_empty() {
-            dirs.insert(parent.clone());
-            parent = parent_path(&parent);
+            dirs.insert(parent.to_string());
+            parent = parent_path(parent);
         }
-        take_file(&mut files, &mut rejected, &mut oversized, &file, rel).await?;
+        classify_file(&mut pending, &mut rejected, &mut oversized, file, rel);
     }
     Ok(CollectedFolder {
         name: folder_name,
         entries: CollectedEntries {
-            files,
+            files: read_pending(pending).await?,
             dirs: dirs.into_iter().collect(),
             rejected,
             oversized,
@@ -99,7 +106,7 @@ fn webkit_relative_path(file: &File) -> String {
 
 /// Read allowed files from a flat (non-directory) `FileList`.
 pub(super) async fn collect_picked_files(list: FileList) -> Result<CollectedEntries, String> {
-    let mut files = Vec::new();
+    let mut pending = Vec::new();
     let mut rejected = Vec::new();
     let mut oversized = Vec::new();
     for index in 0..list.length() {
@@ -107,34 +114,48 @@ pub(super) async fn collect_picked_files(list: FileList) -> Result<CollectedEntr
             continue;
         };
         let name = file.name();
-        take_file(&mut files, &mut rejected, &mut oversized, &file, name).await?;
+        classify_file(&mut pending, &mut rejected, &mut oversized, file, name);
     }
     Ok(CollectedEntries {
-        files,
+        files: read_pending(pending).await?,
         dirs: Vec::new(),
         rejected,
         oversized,
     })
 }
 
-async fn take_file(
-    files: &mut Vec<(String, FileBody)>,
+fn classify_file(
+    pending: &mut Vec<PendingRead>,
     rejected: &mut Vec<String>,
     oversized: &mut Vec<String>,
-    file: &File,
+    file: File,
     path: String,
-) -> Result<(), String> {
+) {
     match classify(&path, file.size() as u64) {
         ImportClass::Rejected => rejected.push(path),
         ImportClass::Oversized => oversized.push(path),
-        ImportClass::Image => {
-            files.push((path, FileBody::Bytes(read_file_bytes(file).await?)));
-        }
-        ImportClass::Text => {
-            files.push((path, FileBody::Text(read_file_text(file).await?)));
+        class @ (ImportClass::Image | ImportClass::Text) => {
+            pending.push(PendingRead { path, file, class });
         }
     }
-    Ok(())
+}
+
+async fn read_pending(pending: Vec<PendingRead>) -> Result<Vec<(String, FileBody)>, String> {
+    let results = crate::task::map_join(pending, conf::io::FILE_READ_PARALLEL, |item| async move {
+        match item.class {
+            ImportClass::Image => read_file_bytes(&item.file)
+                .await
+                .map(|bytes| (item.path, FileBody::Bytes(bytes))),
+            ImportClass::Text => read_file_text(&item.file)
+                .await
+                .map(|text| (item.path, FileBody::Text(text))),
+            ImportClass::Rejected | ImportClass::Oversized => {
+                Err("internal: classified file was not readable".to_string())
+            }
+        }
+    })
+    .await;
+    results.into_iter().collect()
 }
 
 async fn read_file_text(file: &File) -> Result<String, String> {
@@ -157,13 +178,38 @@ async fn read_file_bytes(file: &File) -> Result<Vec<u8>, String> {
 }
 
 pub(super) async fn collect_tree(dir: &JsValue, prefix: &str) -> Result<CollectedEntries, String> {
-    let mut files = Vec::new();
+    let mut pending = Vec::new();
     let mut dirs = Vec::new();
     let mut rejected = Vec::new();
     let mut oversized = Vec::new();
-    let entries = call0(dir, "entries")?;
+    collect_tree_into(
+        dir,
+        prefix,
+        &mut pending,
+        &mut dirs,
+        &mut rejected,
+        &mut oversized,
+    )
+    .await?;
+    Ok(CollectedEntries {
+        files: read_pending(pending).await?,
+        dirs,
+        rejected,
+        oversized,
+    })
+}
+
+async fn collect_tree_into(
+    dir: &JsValue,
+    prefix: &str,
+    pending: &mut Vec<PendingRead>,
+    dirs: &mut Vec<String>,
+    rejected: &mut Vec<String>,
+    oversized: &mut Vec<String>,
+) -> Result<(), String> {
+    let entries = js::call0(dir, "entries")?;
     loop {
-        let next = call_async(&entries, "next").await?;
+        let next = js::call_async(&entries, "next").await?;
         let done = Reflect::get(&next, &JsValue::from_str("done"))
             .ok()
             .and_then(|value| value.as_bool())
@@ -195,46 +241,19 @@ pub(super) async fn collect_tree(dir: &JsValue, prefix: &str) -> Result<Collecte
         };
         if kind == "directory" {
             dirs.push(rel.clone());
-            let nested = Box::pin(collect_tree(&child, &rel)).await?;
-            files.extend(nested.files);
-            dirs.extend(nested.dirs);
-            rejected.extend(nested.rejected);
-            oversized.extend(nested.oversized);
+            Box::pin(collect_tree_into(
+                &child, &rel, pending, dirs, rejected, oversized,
+            ))
+            .await?;
         } else {
-            let file_val = call_async(&child, "getFile").await?;
+            let file_val = js::call_async(&child, "getFile").await?;
             let file: File = file_val
                 .dyn_into()
                 .map_err(|_| format!("Could not read {rel}"))?;
-            take_file(&mut files, &mut rejected, &mut oversized, &file, rel).await?;
+            classify_file(pending, rejected, oversized, file, rel);
         }
     }
-    Ok(CollectedEntries {
-        files,
-        dirs,
-        rejected,
-        oversized,
-    })
-}
-
-fn call0(receiver: &JsValue, method: &str) -> Result<JsValue, String> {
-    let func = Reflect::get(receiver, &JsValue::from_str(method))
-        .map_err(|_| format!("missing {method}"))?
-        .dyn_into::<Function>()
-        .map_err(|_| format!("{method} is not a function"))?;
-    func.call0(receiver).map_err(|_| format!("{method} failed"))
-}
-
-async fn call_async(receiver: &JsValue, method: &str) -> Result<JsValue, String> {
-    let func = Reflect::get(receiver, &JsValue::from_str(method))
-        .map_err(|_| format!("missing {method}"))?
-        .dyn_into::<Function>()
-        .map_err(|_| format!("{method} is not a function"))?;
-    let promise = func
-        .call0(receiver)
-        .map_err(|_| format!("{method} failed"))?;
-    JsFuture::from(js_sys::Promise::from(promise))
-        .await
-        .map_err(|_| format!("{method} failed"))
+    Ok(())
 }
 
 #[cfg(test)]

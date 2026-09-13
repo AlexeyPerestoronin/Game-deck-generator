@@ -10,7 +10,7 @@ use syntect::html::{ClassStyle, ClassedHTMLGenerator};
 use syntect::parsing::SyntaxSet;
 use syntect::util::LinesWithEndings;
 
-use crate::fs::file_ext;
+use crate::fs::kind;
 
 static SYNTAXES: OnceLock<SyntaxSet> = OnceLock::new();
 
@@ -18,25 +18,14 @@ fn syntax_set() -> &'static SyntaxSet {
     SYNTAXES.get_or_init(SyntaxSet::load_defaults_newlines)
 }
 
-fn syntax_name_for_ext(ext: &str) -> Option<&'static str> {
-    match ext.to_ascii_lowercase().as_str() {
-        "md" | "markdown" => Some("md"),
-        "json" | "json5" => Some("json"),
-        "html" | "htm" => Some("html"),
-        "scss" | "sass" | "css" => Some("css"),
-        _ => None,
-    }
-}
-
 /// Whether `path` has a grammar this module will highlight.
 pub fn can_highlight(path: &str) -> bool {
-    file_ext(path).and_then(syntax_name_for_ext).is_some()
+    kind::can_highlight(path)
 }
 
 /// Classed HTML for `code`, or `None` if the extension is unknown / parse fails.
 pub fn highlight_html(path: &str, code: &str) -> Option<String> {
-    let ext = file_ext(path)?;
-    let name = syntax_name_for_ext(ext)?;
+    let name = kind::syntax_name(path)?;
     let set = syntax_set();
     let syntax = set.find_syntax_by_extension(name)?;
     let mut generator = ClassedHTMLGenerator::new_with_class_style(syntax, set, ClassStyle::Spaced);
