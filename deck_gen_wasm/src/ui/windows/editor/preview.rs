@@ -1,5 +1,9 @@
 //! Rendered preview of HTML (`srcdoc` iframe), Markdown (inner HTML),
 //! PDF (blob URL iframe), or images (blob URL `<img>`).
+//!
+//! PDF must be `iframe.src = blob:` — not an `<embed>` inside a srcdoc shell.
+//! Nested embed keeps the viewer chrome and white paper but paints raster
+//! card images as black rectangles.
 
 use js_sys::{Array, Uint8Array};
 use leptos::prelude::*;
