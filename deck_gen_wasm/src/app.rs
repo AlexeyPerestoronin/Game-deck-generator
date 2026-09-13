@@ -5,8 +5,8 @@
 //! [`crate::conf::help::PATH`] is missing from the VFS the bundled help file
 //! is copied to the workspace root; if no editor tab is open, that file is
 //! shown as a preview. An effect writes the text snapshot back to localStorage
-//! whenever any of the workspace signals change (debounced), and rewrites
-//! IndexedDB only when the binary fingerprint changes.
+//! whenever VFS/selection/expanded change (debounced after the editor flush),
+//! and rewrites IndexedDB only when the binary fingerprint changes.
 
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;

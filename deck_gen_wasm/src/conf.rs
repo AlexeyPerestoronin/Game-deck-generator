@@ -105,6 +105,6 @@ pub mod ui {
     pub const TOOLTIP_HOVER_DELAY_MS: u32 = 1500;
     /// Wait this long after the last VFS/selection change before autosave.
     pub const AUTOSAVE_DEBOUNCE_MS: u32 = 300;
-    /// Wait this long after the last edit before re-running syntect.
-    pub const HIGHLIGHT_DEBOUNCE_MS: u32 = 150;
+    /// After typing pauses, commit the editor draft into VFS (one frame).
+    pub const EDIT_FLUSH_MS: u32 = 16;
 }

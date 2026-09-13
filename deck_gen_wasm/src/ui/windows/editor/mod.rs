@@ -2,15 +2,17 @@
 //!
 //! Tabs come from [`Workspace::tabs`](crate::workspace::Workspace::tabs), or
 //! from [`Workspace::preview_tabs`](crate::workspace::Workspace::preview_tabs)
-//! when split-for-preview is on. Markdown / JSON / HTML / SCSS use syntect
-//! HTML behind a transparent textarea; everything else is a plain `<textarea>`.
-//! Preview tabs render HTML in an iframe, Markdown as HTML, PDF via a blob-URL
-//! iframe, and images via a blob-URL `<img>`.
+//! when split-for-preview is on. The focused textarea is the source of truth
+//! while typing; VFS is updated after an idle pause. Markdown / JSON / HTML /
+//! SCSS use syntect HTML behind a transparent textarea; everything else is a
+//! plain `<textarea>`. Preview tabs render HTML in an iframe, Markdown as HTML,
+//! PDF via a blob-URL iframe, and images via a blob-URL `<img>`.
 
 use leptos::prelude::*;
 
 use crate::workspace::Workspace;
 
+mod draft;
 mod highlight;
 mod highlighted;
 mod iframe;

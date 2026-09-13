@@ -67,11 +67,11 @@ fn pane_body(workspace: Workspace, active: Option<OpenTab>, empty: &'static str)
             <PreviewPane workspace=workspace path=tab.path />
         }
         .into_any(),
-        Some(tab) if workspace.vfs.with(|vfs| vfs.is_binary(&tab.path)) => view! {
+        Some(tab) if workspace.vfs.with_untracked(|vfs| vfs.is_binary(&tab.path)) => view! {
             <div class="editor-empty">
                 {format!(
                     "Binary file ({} bytes).",
-                    workspace.vfs.with(|vfs| vfs.read_bytes(&tab.path).map(|b| b.len()).unwrap_or(0))
+                    workspace.vfs.with_untracked(|vfs| vfs.read_bytes(&tab.path).map(|b| b.len()).unwrap_or(0))
                 )}
             </div>
         }

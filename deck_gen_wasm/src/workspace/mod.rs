@@ -66,6 +66,8 @@ pub struct Workspace {
     pub status: RwSignal<String>,
     /// True while an async action (load / template / HTML / PDF / ZIP) is running.
     pub loading: RwSignal<bool>,
+    /// Focused editor text not yet written into [`Self::vfs`].
+    pub draft: RwSignal<Option<(String, String)>>,
 }
 
 impl Workspace {
@@ -87,11 +89,46 @@ impl Workspace {
             expanded: RwSignal::new(expanded),
             status: RwSignal::new(String::new()),
             loading: RwSignal::new(false),
+            draft: RwSignal::new(None),
         }
+    }
+
+    /// Remember the focused file body without notifying VFS subscribers.
+    pub fn set_draft(&self, path: String, content: String) {
+        self.draft
+            .update_untracked(|slot| *slot = Some((path, content)));
+    }
+
+    /// Write the editor draft into VFS if it differs from the stored file.
+    pub fn flush_draft(&self) {
+        let Some((path, content)) = self.draft.get_untracked() else {
+            return;
+        };
+        self.draft.update_untracked(|slot| *slot = None);
+        let unchanged = self
+            .vfs
+            .with_untracked(|vfs| vfs.read_file(&path) == Some(content.as_str()));
+        if unchanged {
+            return;
+        }
+        self.vfs.update(|vfs| {
+            let _ = vfs.write_file(&path, content);
+        });
+    }
+
+    /// True when the draft for `path` is newer than the VFS file.
+    pub fn draft_is_ahead(&self, path: &str) -> bool {
+        self.draft.with_untracked(|draft| match draft {
+            Some((p, c)) if p == path => self
+                .vfs
+                .with_untracked(|vfs| vfs.read_file(p) != Some(c.as_str())),
+            _ => false,
+        })
     }
 
     /// Serializable snapshot for localStorage (binaries omitted; they go to IndexedDB).
     pub fn snapshot(&self) -> Session {
+        self.flush_draft();
         self.vfs.with(|vfs| {
             Session::from_workspace(vfs, self.selected.get(), &self.expanded.get())
         })

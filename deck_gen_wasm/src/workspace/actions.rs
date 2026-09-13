@@ -79,6 +79,7 @@ impl Workspace {
 
     /// Empty the tree and persist that empty session.
     pub fn clear(&self) {
+        self.draft.set(None);
         self.vfs.set(crate::fs::Vfs::default());
         self.set_primary_selection(None);
         self.copy_planned.set(HashSet::new());
@@ -109,6 +110,7 @@ impl Workspace {
             if let Some(PickedFiles { files }) =
                 workspace.take_pick(warning, pick_and_read_files().await)
             {
+                workspace.flush_draft();
                 let mut vfs = workspace.vfs.get_untracked();
                 match install_files(&mut vfs, &folder, &files) {
                     Ok(n) => {
@@ -137,6 +139,7 @@ impl Workspace {
                 workspace.take_pick(warning, pick_and_read_folder().await)
             {
                 workspace.status.set("Loading folder…".into());
+                workspace.flush_draft();
                 let mut vfs = workspace.vfs.get_untracked();
                 match install_folder(&mut vfs, &name, &dirs, &files) {
                     Ok(folder) => {
@@ -161,6 +164,7 @@ impl Workspace {
         let workspace = *self;
         spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(0).await;
+            workspace.flush_draft();
             let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
             match deck_gen::prepare_html(fs.clone()) {
                 Ok(n) => {
@@ -184,6 +188,7 @@ impl Workspace {
         let workspace = *self;
         spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(0).await;
+            workspace.flush_draft();
             let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
             let engine = prepare_pdf_web::WebPdfEngine;
             match deck_gen::prepare_pdf(fs.clone(), &engine).await {
@@ -207,6 +212,7 @@ impl Workspace {
         }
         let workspace = *self;
         spawn_local(async move {
+            workspace.flush_draft();
             let mut vfs = workspace.vfs.get_untracked();
             let result = install_new_game(&mut vfs).await;
             match result {
@@ -230,6 +236,7 @@ impl Workspace {
 
     /// Encode the tree as ZIP and offer it to the browser.
     pub fn download(&self) {
+        self.flush_draft();
         match self.vfs.with(vfs_to_zip) {
             Ok(bytes) => {
                 self.status.set("Downloading ZIP…".into());

@@ -39,6 +39,7 @@ impl Workspace {
             self.status.set("Nothing to paste".into());
             return;
         }
+        self.flush_draft();
         let sources = top_level_paths(&planned);
         match self
             .vfs
@@ -55,6 +56,7 @@ impl Workspace {
     }
 
     fn delete_entry(&self, path: &str) {
+        self.flush_draft();
         match self.vfs.try_update(|vfs| vfs.remove(path)) {
             Some(Ok(())) => {
                 self.forget_path(path);
@@ -69,6 +71,7 @@ impl Workspace {
         let Some(name) = super::ask_name("New name") else {
             return;
         };
+        self.flush_draft();
         match self.vfs.try_update(|vfs| vfs.rename(path, &name)) {
             Some(Ok(new_path)) => {
                 self.rewrite_paths(path, &new_path);

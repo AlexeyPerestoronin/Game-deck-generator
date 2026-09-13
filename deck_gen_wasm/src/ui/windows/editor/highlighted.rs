@@ -1,69 +1,75 @@
 //! Overlay editor: syntect HTML in a `<pre>` plus a transparent textarea.
+//!
+//! Keystrokes update the overlay with escaped text only. Syntect runs after
+//! the draft is flushed into VFS (idle / blur / unmount), not on each input.
 
-use gloo_timers::future::TimeoutFuture;
 use leptos::html;
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::HtmlTextAreaElement;
 
+use super::draft;
 use super::highlight::highlight_html;
-use crate::conf;
 use crate::html_escape::text_to_html;
 use crate::workspace::Workspace;
 
 #[component]
 pub(super) fn HighlightedEditor(workspace: Workspace, path: String) -> impl IntoView {
     let pre_ref = NodeRef::<html::Pre>::new();
-    let path_for_value = path.clone();
-    let path_for_html = path.clone();
-    let path_for_input = path;
-
-    let highlight = RwSignal::new(workspace.vfs.with_untracked(|vfs| {
-        let text = vfs.read_file(&path_for_html).unwrap_or("");
-        highlight_html(&path_for_html, text).unwrap_or_else(|| text_to_html(text))
-    }));
+    let area_ref = NodeRef::<html::Textarea>::new();
+    let initial = workspace
+        .vfs
+        .with_untracked(|vfs| vfs.read_file(&path).unwrap_or("").to_string());
+    let overlay = RwSignal::new(
+        highlight_html(&path, &initial).unwrap_or_else(|| text_to_html(&initial)),
+    );
     let generation = RwSignal::new(0u32);
+    let path_html = path.clone();
     Effect::new(move |_| {
-        workspace.vfs.with(|_| {});
-        let path = path_for_html.clone();
-        let token = generation.get_untracked().wrapping_add(1);
-        generation.set(token);
-        spawn_local(async move {
-            TimeoutFuture::new(conf::ui::HIGHLIGHT_DEBOUNCE_MS).await;
-            if generation.get_untracked() != token {
-                return;
-            }
-            let html = workspace.vfs.with_untracked(|vfs| {
-                let text = vfs.read_file(&path).unwrap_or("");
-                highlight_html(&path, text).unwrap_or_else(|| text_to_html(text))
-            });
-            highlight.set(html);
+        let path = path_html.clone();
+        let html = workspace.vfs.with(|vfs| {
+            let text = vfs.read_file(&path).unwrap_or("");
+            highlight_html(&path, text).unwrap_or_else(|| text_to_html(text))
         });
+        if !workspace.draft_is_ahead(&path) {
+            overlay.set(html);
+        }
     });
+
+    let path_input = path.clone();
+    let path_blur = path.clone();
+    let path_cleanup = path.clone();
+    let initial_value = initial.clone();
+    let primed = RwSignal::new(false);
+    Effect::new(move |_| {
+        let Some(area) = area_ref.get() else {
+            return;
+        };
+        if primed.get_untracked() {
+            return;
+        }
+        area.set_value(&initial_value);
+        primed.set(true);
+    });
+    on_cleanup(move || draft::commit(workspace, &path_cleanup, area_ref.get_untracked()));
 
     view! {
         <div class="code-editor">
             <pre
                 node_ref=pre_ref
                 class="code-highlight"
-                inner_html=move || highlight.get()
+                inner_html=move || overlay.get()
             ></pre>
             <textarea
+                node_ref=area_ref
                 class="editor-area code-input"
                 spellcheck="false"
-                prop:value=move || {
-                    workspace
-                        .vfs
-                        .with(|vfs| vfs.read_file(&path_for_value).map(str::to_string))
-                        .unwrap_or_default()
-                }
                 on:input=move |ev| {
                     let value = event_target_value(&ev);
-                    workspace.vfs.update(|vfs| {
-                        let _ = vfs.write_file(&path_for_input, value);
-                    });
+                    overlay.set(text_to_html(&value));
+                    draft::note(workspace, path_input.clone(), value, generation);
                 }
+                on:blur=move |_| draft::commit(workspace, &path_blur, area_ref.get_untracked())
                 on:scroll=move |ev| {
                     let Ok(area) = ev.target().unwrap().dyn_into::<HtmlTextAreaElement>() else {
                         return;
