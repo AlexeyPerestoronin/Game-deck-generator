@@ -1,4 +1,4 @@
-//! Left icon strip: save, ZIP, new/load game, prepare HTML/PDF, split preview, clear.
+//! Left icon strip: ZIP, new/load game, prepare HTML/PDF, split preview, clear.
 //!
 //! Each action is its own button module. This bar owns the shared confirm/alert
 //! dialogs and wires them to [`Workspace`](deck_gen_wasm_workspace::Workspace).
@@ -7,7 +7,7 @@ use leptos::prelude::*;
 
 use crate::buttons::{
     ClearButton, DownloadButton, LoadGameButton, NewGameButton, PrepareHtmlButton,
-    PreparePdfButton, SaveButton, SplitPreviewButton,
+    PreparePdfButton, SplitPreviewButton,
 };
 use crate::modals::{AlertModal, ConfirmModal};
 use deck_gen_wasm_workspace::Workspace;
@@ -22,7 +22,6 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
 
     view! {
         <nav class="activity-bar" aria-label="Actions">
-            <SaveButton workspace=workspace />
             <DownloadButton workspace=workspace />
             <NewGameButton
                 workspace=workspace

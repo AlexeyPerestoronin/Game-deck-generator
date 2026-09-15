@@ -11,7 +11,6 @@ mod new_folder;
 mod new_game;
 mod prepare_html;
 mod prepare_pdf;
-mod save;
 mod split_preview;
 
 pub use clear::ClearButton;
@@ -22,5 +21,4 @@ pub use new_folder::NewFolderButton;
 pub use new_game::NewGameButton;
 pub use prepare_html::PrepareHtmlButton;
 pub use prepare_pdf::PreparePdfButton;
-pub use save::SaveButton;
 pub use split_preview::SplitPreviewButton;

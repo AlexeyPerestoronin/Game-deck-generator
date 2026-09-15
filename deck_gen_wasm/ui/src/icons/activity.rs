@@ -5,17 +5,6 @@
 use leptos::prelude::*;
 
 #[component]
-pub fn SaveIcon() -> impl IntoView {
-    view! {
-        <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/save/off.drawio.png"   width="16" height="16" />
-            <img class="state-on"    src="icons/buttons/save/on.drawio.png"    width="16" height="16" />
-            <img class="state-click" src="icons/buttons/save/click.drawio.png" width="16" height="16" />
-        </span>
-    }
-}
-
-#[component]
 pub fn DownloadIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">

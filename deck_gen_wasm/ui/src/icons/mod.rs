@@ -8,7 +8,7 @@ mod activity;
 mod files;
 
 pub use activity::{
-    ClearIcon, DownloadIcon, LoadGameIcon, NewGameIcon, PrepareHtmlIcon, PreparePdfIcon, SaveIcon,
+    ClearIcon, DownloadIcon, LoadGameIcon, NewGameIcon, PrepareHtmlIcon, PreparePdfIcon,
     SplitPreviewIcon,
 };
 pub use files::FileTypeIcon;
