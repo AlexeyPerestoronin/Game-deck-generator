@@ -119,4 +119,8 @@ pub mod ui {
     pub const TOOLTIP_PREPARE_HTML: &str = "Generate HTML preview for every deck in this workspace.";
     pub const TOOLTIP_PREPARE_PDF: &str = "Generate card PDFs and A4 duplex sheets for every deck in this workspace.";
     pub const TOOLTIP_SPLIT_PREVIEW: &str = "Split for preview. Files stay on the left; previews open on the right.";
+
+    /// Minimum width (in CSS pixels) of each pane when the editor is split
+    /// for preview. Used for the adjustable split resizer.
+    pub const SPLIT_PANE_MIN_WIDTH_PX: u32 = 150;
 }

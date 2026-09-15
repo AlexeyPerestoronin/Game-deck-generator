@@ -324,14 +324,10 @@ body {
 
 .editor-split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: var(--left-pane-width, 1fr) 4px 1fr;
   min-width: 0;
   min-height: 0;
   height: 100%;
-}
-
-.editor-split > .editor + .editor {
-  border-left: 1px solid var(--border);
 }
 
 .editor {
