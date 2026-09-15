@@ -4,12 +4,13 @@ use leptos::prelude::*;
 
 use crate::icons::ClearIcon;
 use crate::tooltips::DelayedTooltip;
+use deck_gen_wasm_conf as conf;
 
 /// Destructive clear; the bar owns the confirm modal.
 #[component]
 pub fn ClearButton(#[prop(into)] on_open: Callback<()>) -> impl IntoView {
     view! {
-        <DelayedTooltip text="Clear the workspace in this browser.">
+        <DelayedTooltip text=conf::ui::TOOLTIP_CLEAR>
             <button
                 class="activity-btn"
                 aria-label="Clear"

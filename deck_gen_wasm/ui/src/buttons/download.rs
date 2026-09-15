@@ -4,13 +4,14 @@ use leptos::prelude::*;
 
 use crate::icons::DownloadIcon;
 use crate::tooltips::DelayedTooltip;
+use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_workspace::Workspace;
 
 /// Offer the workspace as `workspace.zip`.
 #[component]
 pub fn DownloadButton(workspace: Workspace) -> impl IntoView {
     view! {
-        <DelayedTooltip text="Download the workspace as a ZIP archive.">
+        <DelayedTooltip text=conf::ui::TOOLTIP_DOWNLOAD>
             <button
                 class="activity-btn"
                 aria-label="Download"

@@ -4,6 +4,7 @@ use leptos::prelude::*;
 
 use crate::icons::NewGameIcon;
 use crate::tooltips::DelayedTooltip;
+use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_workspace::Workspace;
 
 /// Fetch GitHub and add a unique game folder; errors go to `warning`.
@@ -14,7 +15,7 @@ pub fn NewGameButton(
     warning_title: RwSignal<String>,
 ) -> impl IntoView {
     view! {
-        <DelayedTooltip text="Add a new game from the GitHub master template.">
+        <DelayedTooltip text=conf::ui::TOOLTIP_NEW_GAME>
             <button
                 class="activity-btn"
                 aria-label="New game"

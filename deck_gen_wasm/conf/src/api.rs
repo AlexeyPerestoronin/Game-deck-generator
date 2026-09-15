@@ -110,4 +110,13 @@ pub mod ui {
     pub const AUTOSAVE_DEBOUNCE_MS: u32 = 300;
     /// After typing pauses, commit the editor draft into VFS (one frame).
     pub const EDIT_FLUSH_MS: u32 = 16;
+
+    /// Annotation texts for the seven activity-bar buttons (used by DelayedTooltip).
+    pub const TOOLTIP_CLEAR: &str = "Clear the workspace in this browser.";
+    pub const TOOLTIP_DOWNLOAD: &str = "Download the workspace as a ZIP archive.";
+    pub const TOOLTIP_LOAD_GAME: &str = "Load a game folder from disk into games/.";
+    pub const TOOLTIP_NEW_GAME: &str = "Add a new game from the GitHub master template.";
+    pub const TOOLTIP_PREPARE_HTML: &str = "Generate HTML preview for every deck in this workspace.";
+    pub const TOOLTIP_PREPARE_PDF: &str = "Generate card PDFs and A4 duplex sheets for every deck in this workspace.";
+    pub const TOOLTIP_SPLIT_PREVIEW: &str = "Split for preview. Files stay on the left; previews open on the right.";
 }

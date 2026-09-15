@@ -4,6 +4,7 @@ use leptos::prelude::*;
 
 use crate::icons::PrepareHtmlIcon;
 use crate::tooltips::DelayedTooltip;
+use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_workspace::Workspace;
 
 /// Generate HTML previews for every deck; errors go to `warning`.
@@ -14,7 +15,7 @@ pub fn PrepareHtmlButton(
     warning_title: RwSignal<String>,
 ) -> impl IntoView {
     view! {
-        <DelayedTooltip text="Generate HTML preview for every deck in this workspace.">
+        <DelayedTooltip text=conf::ui::TOOLTIP_PREPARE_HTML>
             <button
                 class="activity-btn"
                 aria-label="prepare_html"

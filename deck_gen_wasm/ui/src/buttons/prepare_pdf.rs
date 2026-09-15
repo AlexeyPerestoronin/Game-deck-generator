@@ -4,6 +4,7 @@ use leptos::prelude::*;
 
 use crate::icons::PreparePdfIcon;
 use crate::tooltips::DelayedTooltip;
+use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_workspace::Workspace;
 
 /// Generate card PDFs and A4 duplex sheets; errors go to `warning`.
@@ -14,7 +15,7 @@ pub fn PreparePdfButton(
     warning_title: RwSignal<String>,
 ) -> impl IntoView {
     view! {
-        <DelayedTooltip text="Generate card PDFs and A4 duplex sheets for every deck in this workspace.">
+        <DelayedTooltip text=conf::ui::TOOLTIP_PREPARE_PDF>
             <button
                 class="activity-btn"
                 aria-label="prepare_pdf"
