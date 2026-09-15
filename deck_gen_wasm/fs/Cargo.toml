@@ -8,6 +8,7 @@ description = "In-memory workspace VFS for the browser editor"
 path = "src/lib.rs"
 
 [dependencies]
+# Shared extension tables and constants (used by kind classification)
 deck_gen_wasm_conf = { path = "../conf" }
-deck_gen = { path = "../../deck_gen", default-features = false }
+# Serialization for localStorage snapshots (Vfs + Node)
 serde = { version = "1", features = ["derive"] }

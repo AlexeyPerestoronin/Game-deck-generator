@@ -13,39 +13,54 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{IdbDatabase, IdbOpenDbRequest, IdbRequest, IdbTransactionMode};
 
 use deck_gen_wasm_conf as conf;
-use deck_gen_wasm_fs::Vfs;
+use deck_gen_wasm_fs::{kind, Vfs};
 
-/// Stable hash of binary path/length/edges so autosave can skip unchanged blobs.
+/// Stable hash of "binary" (image/pdf) path/length/edges so autosave can skip unchanged blobs.
+/// Decision of what counts as binary for persistence lives here (using kind).
 pub fn binaries_fingerprint(vfs: &Vfs) -> u64 {
     let mut h = 0xcbf29ce484222325u64;
-    vfs.visit_binaries(|path, data| {
-        for byte in path.as_bytes() {
-            h ^= u64::from(*byte);
+    vfs.visit_entries(|path, data| {
+        if let Some(bytes) = data {
+            if !is_persisted_binary(path) {
+                return;
+            }
+            for byte in path.as_bytes() {
+                h ^= u64::from(*byte);
+                h = h.wrapping_mul(0x100000001b3);
+            }
+            h ^= bytes.len() as u64;
             h = h.wrapping_mul(0x100000001b3);
-        }
-        h ^= data.len() as u64;
-        h = h.wrapping_mul(0x100000001b3);
-        if let Some(&byte) = data.first() {
-            h ^= u64::from(byte);
-            h = h.wrapping_mul(0x100000001b3);
-        }
-        if let Some(&byte) = data.last() {
-            h ^= u64::from(byte);
-            h = h.wrapping_mul(0x100000001b3);
+            if let Some(&byte) = bytes.first() {
+                h ^= u64::from(byte);
+                h = h.wrapping_mul(0x100000001b3);
+            }
+            if let Some(&byte) = bytes.last() {
+                h ^= u64::from(byte);
+                h = h.wrapping_mul(0x100000001b3);
+            }
         }
     });
     h
 }
 
-/// Encode binary files as a JS object of path → `Uint8Array` (copies into JS).
+/// Encode "binary" files as a JS object of path → `Uint8Array`.
 pub fn encode_binaries(vfs: &Vfs) -> Object {
     let obj = Object::new();
-    vfs.visit_binaries(|path, data| {
-        let array = Uint8Array::new_with_length(data.len() as u32);
-        array.copy_from(data);
-        let _ = Reflect::set(&obj, &JsValue::from_str(path), &array);
+    vfs.visit_entries(|path, data| {
+        if let Some(bytes) = data {
+            if !is_persisted_binary(path) {
+                return;
+            }
+            let array = Uint8Array::new_with_length(bytes.len() as u32);
+            array.copy_from(bytes);
+            let _ = Reflect::set(&obj, &JsValue::from_str(path), &array);
+        }
     });
     obj
+}
+
+fn is_persisted_binary(path: &str) -> bool {
+    matches!(kind::kind_of(path), kind::FileKind::Image | kind::FileKind::Pdf)
 }
 
 /// Read every stored binary, or an empty list if the DB/record is missing.

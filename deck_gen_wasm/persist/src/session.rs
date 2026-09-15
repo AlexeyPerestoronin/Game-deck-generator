@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use deck_gen_wasm_conf as conf;
-use deck_gen_wasm_fs::Vfs;
+use deck_gen_wasm_fs::{kind, Vfs};
 
 /// Serializable workspace snapshot stored under `deck_gen_wasm.session`.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -25,12 +25,31 @@ pub struct Session {
 }
 
 impl Session {
-    /// Build a snapshot; expanded dirs are sorted for stable JSON. Binaries stripped.
+    /// Build a snapshot; expanded dirs are sorted for stable JSON.
+    /// Files that are persisted as binary (images, pdfs) are omitted from the
+    /// tree (their data lives in IndexedDB). This is decided using `kind`.
     pub fn from_workspace(vfs: &Vfs, selected: Option<String>, expanded: &HashSet<String>) -> Self {
         let mut dirs: Vec<String> = expanded.iter().cloned().collect();
         dirs.sort();
+
+        let mut text_vfs = Vfs::default();
+        vfs.visit_entries(|path, data| {
+            if let Some(bytes) = data {
+                if is_persisted_as_binary(path) {
+                    // omit the entry entirely (matches previous Binary stripping)
+                    return;
+                }
+                // text content
+                if let Ok(text) = std::str::from_utf8(bytes) {
+                    let _ = text_vfs.put_file(path, text.to_string());
+                }
+            } else {
+                let _ = text_vfs.mkdir(path);
+            }
+        });
+
         Self {
-            vfs: vfs.without_binaries(),
+            vfs: text_vfs,
             selected,
             expanded: dirs,
         }
@@ -62,4 +81,8 @@ pub fn save_session(session: &Session) -> Result<(), String> {
 
 fn local_storage() -> Option<web_sys::Storage> {
     web_sys::window()?.local_storage().ok().flatten()
+}
+
+fn is_persisted_as_binary(path: &str) -> bool {
+    matches!(kind::kind_of(path), kind::FileKind::Image | kind::FileKind::Pdf)
 }

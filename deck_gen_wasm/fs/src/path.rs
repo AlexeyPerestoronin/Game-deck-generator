@@ -1,9 +1,7 @@
 //! Workspace paths: `/`-separated, no leading slash, no `.` / `..`.
 //!
 //! The in-memory tree is addressed with POSIX-like strings (`games/foo/data.json5`).
-//! These helpers are the only path algebra the VFS, explorer, and importers use:
-//! join/parent/name/ext, a strict splitter, prefix rewrite on rename, and a
-//! generic unique-name allocator shared by “new game” and “load folder”.
+//! These helpers are the only path algebra used by VFS, explorer, and importers.
 
 use std::collections::HashSet;
 
@@ -30,7 +28,7 @@ pub fn file_name(path: &str) -> &str {
 }
 
 /// Extension after the last `.` in the file name; `None` for dotfiles or no ext.
-pub fn file_ext(path: &str) -> Option<&str> {
+pub(crate) fn file_ext(path: &str) -> Option<&str> {
     let name = file_name(path);
     let (stem, ext) = name.rsplit_once('.')?;
     if stem.is_empty() || ext.is_empty() {
@@ -41,7 +39,7 @@ pub fn file_ext(path: &str) -> Option<&str> {
 }
 
 /// Split into segments, rejecting `\`, leading `/`, empty parts, `.`, and `..`.
-pub fn split_path(path: &str) -> Result<Vec<&str>, String> {
+pub(crate) fn split_path(path: &str) -> Result<Vec<&str>, String> {
     if path.is_empty() {
         return Ok(Vec::new());
     }

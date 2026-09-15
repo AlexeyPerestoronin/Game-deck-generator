@@ -13,6 +13,7 @@ use super::highlighted::HighlightedEditor;
 use super::plain::PlainEditor;
 use super::preview::PreviewPane;
 use super::tab::EditorTab;
+use deck_gen_wasm_fs::kind;
 use deck_gen_wasm_workspace::{OpenTab, TabKind, Workspace};
 
 /// One tab strip plus the active editor or preview for that strip.
@@ -67,7 +68,7 @@ fn pane_body(workspace: Workspace, active: Option<OpenTab>, empty: &'static str)
             <PreviewPane workspace=workspace path=tab.path />
         }
         .into_any(),
-        Some(tab) if workspace.vfs.with_untracked(|vfs| vfs.is_binary(&tab.path)) => view! {
+        Some(tab) if kind::is_image(&tab.path) || kind::kind_of(&tab.path) == kind::FileKind::Pdf => view! {
             <div class="editor-empty">
                 {format!(
                     "Binary file ({} bytes).",

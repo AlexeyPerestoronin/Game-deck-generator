@@ -1,8 +1,7 @@
 //! Classify a path by extension: import, preview, highlight, icons, MIME.
 //!
-//! Extension tables live in [`crate::conf::ext`]. Predicates keep the previous
-//! 1:1 behaviour, including import vs preview mismatches (`htm` / `markdown`
-//! previewable but not imported; explorer icons only for `md` / `html`).
+//! This is the single place that knows which extensions mean what for the UI
+//! and import pipeline. The VFS itself treats all files uniformly as bytes.
 
 use crate::path::file_ext;
 use deck_gen_wasm_conf as conf;

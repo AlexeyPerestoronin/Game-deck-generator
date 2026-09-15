@@ -9,8 +9,10 @@ path = "src/lib.rs"
 
 [dependencies]
 deck_gen = { path = "../../deck_gen", default-features = false }
+# Shared configuration
 deck_gen_wasm_conf = { path = "../conf" }
 deck_gen_wasm_export = { path = "../export" }
+# VFS tree (Node + Vfs) + kind/path helpers
 deck_gen_wasm_fs = { path = "../fs" }
 deck_gen_wasm_import = { path = "../import" }
 deck_gen_wasm_persist = { path = "../persist" }

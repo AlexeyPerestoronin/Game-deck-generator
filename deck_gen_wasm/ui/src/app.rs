@@ -26,7 +26,9 @@ pub fn App() -> impl IntoView {
     spawn_local(async move {
         let mut session = load_session().unwrap_or_default();
         if let Ok(entries) = load_binaries().await {
-            session.vfs.restore_binaries(entries);
+            for (path, data) in entries {
+                let _ = session.vfs.put_bytes(&path, data);
+            }
         }
         let workspace = Workspace::from_session(session);
         workspace.ensure_user_help();

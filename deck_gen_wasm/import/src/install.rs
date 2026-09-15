@@ -83,7 +83,7 @@ mod tests {
         .unwrap();
         assert_eq!(folder, "demo");
         assert_eq!(vfs.read_file("games/demo/help.md"), Some("# hi"));
-        assert!(vfs.is_binary("games/demo/art/logo.png"));
+        assert!(deck_gen_wasm_fs::kind::is_image("games/demo/art/logo.png"));
         assert_eq!(
             vfs.read_bytes("games/demo/art/logo.png"),
             Some(&[0x89, 0x50][..])

@@ -654,7 +654,6 @@ dependencies = [
 name = "deck_gen_wasm_fs"
 version = "0.1.0"
 dependencies = [
- "deck_gen",
  "deck_gen_wasm_conf",
  "serde",
 ]

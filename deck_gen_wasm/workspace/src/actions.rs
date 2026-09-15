@@ -13,7 +13,7 @@ use wasm_bindgen_futures::spawn_local;
 use super::{OpenTab, TabKind, Workspace};
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
-use deck_gen_wasm_fs::VfsFs;
+use crate::vfs_fs::VfsFs;
 use deck_gen_wasm_template as help;
 use deck_gen_wasm_import::{
     install_files, install_folder, pick_and_read_files, pick_and_read_folder, PickedFiles,
