@@ -122,6 +122,32 @@ pub(crate) fn forget_tabs(
     (remaining, next)
 }
 
+/// Always empties both tab lists (close-all ignores what was open).
+fn close_all_pure(
+    _tabs: Vec<OpenTab>,
+    _active: Option<OpenTab>,
+    _preview_tabs: Vec<OpenTab>,
+    _active_preview: Option<OpenTab>,
+) -> (Vec<OpenTab>, Option<OpenTab>, Vec<OpenTab>, Option<OpenTab>) {
+    (Vec::new(), None, Vec::new(), None)
+}
+
+/// Move tab inside one list to a new insertion index (adjusts for removal so caller can pass index from snapshot containing the tab).
+fn move_tab_in(mut tabs: Vec<OpenTab>, tab: &OpenTab, mut to_index: usize) -> Vec<OpenTab> {
+    if let Some(from) = tabs.iter().position(|t| t == tab) {
+        if from == to_index {
+            return tabs;
+        }
+        let t = tabs.remove(from);
+        if from < to_index {
+            to_index -= 1;
+        }
+        let to_index = to_index.min(tabs.len());
+        tabs.insert(to_index, t);
+    }
+    tabs
+}
+
 impl Workspace {
     /// Toggle the two-pane editor: previews on the right, files on the left.
     pub fn toggle_split_preview(&self) {
@@ -219,6 +245,34 @@ impl Workspace {
         }
         if was_active {
             self.set_primary_selection(active.map(|tab| tab.path));
+        }
+    }
+
+    /// Close every open tab (both panes when split is active).
+    pub fn close_all_tabs(&self) {
+        let (t, a, p, ap) = close_all_pure(
+            self.tabs.get(),
+            self.active_tab.get(),
+            self.preview_tabs.get(),
+            self.active_preview_tab.get(),
+        );
+        self.tabs.set(t);
+        self.active_tab.set(a);
+        self.preview_tabs.set(p);
+        self.active_preview_tab.set(ap);
+        self.set_primary_selection(None);
+    }
+
+    /// Move `tab` to `to_index` inside its pane's list (left or right).
+    /// Cross-pane moves are ignored by the caller (UI only starts drag within one strip).
+    pub fn move_tab(&self, tab: OpenTab, to_index: usize) {
+        let preview_pane = self.split_preview.get() && tab.kind == TabKind::Preview;
+        if preview_pane {
+            let updated = move_tab_in(self.preview_tabs.get(), &tab, to_index);
+            self.preview_tabs.set(updated);
+        } else {
+            let updated = move_tab_in(self.tabs.get(), &tab, to_index);
+            self.tabs.set(updated);
         }
     }
 }
@@ -370,5 +424,44 @@ mod tests {
         let (rest, next) = forget_tabs(tabs, Some(edit("games/a.md")), gone);
         assert_eq!(rest, vec![edit("other.md")]);
         assert_eq!(next, Some(edit("other.md")));
+    }
+
+    #[test]
+    fn close_all_pure_always_empties() {
+        let (t, a, p, ap) = close_all_pure(
+            vec![edit("x"), preview("y")],
+            Some(edit("x")),
+            vec![preview("y")],
+            Some(preview("y")),
+        );
+        assert!(t.is_empty() && a.is_none());
+        assert!(p.is_empty() && ap.is_none());
+    }
+
+    #[test]
+    fn move_tab_in_reorders_same_list() {
+        let a = edit("a");
+        let b = edit("b");
+        let c = edit("c");
+        let tabs = vec![a.clone(), b.clone(), c.clone()];
+        // move b to front
+        assert_eq!(move_tab_in(tabs.clone(), &b, 0), vec![b.clone(), a.clone(), c.clone()]);
+        // move a after c (insert at 3 from orig view)
+        assert_eq!(move_tab_in(tabs.clone(), &a, 3), vec![b.clone(), c.clone(), a.clone()]);
+        // move c between a and b
+        assert_eq!(move_tab_in(tabs.clone(), &c, 1), vec![a.clone(), c.clone(), b.clone()]);
+        // noop
+        assert_eq!(move_tab_in(tabs.clone(), &b, 1), vec![a.clone(), b.clone(), c.clone()]);
+    }
+
+    #[test]
+    fn move_tab_in_clamps_and_adjusts() {
+        let a = edit("a");
+        let b = edit("b");
+        let tabs = vec![a.clone(), b.clone()];
+        // to beyond end
+        assert_eq!(move_tab_in(tabs.clone(), &a, 99), vec![b.clone(), a.clone()]);
+        // move b before a
+        assert_eq!(move_tab_in(tabs, &b, 0), vec![b.clone(), a.clone()]);
     }
 }

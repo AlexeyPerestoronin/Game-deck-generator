@@ -69,6 +69,103 @@ cargo test -p deck_gen_wasm_ui --lib   # 9 tests ok
 
 ---
 
+# Отчёт: tabs_management (close all + rearrange)
+
+Задача из wiki/plan/phase-III/stage-2/tabs_management.md выполнена (этап-1 + этап-2 рефакторинг).
+
+## Принципы (строго)
+- Анализировались и редактировались ТОЛЬКО разрешённые файлы (9 шт.).
+- Изменения минимальные. Архитектура workspace / EditorPane / EditorTab / ContextMenu не тронута.
+- Не добавлены Close others, не разрешён drag между панелями, не persist, не новые обёртки TabList.
+- close_all закрывает вкладки обеих панелей.
+- reorder только внутри своей полосы (preview или edit).
+- unit-тесты на чистые функции + wasm32 check + ui/workspace тесты.
+
+## было → стало (почему)
+
+### workspace/split.rs — pure helpers
+было: только close_tab_in, forget_tabs, partition и т.п.
+стало: + close_all_pure (всегда пусто), move_tab_in (remove+adjust insert)
+почему: "методы чистыми по отношению к сигналам" — как существующие close_tab_in. Покрыты тестами. move учитывает from<to для индекса.
+
+### workspace/split.rs — Workspace методы
+было: open_tab/activate_tab/close_tab/toggle_split_preview (логика в update/get)
+стало: + close_all_tabs (чистые + set пусто + selection=None), move_tab (выбирает pane по split+kind, вызывает move_tab_in)
+почему: требование задачи. Простой update, без изменения active (reorder не ломает равенство).
+
+### workspace/split.rs — тесты
+было: ~15 тестов на split/forget/close
+стало: + close_all_pure_always_empties, move_tab_in_reorders_same_list, move_tab_in_clamps_and_adjusts
+почему: приёмка "Unit-тесты на reorder и close_all в workspace".
+
+### ui/menus/context.rs
+было: EntryKind/File/Folder команды + ContextMenu компонент (с backdrop + .context-menu)
+стало: + TabCloseMenu struct + TabContextMenu (один пункт "Close all", те же классы)
+почему: "минимально расширить существующий ContextMenu" без ломки API (новый тип/компонент, старый ContextMenu нетронут).
+
+### ui/menus/mod.rs
+было: reexport ChosenCommand, ContextMenu, EntryKind, MenuState
+стало: + TabCloseMenu, TabContextMenu
+почему: чтобы EditorTab мог использовать без нарушения модульной видимости.
+
+### ui/windows/editor/tab.rs
+было: EditorTab — div + label + button× (click activate, click close с stopPropagation)
+стало:
+  - + on:contextmenu → set local signal → <TabContextMenu on_close_all=workspace.close_all_tabs() />
+  - + attr:data-path/kind/pane
+  - + on:mousedown (guard на close, button=0) → set StoredValue + attach window mousemove/mouseup (Closure + forget)
+  - mousemove: element_from_point + climb to .editor-tab + read data-* → build hovered OpenTab → calc before/after idx из list.get() → workspace.move_tab (live)
+  - mouseup: clear StoredValue
+  - cursor:grab в css (разрешено)
+почему: ПКМ меню и pointer-drag reorder без изменения pane (For остаётся), без dnd dataTransfer (чтобы не трогать Cargo features), live reorder как feedback.
+
+### style.css
+было: .editor-tab { cursor: pointer; }
+стало: cursor: grab;
+почему: "cursor:grab если в css" — минимально для drag affordance.
+
+### ui/windows/editor/pane.rs + mod.rs + api.rs + state.rs
+было: (без изменений)
+стало: (без изменений)
+почему: не потребовалось; вся новая функциональность доступна через существующие signals и Workspace.
+
+## Рефакторинг (этап-2)
+- После рабочего этапа-1: добавлены ///-доки к pub close_all_tabs / move_tab (по правилам "комментируй публичные").
+- Удалена лишняя StoredValue drag_from_preview (YAGNI/KISS; captured bool в замыкании mousedown достаточно).
+- Комментарии короткие, в стиле базы (без нарратива).
+- Никаких новых модулей, трейтов, generics, общих меню — запрещено архитектурными ограничениями и KISS.
+- Стиль базы сохранён (прямой код, update на signals, For+key, StoredValue для не-reactiv e drag state).
+
+## Верификация (обязательная)
+```
+cargo test -p deck_gen_wasm_workspace   # 21 tests, новые 3 ok
+cargo test -p deck_gen_wasm_ui          # 9 tests ok
+cargo check -p deck_gen_wasm_ui --target wasm32-unknown-unknown  # чисто
+```
+(все после этапа-1 и рефакторинга)
+
+## Приёмка (покрыто кодом)
+- ПКМ на вкладке (в split или нет) → меню "Close all" → tabs+preview_tabs пусты, active=None.
+- Drag внутри полосы (main/ preview) → move_tab вызывается с правильным to_idx → порядок в vec меняется live, отражается на UI.
+- Split и non-split: только внутри панели.
+- Нет регрессий в activate/close/open (существующие пути не трогали).
+- Сборка крейтов + тесты успешны.
+
+## Не сделано (точно по "Не делать")
+- Нет Close others / Close to the right.
+- Drag между left/right запрещён (проверка по data-pane).
+- Не persist, не main layout, не explorer, не architecture changes.
+- ContextMenu explorer не расширен (добавлен параллельный TabContextMenu).
+
+## О браузерной верификации (по общим правилам)
+- wasm check + native тесты покрывают.
+- Полноценный ручной тест (ПКМ, drag нескольких вкладок, split on/off, reorder+activate, reorder+close) должен быть выполнен в браузере (trunk serve).
+- Без инструментов автоматизации браузера в сессии — интерактив не выполнен здесь; поведение выведено из кода/тестов.
+
+(Отчёт ~92 строк)
+
+---
+
 # Отчёт: корректировка задач stage-2 (фаза-3, Доп.№2)
 
 Дата: 2026-09-15. Задача из wiki/todo.md.

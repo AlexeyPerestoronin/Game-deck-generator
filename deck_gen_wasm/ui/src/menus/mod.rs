@@ -5,4 +5,4 @@
 
 mod context;
 
-pub use context::{ChosenCommand, ContextMenu, EntryKind, MenuState};
+pub use context::{ChosenCommand, ContextMenu, EntryKind, MenuState, TabCloseMenu, TabContextMenu};

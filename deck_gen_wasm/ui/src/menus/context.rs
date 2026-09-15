@@ -238,3 +238,50 @@ mod tests {
         );
     }
 }
+
+/// Lightweight state for the tab strip context menu (only "Close all").
+#[derive(Clone, Debug, PartialEq)]
+pub struct TabCloseMenu {
+    /// Viewport X of the right-click.
+    pub x: f64,
+    /// Viewport Y of the right-click.
+    pub y: f64,
+}
+
+/// Floating one-item menu for editor tabs. Reuses the same CSS classes as explorer menu.
+#[component]
+pub fn TabContextMenu(
+    state: TabCloseMenu,
+    #[prop(into)] on_dismiss: Callback<()>,
+    #[prop(into)] on_close_all: Callback<()>,
+) -> impl IntoView {
+    view! {
+        <div
+            class="context-backdrop"
+            role="presentation"
+            on:click=move |_| on_dismiss.run(())
+            on:contextmenu=move |ev| {
+                ev.prevent_default();
+                on_dismiss.run(());
+            }
+        >
+            <div
+                class="context-menu"
+                role="menu"
+                style=format!("left:{}px;top:{}px", state.x, state.y)
+                on:click=move |ev| ev.stop_propagation()
+            >
+                <button
+                    class="context-item"
+                    role="menuitem"
+                    on:click=move |_| {
+                        on_close_all.run(());
+                        on_dismiss.run(());
+                    }
+                >
+                    "Close all"
+                </button>
+            </div>
+        </div>
+    }
+}

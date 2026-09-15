@@ -324,7 +324,7 @@ body {
   background: var(--tab);
   border-right: 1px solid var(--border);
   color: var(--fg-dim);
-  cursor: pointer;
+  cursor: grab;
   white-space: nowrap;
 }
 
