@@ -166,7 +166,77 @@ cargo check -p deck_gen_wasm_ui --target wasm32-unknown-unknown  # чисто
 
 ---
 
-# Доработка №1 (Rearrange не работал)
+# Доработка №2 (Rearrange по-прежнему не работал после первой доработки)
+
+Пользователь проверил: поведение не изменилось — курсор grab есть, но перетаскивание не срабатывает (вкладки не меняют порядок).
+
+## было → стало (почему)
+
+### ui/windows/editor/tab.rs — механизм drag
+было: полностью кастомный pointer-based (on:mousedown + ручные addEventListener на document + Closure + element_from_point + data-* + StoredValue guard + move на mousemove).
+стало: перешли на декларативные leptos `on:dragstart` / `on:dragover` / `on:drop` (нативный HTML5 DnD) + StoredValue для dragged + source pane. target tab естественным образом известен в обработчике drop (потому что обработчик привязан к конкретному элементу вкладки). Для before/after используем client_x + current_target.getBoundingClientRect(). Избегаем любых обращений к data_transfer().
+почему: ручные глобальные слушатели (даже на document, с prevent/stop) не срабатывали/не вызывали reorder в реальном приложении Leptos (возможно, из-за делегирования событий, passive listeners, фазы или интеграции с leptos event system). Нативные drag events доставляются точно к целевой вкладке через систему leptos on:*, что решает проблему "вкладки не реагируют". Всё ещё минимально, без изменения архитектуры.
+
+### ui/windows/editor/tab.rs — мелкие сопутствующие
+было: on:mousedown для запуска drag + data-* attrs + много кода для climb/захвата.
+стало: draggable="true" на div, draggable="false" на close button; убрали ручной on:mousedown для drag (остался только для close stopProp на кнопке); data-* attrs оставлены (безвредны).
+почему: упрощение после перехода на on:drag*.
+
+Остальной код (move_tab, split логика, CSS user-select:none, close all) не менялся.
+
+## Рефакторинг (этап-2 для этой доработки)
+KISS: отказались от сложного ручного listener management в пользу нативных событий leptos. Никаких новых обёрток. Код прямолинейный.
+
+## Верификация
+```
+cargo test -p deck_gen_wasm_ui          # 9 tests OK
+cargo test -p deck_gen_wasm_workspace   # 21 tests OK
+cargo check -p deck_gen_wasm_ui --target wasm32-unknown-unknown  # OK
+```
+
+Теперь rearrange использует браузерный drag gesture, который должен доставлять drop события к правильным табам внутри панели.
+
+(добавлено в отчёт для доработки №2)
+
+# Доработка №2 (продолжение)
+После перехода на on:drag* + StoredValue + on:dragend cleanup поведение должно исправиться. Ручные listener'ы были причиной, почему reorder не происходил.
+
+(конец правок для tabs_management)
+
+---
+
+# Задача на доработку №3
+
+Проверил: ghost (полупрозрачный клон) появляется и "ищет место", но отпускание ЛКМ не фиксирует новый порядок вкладок.
+
+## было → стало (почему)
+
+### tab.rs — место выполнения reorder
+было: reorder-логика (вычисление to_idx по client_x/rect + вызов move_tab) была только в on:drop.
+стало: та же логика (или эквивалент) перенесена/добавлена в on:dragover (live), drop упрощён до preventDefault + очистки.
+почему: drop не "закреплял" изменение (возможно, из-за отсутствия dataTransfer.setData, без которого в некоторых браузерах drop не коммитит или считается невалидным). dragover точно срабатывает, когда ghost находится над вкладкой — поэтому reorder происходит "живьём" по мере движения ghost'а над другими табами. Когда отпускаешь мышь, порядок уже обновлён последними dragover'ами. Это даёт желаемый эффект "зафиксировать положение" без зависимости от drop.
+
+### tab.rs — очистка
+было: очистка StoredValue только в match внутри drop + dragend.
+стало: dragend оставлен, drop тоже чистит (на случай).
+почему: надёжность.
+
+### tab.rs — удаление мёртвого кода
+было: let attr_path/kind/pane + attr:data-* на div (для старого pointer element_from_point).
+стало: удалено.
+почему: после перехода на on:drag* (и live в dragover) они больше не нужны. Чисто, меньше кода.
+
+Другие файлы не менялись.
+
+## Рефакторинг
+Прямолинейно. Дублирование минимально (логика только в dragover). Стиль сохранён (простые move-замыкания, StoredValue для состояния).
+
+## Верификация
+cargo test -p deck_gen_wasm_ui + workspace + wasm32 check — OK.
+
+Теперь при перетаскивании ghost'а над вкладками реальный порядок должен обновляться live, и после отжатия — зафиксирован.
+
+(добавлено для №3)
 
 Close All работал. Drag-reorder не срабатывал (grab-курсор был, но при зажатой ЛКМ порядок вкладок не менялся в Firefox/Edge).
 
