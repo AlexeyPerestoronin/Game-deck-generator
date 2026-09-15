@@ -3,7 +3,7 @@
 /// UTF-8 source body or raw image bytes read from disk.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileBody {
-    /// Text file (`md`, `json`, `html`, …).
+    /// Text file (`md`, `json`, `html`, `js`, …).
     Text(String),
     /// Image (or other binary) bytes.
     Bytes(Vec<u8>),

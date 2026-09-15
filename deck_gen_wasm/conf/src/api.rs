@@ -48,6 +48,7 @@ pub mod session {
 
 /// Lowercased file-extension tables (no dots). Import, preview, highlight, and
 /// icons all read from here so a new type is not added in four match arms.
+/// `js` is import-only (via IMPORT_TEXT).
 pub mod ext {
     /// Markdown source (preview + highlight). Disk import allows only `md`.
     pub const MARKDOWN: &[&str] = &["md", "markdown"];
@@ -65,13 +66,15 @@ pub mod ext {
     pub const PDF: &[&str] = &["pdf"];
     /// Raster / icon images accepted as binary files.
     pub const IMAGE: &[&str] = &["jpg", "jpeg", "png", "ico", "icon"];
-    /// Text extensions accepted when copying files from disk into the workspace.
-    pub const IMPORT_TEXT: &[&str] = &["md", "json", "json5", "html", "scss"];
+    /// Text extensions accepted when copying files from disk into the workspace
+    /// (direct pick or inside a folder). Includes `js`.
+    pub const IMPORT_TEXT: &[&str] = &["md", "json", "json5", "html", "scss", "js"];
 }
 
 /// Folder-import rules for “Load Game” and folder “load file(s)”.
 pub mod import {
     /// Text extensions accepted when copying files from disk into the workspace.
+    /// Covers both direct file upload and files inside chosen folders.
     /// Image types are listed separately in [`IMAGE_EXTENSIONS`].
     pub const ALLOWED_EXTENSIONS: &[&str] = super::ext::IMPORT_TEXT;
     /// Image extensions accepted alongside [`ALLOWED_EXTENSIONS`].

@@ -8,19 +8,27 @@ description = "Pick local files or a folder and install them into the VFS"
 path = "src/lib.rs"
 
 [dependencies]
+# internal: browser helpers (map_join, js shims) used in async file reads and tree walking
 deck_gen_wasm_browser = { path = "../browser" }
+# internal: central extension allow-lists (ALLOWED_EXTENSIONS, IMAGE_*) and sizes
 deck_gen_wasm_conf = { path = "../conf" }
+# internal: fs::kind for extension_allowed / is_image (delegated classification)
 deck_gen_wasm_fs = { path = "../fs" }
+# JS array / promise / reflect interop for FileList, directory entries, webkit paths
 js-sys = "0.3"
+# wasm bindings and cast helpers
 wasm-bindgen = "0.2"
+# async JS promises from Rust futures for file.text / arrayBuffer / picker
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = [
+    "CssStyleDeclaration",
     "Document",
     "DomStringList",
     "Element",
     "Event",
     "File",
     "FileList",
+    "HtmlElement",
     "HtmlInputElement",
     "Node",
     "Window",
