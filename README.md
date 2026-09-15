@@ -40,37 +40,4 @@ Options:
 
 # Примеры работ:
 
-<form id="examples-form" action="wiki/examples/index.html" method="get" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px">
-  <label for="example">Колода
-    <select id="example" name="example">
-      <option value="monopoly.professions.level_0/preview.html">Монополия — профессии L0</option>
-      <option value="monopoly.achievements/preview.html">Монополия — достижения</option>
-      <option value="monopoly.events.positives.lucky_day/preview.html">Монополия — счастливый день</option>
-      <option value="monopoly.events.negatives.pandemic/preview.html">Монополия — пандемия</option>
-      <option value="monopoly.professions.tracking.judge/preview.html">Монополия — судья (трекинг)</option>
-      <option value="new-game.deck-1st/preview.html">Шаблон new-game — первая колода</option>
-    </select>
-  </label>
-  <button type="button" id="ex-prev">←</button>
-  <button type="button" id="ex-next">→</button>
-  <button type="submit">Открыть галерею</button>
-</form>
-<iframe id="ex-frame" title="Превью колоды" src="wiki/examples/monopoly.professions.level_0/preview.html" width="100%" height="640" style="border:1px solid #ccc;background:#d8d8d8"></iframe>
-<script>
-(function () {
-  var sel = document.getElementById("example");
-  var frame = document.getElementById("ex-frame");
-  if (!sel || !frame) return;
-  var prefix = "wiki/examples/";
-  function show(i) {
-    var n = sel.options.length;
-    sel.selectedIndex = ((i % n) + n) % n;
-    frame.src = prefix + sel.value;
-  }
-  sel.addEventListener("change", function () { show(sel.selectedIndex); });
-  var prev = document.getElementById("ex-prev");
-  var next = document.getElementById("ex-next");
-  if (prev) prev.addEventListener("click", function () { show(sel.selectedIndex - 1); });
-  if (next) next.addEventListener("click", function () { show(sel.selectedIndex + 1); });
-})();
-</script>
+Галерея с выбором колоды и пролистыванием лица/рубашки: откройте [examples.html](examples.html) в браузере.
