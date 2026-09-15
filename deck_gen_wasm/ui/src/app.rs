@@ -9,7 +9,10 @@
 //! and rewrites IndexedDB only when the binary fingerprint changes.
 
 use leptos::prelude::*;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
+use web_sys::MouseEvent as WasmMouseEvent;
 
 use crate::bars::ActivityBar;
 use crate::windows::{Editor, Explorer};
@@ -53,6 +56,54 @@ pub fn App() -> impl IntoView {
 fn LoadedApp(workspace: Workspace) -> impl IntoView {
     let last_fp = RwSignal::new(workspace.vfs.with_untracked(binaries_fingerprint));
     let generation = RwSignal::new(0u32);
+
+    // Local (not in Workspace) resizable width for the FS explorer pane.
+    // min=0 (hidden), max ~ half of (window - activity bar).
+    let explorer_width = RwSignal::new(260i32);
+    let is_dragging = RwSignal::new(false);
+    let drag_start_x = RwSignal::new(0i32);
+    let drag_start_w = RwSignal::new(0i32);
+
+    // Global listeners for drag (attached once; closures leaked for component lifetime).
+    Effect::new({
+        let width_sig = explorer_width;
+        let drag_sig = is_dragging;
+        let sx = drag_start_x;
+        let sw = drag_start_w;
+        move |_| {
+            let window = web_sys::window().expect("window");
+            let win_for_move = window.clone();
+            let mmove = Closure::<dyn FnMut(WasmMouseEvent)>::new(move |ev: WasmMouseEvent| {
+                if !drag_sig.get_untracked() {
+                    return;
+                }
+                let dx = ev.client_x() - sx.get_untracked();
+                let mut w = sw.get_untracked() + dx;
+                if w < 0 {
+                    w = 0;
+                }
+                let max_w = win_for_move
+                    .inner_width()
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .map(|ww| ((ww - 48.0) / 2.0).floor() as i32)
+                    .unwrap_or(400);
+                if w > max_w {
+                    w = max_w;
+                }
+                width_sig.set(w);
+            });
+            let mup = Closure::<dyn FnMut(WasmMouseEvent)>::new(move |_ev: WasmMouseEvent| {
+                drag_sig.set(false);
+            });
+            let _ = window.add_event_listener_with_callback("mousemove", mmove.as_ref().unchecked_ref());
+            let _ = window.add_event_listener_with_callback("mouseup", mup.as_ref().unchecked_ref());
+            mmove.forget();
+            mup.forget();
+        }
+    });
+
+    // autosave effect (unchanged)
     Effect::new(move |_| {
         workspace.vfs.with(|_| {});
         workspace.selected.with(|_| {});
@@ -77,10 +128,21 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
         });
     });
 
+    let ide_style = move || format!("--explorer-width: {}px;", explorer_width.get());
+
     view! {
-        <div class="ide">
+        <div class="ide" style=ide_style>
             <ActivityBar workspace=workspace />
             <Explorer workspace=workspace />
+            <div
+                class="resizer"
+                on:mousedown=move |ev: leptos::ev::MouseEvent| {
+                    ev.prevent_default();
+                    is_dragging.set(true);
+                    drag_start_x.set(ev.client_x());
+                    drag_start_w.set(explorer_width.get());
+                }
+            ></div>
             <Editor workspace=workspace />
         </div>
     }
