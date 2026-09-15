@@ -128,16 +128,16 @@ body {
 .activity-icon {
   position: relative;
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 30px;
+  height: 30px;
   vertical-align: middle;
 }
 .activity-icon img {
   position: absolute;
   left: 0;
   top: 0;
-  width: 16px;
-  height: 16px;
+  width: 30px;
+  height: 30px;
   opacity: 0;
 }
 .activity-icon .state-off { opacity: 1; }

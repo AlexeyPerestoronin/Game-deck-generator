@@ -8,9 +8,9 @@ use leptos::prelude::*;
 pub fn DownloadIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/download/off.drawio.png"   width="16" height="16" />
-            <img class="state-on"    src="icons/buttons/download/on.drawio.png"    width="16" height="16" />
-            <img class="state-click" src="icons/buttons/download/click.drawio.png" width="16" height="16" />
+            <img class="state-off"   src="icons/buttons/download/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/download/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/download/click.drawio.png" width="40" height="40" />
         </span>
     }
 }
@@ -19,9 +19,9 @@ pub fn DownloadIcon() -> impl IntoView {
 pub fn LoadGameIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/load_game/off.drawio.png"   width="16" height="16" />
-            <img class="state-on"    src="icons/buttons/load_game/on.drawio.png"    width="16" height="16" />
-            <img class="state-click" src="icons/buttons/load_game/click.drawio.png" width="16" height="16" />
+            <img class="state-off"   src="icons/buttons/load_game/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/load_game/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/load_game/click.drawio.png" width="40" height="40" />
         </span>
     }
 }
@@ -30,9 +30,9 @@ pub fn LoadGameIcon() -> impl IntoView {
 pub fn NewGameIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/new_game/off.drawio.png"   width="16" height="16" />
-            <img class="state-on"    src="icons/buttons/new_game/on.drawio.png"    width="16" height="16" />
-            <img class="state-click" src="icons/buttons/new_game/click.drawio.png" width="16" height="16" />
+            <img class="state-off"   src="icons/buttons/new_game/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/new_game/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/new_game/click.drawio.png" width="40" height="40" />
         </span>
     }
 }
@@ -41,9 +41,9 @@ pub fn NewGameIcon() -> impl IntoView {
 pub fn PreparePdfIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/prepare_pdf/off.drawio.png"   width="16" height="16" />
-            <img class="state-on"    src="icons/buttons/prepare_pdf/on.drawio.png"    width="16" height="16" />
-            <img class="state-click" src="icons/buttons/prepare_pdf/click.drawio.png" width="16" height="16" />
+            <img class="state-off"   src="icons/buttons/prepare_pdf/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/prepare_pdf/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/prepare_pdf/click.drawio.png" width="40" height="40" />
         </span>
     }
 }
@@ -52,9 +52,9 @@ pub fn PreparePdfIcon() -> impl IntoView {
 pub fn PrepareHtmlIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/prepare_html/off.drawio.png"   width="16" height="16" />
-            <img class="state-on"    src="icons/buttons/prepare_html/on.drawio.png"    width="16" height="16" />
-            <img class="state-click" src="icons/buttons/prepare_html/click.drawio.png" width="16" height="16" />
+            <img class="state-off"   src="icons/buttons/prepare_html/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/prepare_html/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/prepare_html/click.drawio.png" width="40" height="40" />
         </span>
     }
 }
@@ -64,10 +64,10 @@ pub fn PrepareHtmlIcon() -> impl IntoView {
 pub fn SplitPreviewIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"    src="icons/buttons/split_preview/off.drawio.png"    width="16" height="16" />
-            <img class="state-on"     src="icons/buttons/split_preview/on.drawio.png"     width="16" height="16" />
-            <img class="state-click"  src="icons/buttons/split_preview/click.drawio.png"  width="16" height="16" />
-            <img class="state-active" src="icons/buttons/split_preview/active.drawio.png" width="16" height="16" />
+            <img class="state-off"    src="icons/buttons/split_preview/off.drawio.png"    width="40" height="40" />
+            <img class="state-on"     src="icons/buttons/split_preview/on.drawio.png"     width="40" height="40" />
+            <img class="state-click"  src="icons/buttons/split_preview/click.drawio.png"  width="40" height="40" />
+            <img class="state-active" src="icons/buttons/split_preview/active.drawio.png" width="40" height="40" />
         </span>
     }
 }
@@ -76,9 +76,9 @@ pub fn SplitPreviewIcon() -> impl IntoView {
 pub fn ClearIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/clear/off.drawio.png"   width="16" height="16" />
-            <img class="state-on"    src="icons/buttons/clear/on.drawio.png"    width="16" height="16" />
-            <img class="state-click" src="icons/buttons/clear/click.drawio.png" width="16" height="16" />
+            <img class="state-off"   src="icons/buttons/clear/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/clear/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/clear/click.drawio.png" width="40" height="40" />
         </span>
     }
 }
