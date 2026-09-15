@@ -8,17 +8,29 @@ description = "Leptos widgets for the browser workspace editor"
 path = "src/lib.rs"
 
 [dependencies]
+# internal: JS interop helpers
 deck_gen_wasm_browser = { path = "../browser" }
+# internal: extension tables for FileKind / highlight decisions
 deck_gen_wasm_conf = { path = "../conf" }
+# internal: kind_of / syntax_name / can_highlight / extension_allowed
 deck_gen_wasm_fs = { path = "../fs" }
+# internal: binary vs text persistence split
 deck_gen_wasm_persist = { path = "../persist" }
+# internal: Workspace state, tabs, VFS binding for editor panes
 deck_gen_wasm_workspace = { path = "../workspace" }
+# timers for debounce (edit flush, autosave)
 gloo-timers = { version = "0.3", features = ["futures"] }
+# Leptos CSR UI framework
 leptos = { version = "0.8", features = ["csr"] }
+# markdown rendering for preview pane
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+# syntax highlighting (syntect grammars) for editor
 syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+# wasm JS glue
 wasm-bindgen = "0.2"
+# async bridge for file reads etc
 wasm-bindgen-futures = "0.4"
+# web apis for textarea/scroll sync in highlighted editor
 web-sys = { version = "0.3", features = [
     "HtmlTextAreaElement",
     "MouseEvent",

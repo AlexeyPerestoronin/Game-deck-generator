@@ -112,6 +112,7 @@ mod tests {
         assert!(kind::extension_allowed("art/photo.JPG"));
         assert!(kind::extension_allowed("art/app.icon"));
         assert!(kind::extension_allowed("views/fit-header-name.js"));
+        assert!(kind::extension_allowed("views/face-layout.j2"));
         assert!(!kind::extension_allowed("print.pdf"));
         assert!(!kind::extension_allowed("notes.txt"));
         assert!(!kind::extension_allowed("LICENSE"));
@@ -128,6 +129,7 @@ mod tests {
         assert_eq!(classify("help.md", 10), ImportClass::Text);
         assert_eq!(classify("logo.png", 10), ImportClass::Image);
         assert_eq!(classify("views/fit-header-name.js", 123), ImportClass::Text);
+        assert_eq!(classify("views/face-layout.j2", 200), ImportClass::Text);
         assert_eq!(
             classify("logo.png", conf::import::MAX_IMAGE_BYTES + 1),
             ImportClass::Oversized
@@ -147,14 +149,17 @@ mod tests {
         // used for <input accept> in direct multi-file picker
         let accept = file_input_accept();
         assert!(accept.contains(".js"), "accept must offer *.js: {accept}");
+        assert!(accept.contains(".j2"), "accept must offer *.j2: {accept}");
         assert!(accept.contains(".json5"), "accept keeps prior: {accept}");
 
         // human list shown in error dialogs for both pickers
         let listed = allowed_extension_list();
         assert!(listed.contains("js"), "list must mention js: {listed}");
+        assert!(listed.contains("j2"), "list must mention j2: {listed}");
 
         // both direct files and folder contents go through classify -> extension_allowed
         assert_eq!(classify("script.js", 42), ImportClass::Text);
         assert_eq!(classify("views/util.js", 100), ImportClass::Text);
+        assert_eq!(classify("partial.j2", 50), ImportClass::Text);
     }
 }

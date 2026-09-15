@@ -67,8 +67,8 @@ pub mod ext {
     /// Raster / icon images accepted as binary files.
     pub const IMAGE: &[&str] = &["jpg", "jpeg", "png", "ico", "icon"];
     /// Text extensions accepted when copying files from disk into the workspace
-    /// (direct pick or inside a folder). Includes `js`.
-    pub const IMPORT_TEXT: &[&str] = &["md", "json", "json5", "html", "scss", "js"];
+    /// (direct pick or inside a folder). Includes `js`, `j2`.
+    pub const IMPORT_TEXT: &[&str] = &["md", "json", "json5", "html", "scss", "js", "j2"];
 }
 
 /// Folder-import rules for “Load Game” and folder “load file(s)”.

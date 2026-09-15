@@ -83,13 +83,20 @@ pub fn can_highlight(path: &str) -> bool {
 }
 
 /// syntect extension name for `path`, if any.
+///
+/// Supports `js` and `j2` directly (in addition to kinds that map to highlightable
+/// grammar names). Returns the name passed to syntect's `find_syntax_by_extension`.
 pub fn syntax_name(path: &str) -> Option<&'static str> {
-    match kind_of(path) {
-        FileKind::Markdown => Some("md"),
-        FileKind::Json | FileKind::Json5 => Some("json"),
-        FileKind::Html => Some("html"),
-        FileKind::Scss | FileKind::Css => Some("css"),
-        _ => None,
+    match lower_ext(path).as_deref() {
+        Some("js") => Some("js"),
+        Some("j2") => Some("j2"),
+        _ => match kind_of(path) {
+            FileKind::Markdown => Some("md"),
+            FileKind::Json | FileKind::Json5 => Some("json"),
+            FileKind::Html => Some("html"),
+            FileKind::Scss | FileKind::Css => Some("css"),
+            _ => None,
+        },
     }
 }
 
@@ -172,6 +179,8 @@ mod tests {
         assert!(extension_allowed("art/logo.png"));
         assert!(extension_allowed("art/photo.JPG"));
         assert!(extension_allowed("art/app.icon"));
+        assert!(extension_allowed("views/fit-header-name.js"));
+        assert!(extension_allowed("views/face-layout.j2"));
         assert!(!extension_allowed("print.pdf"));
         assert!(!extension_allowed("notes.txt"));
         assert!(!extension_allowed("LICENSE"));
@@ -197,6 +206,8 @@ mod tests {
         assert!(can_highlight("decks/data.json5"));
         assert!(can_highlight("a.htm"));
         assert!(can_highlight("a.css"));
+        assert!(can_highlight("script.js"));
+        assert!(can_highlight("partial.j2"));
         assert!(!can_highlight("notes.txt"));
         assert!(!can_highlight("print.pdf"));
     }
