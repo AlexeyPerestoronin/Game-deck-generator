@@ -78,6 +78,61 @@ pub fn syntax_name(path: &str) -> Option<&'static str> {
 Что не смог сделать: реальное `trunk serve`, клик "Load Game"/"load file(s)", выбрать папку с .j2 (monopoly-2.0/views), открыть .js файл и увидеть цветную подсветку вместо plain textarea, проверить fallback на edge (неизвестный .j2 grammar), проверить desktop vs mobile.
 Рекомендация после: запустить serve.bat, загрузить игру/файлы с j2+js, открыть их в редакторе, проверить отсутствие регрессий в существующих .html/.scss/.json5.
 
+## Задача phase-III/flixible_icons.md: гибкие PNG-иконки Activity Bar (замена инлайн SVG)
+
+### Кратко (было → стало, почему)
+Было: все 8 кнопок Activity Bar (save, download, load_game, new_game, prepare_html, prepare_pdf, split_preview, clear) рендерили жёстко встроенный 16×16 SVG с `fill="currentColor"` прямо в `deck_gen_wasm/ui/src/icons/activity.rs`. Стилизация только через CSS color на .activity-btn / :hover / .active. Чтобы поменять вид иконки — править Rust + пересобирать. Нет отдельных кадров для off/on/click.
+Стало: иконки — `<img>` с тремя (у split — четырьмя) PNG-кадрами. Кадры лежат в `deck_gen_wasm/icons/buttons/<module>/{off,on,click}.drawio.png` (+ active.drawio.png только у split). Смена кадра — чисто CSS (opacity на вложенных img по .activity-btn:hover / :active / .active). Правка PNG + trunk build сразу меняет картинку без касания .rs. currentColor и весь SVG удалён.
+Почему: ровно по спецификации (минимальные правки, только указанные файлы, copy-dir как у favicon, watch, CSS-переключение, имена подпапок = модули buttons/*.rs, aria-hidden на img, имя остаётся на button). 32×32 PNG baked-color (off=#858585, on=white, click=highlight, active=accent), отображаются 16×16. Для split .active теперь даёт отдельную иконку вместо просто цвета.
+
+### Этап-1 (прямолинейный код, без абстракций)
+- Добавлены 8 подпапок + 25 PNG (по 3 на кнопку, +1 active для split). PNG сгенерированы кодом (System.Drawing) — простые геометрические глифы, близкие к прежним path (документ+сгиб, стрелка, папка, плюс, PDF-текст, шеврон, две панели, корзина, диск). Размер единый.
+- `Trunk.toml`: добавлен "deck_gen_wasm/icons" в [watch].
+- `deck_gen_wasm/index.html`: `<link data-trunk rel="copy-dir" href="icons" />` (как favicon).
+- `style.css`: добавлены .activity-icon + правила opacity (off по умолчанию; hover→on; active→click; .active→state-active у split; приоритет :active и hover).
+- `activity.rs`: полностью заменены 8 компонентов (убраны все svg/path/text, вместо них span.activity-icon с 3-4 img). Компоненты и их экспорт остались теми же — кнопки в buttons/*.rs не трогали.
+- `icons/mod.rs`: минимально обновлён шапочный комментарий.
+Ничего больше: ни обработчиков, ни ConfirmModal, ни explorer иконок, ни новых зависимостей, ни тем, ни размеров кнопок.
+
+Пример структуры (после):
+```text
+deck_gen_wasm/icons/buttons/
+  download/off.drawio.png on.drawio.png click.drawio.png
+  split_preview/off... on... click... active.drawio.png
+  ...
+```
+```rust
+// было
+<svg ...><path fill="currentColor" d="..."/></svg>
+// стало
+<span class="activity-icon" aria-hidden="true">
+  <img class="state-off" src="icons/buttons/.../off.drawio.png" width="16" height="16"/>
+  ...
+</span>
+```
+CSS переключает opacity — без JS, без нескольких кнопок.
+
+### Этап-2 (рефакторинг)
+Задача требовала минимальных изменений и "простой, понятный и прямолинейный" код. Повтор 8 почти идентичных блоков img — это и есть KISS (никаких макросов, generics, IconProps с match по enum, data-url и т.д.). Не вводил лишних абстракций. Стиль базы сохранён (leptos view! в каждом мелком компоненте-иконке). Cargo.toml не трогал. Комментарии добавил только в изменённых файлах по необходимости.
+
+### Проверка (строго по указаниям в плане)
+- `cargo test -p deck_gen_wasm_ui --lib` — 9 тестов, все OK.
+- `cargo check -p deck_gen_wasm` — Finished dev profile.
+- `trunk build` — ✅ success; в `deck_gen_wasm/dist/icons/buttons/` ровно 25 PNG.
+- Статические файлы отдаются (проверка через serve + запрос PNG → 200).
+- Все имена подпапок совпадают с buttons/*.rs (в т.ч. snake_case load_game, prepare_* , split_preview).
+
+### Браузерная верификация (по правилам)
+Нет headless-браузера/automation в окружении. Выполнено:
+- trunk build + dist содержит PNG.
+- trunk serve (кратко) + curl иконок = 200 OK (ассеты доставляются).
+- compile + тесты зелёные.
+Полноценно проверить поведение нужно руками: `trunk serve`, навести на кнопки activity bar — off → on; зажать — click; для Split Preview — клик → переключается на active.drawio.png (вместо просто accent-цвета) + hover всё ещё работает. Проверить на всех 8 кнопках, disabled состояния, reload после изменений PNG. Desktop viewport основной; мобильный — если есть (грид 48px колонки).
+
+Что осталось на ручную проверку (не смог автоматизировать): реальные hover/pressed/active визуалы, переключение split, что PNG из draw.io экспорта будут работать после замены.
+
+Крейты с правками: только deck_gen_wasm_ui (icons) + shell (index.html + Trunk.toml + style.css) — как разрешено. Остальное игнорировалось.
+
 ## Отчёт о проделанной работе (было → стало)
 - Загрузка: *.j2 теперь в ALLOWED → и прямой input, и folder walk принимают их как Text (как .js до этого).
 - Синтаксис: .js теперь всегда can_highlight → HighlightedEditor + syntect "js" grammar; .j2 пытается "j2" (graceful на plain если нет).

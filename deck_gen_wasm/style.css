@@ -109,6 +109,50 @@ body {
   color: #3ea6ff;
 }
 
+/* PNG icon states for activity bar (replaces currentColor SVG).
+   off default, on for hover/focus, click for :active press.
+   Split uses .state-active when button has .active (instead of color tint).
+   All PNGs have baked-in color per state; no CSS filters. */
+.activity-icon {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+.activity-icon img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  opacity: 0;
+}
+.activity-icon .state-off { opacity: 1; }
+
+/* hover / focus-visible -> on */
+.activity-btn:hover .activity-icon .state-off,
+.activity-btn:focus-visible .activity-icon .state-off { opacity: 0; }
+.activity-btn:hover .activity-icon .state-on,
+.activity-btn:focus-visible .activity-icon .state-on { opacity: 1; }
+
+/* pointer active (mousedown) -> click */
+.activity-btn:active .activity-icon .state-off,
+.activity-btn:active .activity-icon .state-on { opacity: 0; }
+.activity-btn:active .activity-icon .state-click { opacity: 1; }
+
+/* split active state uses dedicated active png (baked accent) */
+.activity-btn.active .activity-icon .state-off { opacity: 0; }
+.activity-btn.active .activity-icon .state-active { opacity: 1; }
+/* hover while active prefers on */
+.activity-btn.active:hover .activity-icon .state-active,
+.activity-btn.active:hover .activity-icon .state-off { opacity: 0; }
+.activity-btn.active:hover .activity-icon .state-on { opacity: 1; }
+/* click wins over active */
+.activity-btn.active:active .activity-icon .state-on,
+.activity-btn.active:active .activity-icon .state-active { opacity: 0; }
+.activity-btn.active:active .activity-icon .state-click { opacity: 1; }
+
 .explorer {
   background: var(--sidebar);
   display: flex;

@@ -1,8 +1,8 @@
-//! Inline SVG icons for the activity bar and explorer rows.
+//! Icons for the activity bar (now PNG state images) and explorer rows.
 //!
-//! Toolbar glyphs are 16×16 and inherit `currentColor`. Explorer file-type
-//! icons map an extension to a glyph (Markdown, JSON, HTML, SCSS, PDF,
-//! images); unknown types render an empty slot so columns stay aligned.
+//! Activity icons are 16×16 <img> elements backed by 32×32 PNGs under
+//! icons/buttons/*/ (off/on/click, +active for split). Switched by CSS.
+//! Explorer file-type icons remain SVG (separate concern).
 
 mod activity;
 mod files;
