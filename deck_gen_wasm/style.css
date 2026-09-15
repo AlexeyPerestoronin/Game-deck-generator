@@ -67,10 +67,10 @@ body {
 }
 
 .tooltip {
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
+  /* Positioning (left/top + fixed) is provided inline by DelayedTooltip using
+     getBoundingClientRect so the tip can appear to the right of the activity bar
+     without being clipped by overflow:hidden on .activity-bar / .ide. */
+  position: fixed;
   z-index: 20;
   width: max-content;
   max-width: 50vw;
