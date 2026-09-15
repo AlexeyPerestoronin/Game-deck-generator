@@ -1,11 +1,8 @@
 # deck-gen
 
-Браузерный редактор рабочей копии игры: дерево файлов в памяти, правка JSON5/HTML/SCSS/Markdown, вызов того же `deck_gen`, что и CLI, плюс PDF в самой вкладке. Сервера с копией работы нет: сессия в этом браузере, выгрузка — ZIP.
+Браузерный serverless web-assembly via Rust Leptos редактор карточных колод на движке `deck_gen`.
 
 # Архитектура
-
-Точка входа монтирует Leptos CSR (`ui::App`). `workspace` держит VFS, вкладки и действия. `fs` — дерево файлов; `VfsFs` в workspace подставляет его в `deck_gen::FileSystem`. Текст сессии — localStorage, PDF и картинки — IndexedDB. Шаблон `new-game` тянется с GitHub `master`.
-
 Схема: [`arch.mermaid`](arch.mermaid).
 
 ```mermaid
@@ -52,6 +49,4 @@ trunk serve
 serve.bat
 ```
 
-Открыть http://127.0.0.1:8080 (или `trunk serve` из корня).
-
-В интерфейсе: Save / Download ZIP / New game / Load Game / prepare_html / prepare_pdf / Clear. В дереве — файлы и папки, превью html/md/pdf. Справка при первом заходе — `user-help.md`.
+Открыть и проектировать локально: http://127.0.0.1:8080 (или `trunk serve` из корня).

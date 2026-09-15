@@ -1,6 +1,7 @@
 {
     "rust-analyzer.cargo.allTargets": false,
     "cSpell.words": [
+        "Leptos",
         "setlocal",
         "автогенерации",
         "медбрат",
