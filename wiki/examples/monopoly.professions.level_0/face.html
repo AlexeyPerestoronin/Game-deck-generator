@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Профессии L0</title>
+  <style>
+@page {
+  size: 56mm 87mm;
+  margin: 0;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 56mm;
+  height: 87mm;
+  background: #fff;
+}
+
+.card {
+  position: relative;
+  box-sizing: border-box;
+  width: 56mm;
+  height: 87mm;
+  overflow: hidden;
+  color: #000;
+  background: #fff;
+  font-family: "Times New Roman", Times, serif;
+  border: 1mm solid #000;
+  border-radius: 3mm;
+  break-after: page;
+  page-break-after: always;
+}
+.card:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.header {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 6.667%;
+  display: grid;
+  grid-template-columns: 20% 55% 25%;
+  box-sizing: border-box;
+  border-bottom: 0.5mm solid #000;
+}
+.header .cell {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0 0.8mm;
+  font-size: 12pt;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.header .name {
+  justify-content: center;
+  border-right: 0.5mm solid #000;
+  white-space: normal;
+}
+.header .name span {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.1;
+}
+
+.box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 0.5mm solid #000;
+  border-radius: 1mm;
+}
+.box-desc {
+  left: 5%;
+  top: 10%;
+  width: 90%;
+  height: 16.667%;
+}
+.box-effects {
+  left: 5%;
+  top: 30%;
+  width: 90%;
+  height: 66.667%;
+}
+
+.desc-text {
+  position: absolute;
+  left: 10%;
+  top: 13.333%;
+  width: 80%;
+  height: 10%;
+  overflow: hidden;
+  font-size: 8pt;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.effects-text {
+  position: absolute;
+  left: 10%;
+  top: 33.333%;
+  width: 80%;
+  height: 60%;
+  overflow: hidden;
+  font-size: 8pt;
+  line-height: 1.3;
+}
+.effects-text ul {
+  margin: 0;
+  padding-left: 1.15em;
+}
+.effects-text li {
+  margin: 0 0 0.45em;
+}
+
+.header .level {
+  justify-content: flex-end;
+  border-right: 0.5mm solid #000;
+}
+.header .entrance {
+  justify-content: flex-start;
+}  </style>
+</head>
+<body>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>кассир</span></div>
+      <div class="cell entrance">E-3</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы работаете на кассе в продуктовом магазине возле дома</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 30&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>грузчик</span></div>
+      <div class="cell entrance">E-8</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы работаете грузчиком на складе</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 50&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>сортировщик</span></div>
+      <div class="cell entrance">E-2</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы сортируете почту в почтовом отделении</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 40&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>дворник</span></div>
+      <div class="cell entrance">E-1</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы метёте улицы и дворы вашего района</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 25&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>курьер</span></div>
+      <div class="cell entrance">E-5</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы развозите заказы по городу на велосипеде</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 35&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>официант</span></div>
+      <div class="cell entrance">E-7</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы обслуживаете столики в небольшом кафе</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 30&#x2f;ход</li>
+        <li>чаевые = 10&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>продавец</span></div>
+      <div class="cell entrance">E-4</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы стоите за прилавком в магазине одежды</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 35&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>охранник</span></div>
+      <div class="cell entrance">E-6</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы дежурите на проходной торгового центра</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 30&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+  <article class="card" style="width: 56.0mm; height: 87.0mm;">
+    <header class="header">
+      <div class="cell level">0-L</div>
+      <div class="cell name"><span>уборщик</span></div>
+      <div class="cell entrance">E-0</div>
+    </header>
+    <div class="box box-desc"></div>
+    <div class="desc-text">вы убираете офисы вечером после рабочего дня</div>
+    <div class="box box-effects"></div>
+    <div class="effects-text">
+      <ul>
+        <li>доход = 25&#x2f;ход</li>
+      </ul>
+    </div>
+  </article>
+<script>
+(function () {
+  const MIN_PT = 6;
+
+  function availableBox(box) {
+    const cs = getComputedStyle(box);
+    return {
+      width: box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+      height: box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom),
+    };
+  }
+
+  function overflows(box, text) {
+    const area = availableBox(box);
+    return text.scrollWidth - area.width > 1 || text.scrollHeight - area.height > 1;
+  }
+
+  function fontSizePt(el) {
+    return parseFloat(getComputedStyle(el).fontSize) * 72 / 96;
+  }
+
+  function fit(box) {
+    const text = box.querySelector("span") || box.querySelector("ul") || box;
+    box.style.fontSize = "";
+    text.style.transform = "";
+    if (!overflows(box, text)) {
+      return;
+    }
+
+    let lo = MIN_PT;
+    let hi = fontSizePt(box);
+    if (hi <= MIN_PT) {
+      box.style.fontSize = MIN_PT + "pt";
+      return;
+    }
+
+    for (let i = 0; i < 16; i++) {
+      const mid = (lo + hi) / 2;
+      box.style.fontSize = mid + "pt";
+      if (overflows(box, text)) {
+        hi = mid;
+      } else {
+        lo = mid;
+      }
+    }
+    box.style.fontSize = lo + "pt";
+  }
+
+  function fitAll() {
+    document.querySelectorAll(".header .cell.name").forEach(fit);
+    document.querySelectorAll(".effects-text").forEach(fit);
+  }
+
+  window.__fitHeaderNames = (
+    document.fonts && document.fonts.ready
+      ? document.fonts.ready
+      : Promise.resolve()
+  ).then(fitAll);
+})();</script>
+</body>
+</html>

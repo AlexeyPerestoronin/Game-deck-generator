@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph consumers [Потребители]
+    CLI["CLI: list / html / pdf"]
+    WASM["deck_gen_wasm через VfsFs"]
+  end
+
+  subgraph deck_gen [deck_gen]
+    FS["FileSystem: OsFs или внешняя реализация"]
+    CONF["conf: три уровня conf.json5"]
+    CAT["catalog: поиск колод data.json5"]
+    LOAD["load + subst: плейсхолдеры JSON5"]
+    MODEL["model / card"]
+    RENDER["render: MiniJinja + grass SCSS"]
+    PDF["pdf_engine: PdfEngineGenerator + A4 duplex"]
+  end
+
+  CLI --> FS
+  WASM --> FS
+  FS --> CONF --> CAT --> LOAD --> MODEL --> RENDER
+  RENDER --> HTML["HTML: face / back / preview"]
+  HTML --> PDF
+  PDF --> HOST["HostPdfEngine → prepare_pdf_host / Chromium"]
+  PDF --> WEB["движок браузера → prepare_pdf_web"]

@@ -1,0 +1,13 @@
+flowchart TB
+  MAIN["main: Leptos CSR"] --> UI["ui: панель действий, дерево, редактор"]
+  UI --> WS["workspace: состояние и действия"]
+  WS --> VFS["fs: дерево Vfs"]
+  WS --> IMP["import: папка и файлы с диска"]
+  WS --> EXP["export: workspace.zip"]
+  WS --> PER["persist: localStorage + IndexedDB"]
+  WS --> TPL["template: new-game с GitHub, user-help"]
+  WS --> PREP["prepare_html / prepare_pdf"]
+  PREP --> VFSFS["VfsFs: FileSystem над Vfs"]
+  PREP --> DG["deck_gen без CLI"]
+  DG --> WEB["prepare_pdf_web"]
+  TPL --> BR["browser: HTTP и JS FFI"]
