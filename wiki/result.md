@@ -238,6 +238,53 @@ cargo test -p deck_gen_wasm_ui + workspace + wasm32 check — OK.
 
 (добавлено для №3)
 
+---
+
+# Задача на доработку №4
+
+Проверил: поведение не изменилось после доработки №3 (live reorder в dragover).
+
+## было → стало (почему)
+
+### Причина проблемы (найдена после разрешения править любые модули)
+было: для передачи "какой таб тащим" использовались StoredValue<OpenTab> (drag_tab) и StoredValue<bool>, создаваемые *внутри каждого* EditorTab компонента.
+стало: перешли на стандартный механизм HTML5 DnD — dataTransfer.setData / getData в on:drag* .
+почему: каждый EditorTab имеет свою копию StoredValue. dragstart выполнялся в компоненте источника (устанавливал его Stored), но dragover срабатывал на компоненте цели (её Stored была None) → ранний return, move_tab никогда не вызывался для целей. dataTransfer несёт данные "в браузере" и доступен любому обработчику dragover/drop независимо от Leptos-компонента.
+
+### ui/Cargo.toml
+было: web-sys features без "DragEvent", "DataTransfer".
+стало: добавлены "DragEvent", "DataTransfer".
+почему: чтобы получить доступ к .data_transfer() и методам set/getData на web_sys::DragEvent (ранее compile error "no method").
+
+### tab.rs — drag handlers
+было: set/get через StoredValue в dragstart/dragover/drop/dragend; parse не было.
+стало: в dragstart — dt.setData("text/plain", "edit|path"); в dragover — dt.getData, парсим в OpenTab, используем как dragged; guard по kind vs target preview_pane; live move_tab; drop/dragend — только prevent.
+почему: данные теперь приходят к обработчику цели; live reorder в dragover теперь реально выполняет перемещение при проходе ghost'а над другими табами.
+
+### tab.rs — cleanup
+было: StoredValue + несколько tab_for_* + data-* attrs (от старых попыток).
+стало: убраны Stored, лишние клоны, data-attrs; оставлены нужные tab_for_dnd / tab_for_this.
+почему: меньше кода, нет мёртвого.
+
+### tab.rs — dropEffect
+было: не устанавливали.
+стало: dt.set_drop_effect("move") в dragover.
+почему: стандарт для индикации "move" при DnD reorder.
+
+Другие файлы (кроме Cargo и tab.rs) не менялись. Архитектура не тронута (Workspace, For, signals — как были).
+
+## Рефакторинг
+Простой, прямолинейный код в обработчиках. Добавление фич в Cargo — минимально необходимое. Стиль сохранён.
+
+## Верификация
+- cargo test -p deck_gen_wasm_ui → OK
+- cargo check -p deck_gen_wasm_ui --target wasm32-unknown-unknown → OK (с новыми фичами)
+- unit-тесты workspace не затронуты.
+
+Теперь data о тащимом табе доступна в dragover любого таба → live reorder должен срабатывать, и положение фиксироваться.
+
+(добавлено для №4)
+
 Close All работал. Drag-reorder не срабатывал (grab-курсор был, но при зажатой ЛКМ порядок вкладок не менялся в Firefox/Edge).
 
 ## было → стало (почему)

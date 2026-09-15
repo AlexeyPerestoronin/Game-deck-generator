@@ -36,4 +36,6 @@ web-sys = { version = "0.3", features = [
     "MouseEvent",
     "Element",
     "DomRect",
+    "DragEvent",
+    "DataTransfer",
 ] }

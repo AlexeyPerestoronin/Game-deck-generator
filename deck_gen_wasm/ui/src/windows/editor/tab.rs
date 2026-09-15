@@ -13,8 +13,8 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
     let tab_for_active = tab.clone();
     let tab_for_click = tab.clone();
     let tab_for_close = tab.clone();
-    let tab_for_dnd = tab.clone();
-    let tab_for_dragover = tab.clone();
+    let tab_for_dnd = tab.clone();  // for dragstart data
+    let tab_for_this = tab.clone(); // for this tab as hovered in its dragover
     let label = match tab.kind {
         TabKind::Edit => file_name(&tab.path).to_string(),
         TabKind::Preview => format!("Preview {}", file_name(&tab.path)),
@@ -34,11 +34,6 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
             />
         }
     });
-
-    // StoredValues for native drag-and-drop based reorder (avoids manual listeners which didn't fire reliably).
-    // We use our own storage instead of dataTransfer to avoid web_sys feature requirements.
-    let drag_tab = StoredValue::new(None::<OpenTab>);
-    let drag_source_is_preview = StoredValue::new(false);
 
     view! {
         <div
@@ -60,21 +55,40 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
                 ev.stop_propagation();
                 set_menu_pos.set(Some((ev.client_x() as f64, ev.client_y() as f64)));
             }
-            on:dragstart=move |_ev| {
-                drag_tab.set_value(Some(tab_for_dnd.clone()));
-                drag_source_is_preview.set_value(preview_pane);
+            on:dragstart=move |ev| {
+                let d_ev = ev.unchecked_ref::<web_sys::DragEvent>();
+                if let Some(dt) = d_ev.data_transfer() {
+                    let kind_str = if preview_pane { "preview" } else { "edit" };
+                    let data = format!("{}|{}", kind_str, tab_for_dnd.path);
+                    let _ = dt.set_data("text/plain", &data);
+                    let _ = dt.set_effect_allowed("move");
+                }
             }
             on:dragover=move |ev| {
                 ev.prevent_default();
-                // Perform live reorder here: as the ghost is dragged over this tab,
-                // move the dragged item in the list so tabs visually jump to new positions.
-                // This way, even if drop event doesn't "commit", the position gets fixed live.
-                let Some(dragged) = drag_tab.get_value() else { return; };
-                let source_is_preview = drag_source_is_preview.get_value();
+                let d_ev = ev.unchecked_ref::<web_sys::DragEvent>();
+                let dt = match d_ev.data_transfer() {
+                    Some(d) => d,
+                    None => return,
+                };
+                dt.set_drop_effect("move");
+                let data = match dt.get_data("text/plain") {
+                    Ok(d) => d,
+                    Err(_) => return,
+                };
+                let mut parts = data.splitn(2, '|');
+                let kind_str = parts.next().unwrap_or("");
+                let path = parts.next().unwrap_or("").to_string();
+                if path.is_empty() { return; }
+                let dragged = OpenTab {
+                    path,
+                    kind: if kind_str == "preview" { TabKind::Preview } else { TabKind::Edit },
+                };
+                let source_is_preview = dragged.kind == TabKind::Preview;
                 if source_is_preview != preview_pane {
                     return;
                 }
-                let hovered = tab_for_dragover.clone();
+                let hovered = tab_for_this.clone();
                 let list = if preview_pane {
                     workspace.preview_tabs.get()
                 } else {
@@ -98,15 +112,9 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
             }
             on:drop=move |ev| {
                 ev.prevent_default();
-                // The actual reordering happens live in dragover as the ghost moves over tabs.
-                // Drop just confirms end of gesture (cleanup happens in dragend too).
-                let _ = drag_tab.get_value(); // touch to keep any prior state if needed
-                drag_tab.set_value(None);
-                drag_source_is_preview.set_value(false);
             }
-            on:dragend=move |_| {
-                drag_tab.set_value(None);
-                drag_source_is_preview.set_value(false);
+            on:dragend=move |_ev| {
+                // optional cleanup, data is in browser
             }
         >
             <span class="editor-tab-label">{label}</span>
