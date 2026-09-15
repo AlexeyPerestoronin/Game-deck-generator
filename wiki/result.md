@@ -66,3 +66,31 @@ cargo test -p deck_gen_wasm_ui --lib   # 9 tests ok
 Иконки для script.js и face-layout.j2 теперь должны отображаться в Explorer.
 
 (Отчёт ~68 строк)
+
+---
+
+# Отчёт: корректировка задач stage-2 (фаза-3, Доп.№2)
+
+Дата: 2026-09-15. Задача из wiki/todo.md.
+
+## Выполнено
+- Проанализирован код `deck_gen_wasm` (основные модули: ui (app, bars, windows/editor/*, explorer, menus, tooltips), workspace (state, split, api), conf/api, корневой style.css).
+- Каждая из 5 задач получила:
+  - точное описание текущего поведения по коду;
+  - чёткое «Что сделать» + «Не делать»;
+  - критерии приёмки;
+  - **ограниченный список файлов** для анализа (см. раздел "Какой код использовать для анализа" в каждом .md).
+- Из-за пересечения close_all + rearrange по EditorTab / tab vecs / menus — создана `tabs_management.md` (единый scope + общий список файлов).
+- План и todo обновлены, опечатки в именах исправлены, ссылки починены.
+- Никакой код приложения / wasm не изменён — только документация планирования.
+
+## Минимальные скоупы (итог)
+- button_annotations: только conf + 7 файлов buttons/*.rs
+- change_width_of_fs_tree: только app.rs + style.css
+- flex_adjust_width_of_workspace: conf + editor/mod.rs + style.css
+- tabs (объединено): workspace/{state,split,api} + ui/windows/editor/{tab,pane,mod} + menus/* + style.css
+
+## Следующие шаги
+Реализацию по обновлённым задачам выполнять строго по указанным спискам файлов (для экономии контекста и изоляции изменений).
+
+(Отчёт по мета-задаче)
