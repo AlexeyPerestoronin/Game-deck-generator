@@ -17,6 +17,8 @@ pub fn FileTypeIcon(name: String) -> impl IntoView {
         Some(ExplorerIcon::Json5) => view! { <Json5FileIcon /> }.into_any(),
         Some(ExplorerIcon::Html) => view! { <HtmlFileIcon /> }.into_any(),
         Some(ExplorerIcon::Scss) => view! { <ScssFileIcon /> }.into_any(),
+        Some(ExplorerIcon::Js) => view! { <JsFileIcon /> }.into_any(),
+        Some(ExplorerIcon::J2) => view! { <J2FileIcon /> }.into_any(),
         Some(ExplorerIcon::Pdf) => view! { <PdfFileIcon /> }.into_any(),
         Some(ExplorerIcon::Image) => view! { <ImageFileIcon /> }.into_any(),
         None => view! { <span class="file-icon-slot" aria-hidden="true"></span> }.into_any(),
@@ -78,6 +80,28 @@ fn ScssFileIcon() -> impl IntoView {
     }
 }
 
+/// Explorer icon for JavaScript files.
+#[component]
+fn JsFileIcon() -> impl IntoView {
+    view! {
+        <svg class="file-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path fill="#f1e05a" d="M3 1.5A1.5 1.5 0 0 1 4.5 0h7A1.5 1.5 0 0 1 13 1.5v13A1.5 1.5 0 0 1 11.5 16h-7A1.5 1.5 0 0 1 3 14.5v-13z"/>
+            <text x="8" y="11.8" text-anchor="middle" fill="#1e1e1e" font-size="5" font-family="Segoe UI, sans-serif" font-weight="700">JS</text>
+        </svg>
+    }
+}
+
+/// Explorer icon for Jinja2 files.
+#[component]
+fn J2FileIcon() -> impl IntoView {
+    view! {
+        <svg class="file-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path fill="#10b981" d="M3 1.5A1.5 1.5 0 0 1 4.5 0h7A1.5 1.5 0 0 1 13 1.5v13A1.5 1.5 0 0 1 11.5 16h-7A1.5 1.5 0 0 1 3 14.5v-13z"/>
+            <text x="8" y="11.8" text-anchor="middle" fill="#fff" font-size="5" font-family="Segoe UI, sans-serif" font-weight="700">J2</text>
+        </svg>
+    }
+}
+
 /// Explorer icon for PDF files.
 #[component]
 fn PdfFileIcon() -> impl IntoView {
@@ -117,5 +141,7 @@ mod tests {
         assert_eq!(kind::explorer_icon("face.pdf"), Some(ExplorerIcon::Pdf));
         assert_eq!(kind::explorer_icon("notes.txt"), None);
         assert_eq!(kind::explorer_icon("LICENSE"), None);
+        assert_eq!(kind::explorer_icon("script.js"), Some(ExplorerIcon::Js));
+        assert_eq!(kind::explorer_icon("face-layout.j2"), Some(ExplorerIcon::J2));
     }
 }

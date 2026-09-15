@@ -134,6 +134,10 @@ pub enum ExplorerIcon {
     Html,
     /// SCSS.
     Scss,
+    /// JavaScript (`js` only).
+    Js,
+    /// Jinja2 (`j2` only).
+    J2,
     /// PDF.
     Pdf,
     /// Image.
@@ -148,6 +152,8 @@ pub fn explorer_icon(name: &str) -> Option<ExplorerIcon> {
         "json5" => Some(ExplorerIcon::Json5),
         "html" => Some(ExplorerIcon::Html),
         "scss" => Some(ExplorerIcon::Scss),
+        "js" => Some(ExplorerIcon::Js),
+        "j2" => Some(ExplorerIcon::J2),
         "pdf" => Some(ExplorerIcon::Pdf),
         ext if ext_in(ext, conf::ext::IMAGE) => Some(ExplorerIcon::Image),
         _ => None,
@@ -197,6 +203,9 @@ mod tests {
         assert_eq!(explorer_icon("logo.png"), Some(ExplorerIcon::Image));
         assert_eq!(explorer_icon("face.pdf"), Some(ExplorerIcon::Pdf));
         assert_eq!(explorer_icon("notes.txt"), None);
+        assert_eq!(explorer_icon("a.js"), Some(ExplorerIcon::Js));
+        assert_eq!(explorer_icon("a.j2"), Some(ExplorerIcon::J2));
+        assert_eq!(explorer_icon("SCRIPT.JS"), Some(ExplorerIcon::Js));
     }
 
     #[test]
