@@ -18,7 +18,8 @@
 html,
 body {
   margin: 0;
-  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--editor);
   color: var(--fg);
   font-family: "Segoe UI", Tahoma, sans-serif;
@@ -28,8 +29,14 @@ body {
 .ide {
   display: grid;
   grid-template-columns: 48px 260px 1fr;
-  height: 100vh;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+}
+
+.ide > * {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .activity-bar {
@@ -40,6 +47,9 @@ body {
   gap: 4px;
   padding: 8px 0;
   border-right: 1px solid var(--border);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .activity-spacer {
@@ -77,8 +87,10 @@ body {
 }
 
 .activity-btn {
-  width: 40px;
-  height: 40px;
+  flex: 0 1 40px;
+  aspect-ratio: 1;
+  min-height: 20px;
+  max-height: 40px;
   border: 0;
   background: transparent;
   color: var(--fg-dim);
@@ -159,10 +171,14 @@ body {
   flex-direction: column;
   border-right: 1px solid var(--border);
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .explorer-title-row {
   padding: 10px 12px 4px;
+  flex-shrink: 0;
 }
 
 .explorer-title {
@@ -178,6 +194,7 @@ body {
   justify-content: flex-end;
   gap: 8px;
   padding: 0 10px 6px;
+  flex-shrink: 0;
 }
 
 .explorer-actions {
@@ -200,6 +217,7 @@ body {
 
 .tree {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 4px 0 8px;
 }
@@ -264,6 +282,7 @@ body {
   border-top: 1px solid var(--border);
   color: var(--fg-dim);
   font-size: 11px;
+  flex-shrink: 0;
 }
 
 .editor-split {

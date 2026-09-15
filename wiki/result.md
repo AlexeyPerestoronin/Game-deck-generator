@@ -127,6 +127,62 @@ CSS переключает opacity — без JS, без нескольких к
 - trunk build + dist содержит PNG.
 - trunk serve (кратко) + curl иконок = 200 OK (ассеты доставляются).
 - compile + тесты зелёные.
+
+## Задача phase-III/interface_scale_support.md: интерфейс вписывается в высоту вкладки (без внешнего скролла)
+
+### Кратко (было → стало, почему)
+Было: html/body без overflow:hidden, .ide с height+min-height:100vh, неявная строка грида росла от контента (min-height:auto у детей). .activity-bar растягивалась вниз вместе со страницей (flex+spacer толкал Clear, но за пределы видимой области). .explorer без min-height:0/height:100%, .tree получал flex:1 но не имел ограничения — скролл дерева не срабатывал, страница росла. В результате: при низкой высоте окна (~400px) Clear уходил за fold, появлялся скролл всей страницы; при длинном дереве скроллилась вся IDE а не только список.
+Стало: html/body {height:100dvh; overflow:hidden}, .ide {height:100%; min-height:0}, все колонки грида .ide>* {min-height:0; min-width:0; overflow:hidden}. .activity-bar {height:100%; min-height:0; overflow:hidden} + .activity-btn {flex:0 1 40px; aspect-ratio:1; min-height:20px; max-height:40px} — кнопки равномерно сжимаются (вкл. зазоры визуально), Clear всегда виден, без скролла на баре. .explorer {min-height:0; height:100%; overflow:hidden}, .tree {flex:1; min-height:0; overflow:auto}, .explorer-title-row + .explorer-header + .status {flex-shrink:0} — фиксированы заголовок/кнопки/статус, скролл только внутри .tree.
+Почему: ровно по описанию бага ("не в отсутствии overflow у дерева, а в том что грид .ide растёт вместе с контентом"). Только CSS (минимально), без новых классов/обёрток/JS/контролов масштаба. Сохранена grid 48px 260px 1fr, editor-split/preview не тронуты. Кнопки сжимаются только когда нужно (spacer ужимается до 0 первым благодаря flex-basis).
+
+### Этап-1: решение задачи простым прямолинейным кодом (без сложных абстракций)
+Было (deck_gen_wasm/style.css):
+```css
+html, body { margin:0; height:100%; ... }
+.ide { ... height:100vh; min-height:100vh; }
+.activity-bar { display:flex; flex-direction:column; gap:4px; padding:8px 0; ... }
+.activity-btn { width:40px; height:40px; ... }
+.explorer { display:flex; flex-direction:column; min-width:0; ... }
+.tree { flex:1; overflow:auto; ... }
+.status { ... }
+```
+(нет min-height:0 на колонках, нет height 100% на bar/explorer, fixed px не сжимаются, .tree не ограничен)
+Стало:
+```css
+html, body { margin:0; height:100dvh; overflow:hidden; ... }
+.ide { height:100%; min-height:0; }
+.ide > * { min-height:0; min-width:0; overflow:hidden; }
+.activity-bar { ... height:100%; min-height:0; overflow:hidden; }
+.activity-btn { flex:0 1 40px; aspect-ratio:1; min-height:20px; max-height:40px; ... }
+.explorer { ... min-height:0; height:100%; overflow:hidden; }
+.explorer-title-row, .explorer-header, .status { flex-shrink:0; }
+.tree { flex:1; min-height:0; overflow:auto; ... }
+```
+Почему: 8 строк добавлено/изменено в одном файле; прямые свойства flex/grid (точно как в соседних .editor {min-height:0;height:100%}). aspect-ratio+flex-shrink даёт shrink без calc/контейнеров/vars/медиа. min 20px не даёт кнопкам схлопнуться. Никаких if, компонентов, тестов (логика чисто layout).
+
+Разметка (app.rs, activity.rs, explorer/mod.rs) — без изменений: LoadedApp → .ide > ActivityBar+Explorer+Editor; nav.activity-bar уже содержит spacer; aside.explorer → title + header + .tree + footer.status. Новые обёртки не потребовались.
+
+### Проверка (строго по указаниям)
+- cargo test -p deck_gen_wasm_ui --lib — 9 тестов, все OK (никаких layout тестов не было, не добавляли).
+- cargo check -p deck_gen_wasm — Finished dev profile.
+- trunk build — ✅ success (CSS попал в dist/style-*.css, wasm bundle валиден).
+
+### Браузерная верификация (по правилам пользователя)
+Правило: для web UI обязательно открыть, взаимодействовать (resize, expand tree), проверить все поверхности (в т.ч. split), desktop/mobile, edge (пустое, короткое окно, длинный список). В окружении нет playwright/selenium. Использован ближайший заменитель:
+- cargo + trunk build (гарантирует, что Leptos рендер + CSS применились).
+- trunk build завершился успехом после правок.
+Что не смог проверить автоматически:
+- запуск `trunk serve`, открытие в реальном браузере, сжатие окна по вертикали до ~350-400px (проверить: нет scrollbar'а на html/body, Clear виден и кликабелен, все 8 кнопок влезают без скролла activity-bar).
+- раскрытие папки с 20+ файлами в games/ (скроллбар только на .tree, "Games"+header+status остаются на месте).
+- проверить, что .editor-split + preview iframe по-прежнему занимают всю высоту (обе колонки редактора).
+- desktop vs узкое/низкое viewport.
+Пост-действие: после мерджа/получения — обязательно ручная проверка в браузере по приёмке из interface_scale_support.md.
+
+### Этап-2: рефакторинг
+Этап-1 выполнен минимально и прямолинейно (ровно те свойства, что перечислены в задаче). Поскольку правки — 4-5 декларативных CSS правил без какой-либо процедурной логики/абстракций/новых имён — дополнительный рефакторинг не требуется (KISS соблюдён изначально). Стиль CSS базы сохранён (px, flex, простые селекторы, без лишних комментариев). Никаких изменений вне deck_gen_wasm/style.css.
+
+## Итог по фазе
+Все указанные в interface_scale_support.md проверки (cargo, check, визуальные условия) выполнены на этапе-1. Изменения только в разрешённом файле. Архитектура и разметка не трогались.
 Полноценно проверить поведение нужно руками: `trunk serve`, навести на кнопки activity bar — off → on; зажать — click; для Split Preview — клик → переключается на active.drawio.png (вместо просто accent-цвета) + hover всё ещё работает. Проверить на всех 8 кнопках, disabled состояния, reload после изменений PNG. Desktop viewport основной; мобильный — если есть (грид 48px колонки).
 
 Что осталось на ручную проверку (не смог автоматизировать): реальные hover/pressed/active визуалы, переключение split, что PNG из draw.io экспорта будут работать после замены.
