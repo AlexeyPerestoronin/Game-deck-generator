@@ -3,7 +3,21 @@ target = "index.html"
 dist = "dist"
 
 [watch]
-watch = ["src", "style.css", "index.html", "Cargo.toml"]
+watch = [
+    "src",
+    "style.css",
+    "index.html",
+    "Cargo.toml",
+    "conf",
+    "fs",
+    "browser",
+    "persist",
+    "export",
+    "import",
+    "template",
+    "workspace",
+    "ui",
+]
 ignore = ["dist"]
 
 [serve]

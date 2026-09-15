@@ -1,0 +1,25 @@
+[package]
+name = "deck_gen_wasm_ui"
+version.workspace = true
+edition.workspace = true
+description = "Leptos widgets for the browser workspace editor"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+deck_gen_wasm_browser = { path = "../browser" }
+deck_gen_wasm_conf = { path = "../conf" }
+deck_gen_wasm_fs = { path = "../fs" }
+deck_gen_wasm_persist = { path = "../persist" }
+deck_gen_wasm_workspace = { path = "../workspace" }
+gloo-timers = { version = "0.3", features = ["futures"] }
+leptos = { version = "0.8", features = ["csr"] }
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "HtmlTextAreaElement",
+    "MouseEvent",
+] }

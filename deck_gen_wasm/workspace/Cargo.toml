@@ -1,0 +1,22 @@
+[package]
+name = "deck_gen_wasm_workspace"
+version.workspace = true
+edition.workspace = true
+description = "Reactive workspace state and editor actions"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+deck_gen = { path = "../../deck_gen", default-features = false }
+deck_gen_wasm_conf = { path = "../conf" }
+deck_gen_wasm_export = { path = "../export" }
+deck_gen_wasm_fs = { path = "../fs" }
+deck_gen_wasm_import = { path = "../import" }
+deck_gen_wasm_persist = { path = "../persist" }
+deck_gen_wasm_template = { path = "../template" }
+gloo-timers = { version = "0.3", features = ["futures"] }
+leptos = { version = "0.8", features = ["csr"] }
+prepare_pdf_web = { path = "../../prepare_pdf_web" }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Window"] }

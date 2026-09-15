@@ -1,0 +1,13 @@
+[package]
+name = "deck_gen_wasm_fs"
+version.workspace = true
+edition.workspace = true
+description = "In-memory workspace VFS for the browser editor"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+deck_gen_wasm_conf = { path = "../conf" }
+deck_gen = { path = "../../deck_gen", default-features = false }
+serde = { version = "1", features = ["derive"] }

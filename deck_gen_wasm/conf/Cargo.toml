@@ -1,0 +1,8 @@
+[package]
+name = "deck_gen_wasm_conf"
+version.workspace = true
+edition.workspace = true
+description = "Compile-time knobs for the browser workspace editor"
+
+[lib]
+path = "src/lib.rs"

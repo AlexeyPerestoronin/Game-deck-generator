@@ -1,28 +1,11 @@
 //! Browser entry for the in-memory game workspace editor.
 //!
-//! Installs the panic hook, then mounts [`app::App`] as a Leptos CSR root.
-//! All filesystem work stays in the VFS; HTML generation is `deck_gen` with
-//! `--no-default-features`.
+//! Installs the panic hook, then mounts [`deck_gen_wasm_ui::App`] as a Leptos
+//! CSR root. Library crates under this folder link into one WASM module.
 
 use leptos::prelude::*;
 
-mod app;
-mod conf;
-mod export;
-mod fs;
-mod github;
-mod help;
-mod html_escape;
-mod http;
-mod js;
-mod load_folder;
-mod persist;
-mod task;
-mod template;
-mod ui;
-mod workspace;
-
-use app::App;
+use deck_gen_wasm_ui::App;
 
 fn main() {
     console_error_panic_hook::set_once();
