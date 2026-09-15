@@ -326,6 +326,7 @@ body {
   color: var(--fg-dim);
   cursor: grab;
   white-space: nowrap;
+  user-select: none;
 }
 
 .editor-tab.active {

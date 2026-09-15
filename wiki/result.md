@@ -166,6 +166,44 @@ cargo check -p deck_gen_wasm_ui --target wasm32-unknown-unknown  # чисто
 
 ---
 
+# Доработка №1 (Rearrange не работал)
+
+Close All работал. Drag-reorder не срабатывал (grab-курсор был, но при зажатой ЛКМ порядок вкладок не менялся в Firefox/Edge).
+
+## было → стало (почему)
+
+### style.css
+было: .editor-tab { cursor: grab; white-space: nowrap; }
+стало: + user-select: none;
+почему: без этого браузер при mousedown+drag по тексту вкладки начинал выделение текста вместо нашего кастомного drag'а; mousemove приходили, но поведение ломалось. Минимально.
+
+### ui/windows/editor/tab.rs (on:mousedown)
+было: ev.prevent_default(); затем attach к window
+стало: + ev.stop_propagation(); attach к document (вместо window)
+почему: document — более стандартная цель для глобальных mousemove/mouseup при реализации drag (примеры sortable). stop_propagation уменьшает шанс конфликта с другими обработчиками на элементе/предках.
+
+### ui/windows/editor/tab.rs (mousemove listener)
+было: без preventDefault внутри raw listener'а
+стало: + mev.prevent_default(); в начале move_cl
+почему: явно подавляем любые дефолтные действия браузера во время жеста (selection, etc.).
+
+Остальная логика (element_from_point + data-* + move_tab_in + StoredValue guard) оставлена как была — она корректна.
+
+## Рефакторинг
+Минимальные правки, в стиле предыдущих (прямолинейно). Никаких новых абстракций.
+
+## Верификация
+```
+cargo test -p deck_gen_wasm_workspace  # 21 ok
+cargo test -p deck_gen_wasm_ui         # 9 ok
+cargo check -p deck_gen_wasm_ui --target wasm32-unknown-unknown  # ok
+```
+(после доработки)
+
+Приёмка: rearrange теперь должен работать (drag внутри своей панели, live update).
+
+---
+
 # Отчёт: корректировка задач stage-2 (фаза-3, Доп.№2)
 
 Дата: 2026-09-15. Задача из wiki/todo.md.

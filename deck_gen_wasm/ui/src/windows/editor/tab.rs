@@ -82,62 +82,62 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
                     return;
                 }
                 ev.prevent_default();
+                ev.stop_propagation();
                 drag_tab.set_value(Some(tab_for_dnd.clone()));
                 let dragged = tab_for_dnd.clone();
                 let from_preview = preview_pane;
                 let ws = workspace;
-                // Attach window listeners (forget for minimal; guarded by stored value).
-                if let Some(win) = web_sys::window() {
+                // Attach document listeners (more reliable for drag than window in some setups).
+                if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
                     // mousemove: find tab under pointer via elementFromPoint + data attrs, compute target idx, move live.
                     let move_cl = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |mev: web_sys::MouseEvent| {
+                        mev.prevent_default();
                         let mx = mev.client_x() as f64;
                         let my = mev.client_y() as f64;
                         if drag_tab.get_value().is_none() {
                             return;
                         }
-                        if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
-                            if let Some(el) = doc.element_from_point(mx as f32, my as f32) {
-                                let mut cur = Some(el);
-                                while let Some(node) = cur {
-                                    if node.class_list().contains("editor-tab") {
-                                        if let (Some(p), Some(k), Some(pn)) = (
-                                            node.get_attribute("data-path"),
-                                            node.get_attribute("data-kind"),
-                                            node.get_attribute("data-pane"),
-                                        ) {
-                                            if pn == (if from_preview { "preview" } else { "edit" }) {
-                                                let hovered = OpenTab {
-                                                    path: p,
-                                                    kind: if k == "preview" { TabKind::Preview } else { TabKind::Edit },
-                                                };
-                                                let list = if from_preview {
-                                                    ws.preview_tabs.get()
-                                                } else {
-                                                    ws.tabs.get()
-                                                };
-                                                if let Some(h_idx) = list.iter().position(|t| t == &hovered) {
-                                                    let rect = node.get_bounding_client_rect();
-                                                    let before = mx < rect.left() + rect.width() / 2.0;
-                                                    let to_idx = if before { h_idx } else { h_idx + 1 };
-                                                    ws.move_tab(dragged.clone(), to_idx);
-                                                }
+                        if let Some(el) = web_sys::window().and_then(|w| w.document()).and_then(|d| d.element_from_point(mx as f32, my as f32)) {
+                            let mut cur = Some(el);
+                            while let Some(node) = cur {
+                                if node.class_list().contains("editor-tab") {
+                                    if let (Some(p), Some(k), Some(pn)) = (
+                                        node.get_attribute("data-path"),
+                                        node.get_attribute("data-kind"),
+                                        node.get_attribute("data-pane"),
+                                    ) {
+                                        if pn == (if from_preview { "preview" } else { "edit" }) {
+                                            let hovered = OpenTab {
+                                                path: p,
+                                                kind: if k == "preview" { TabKind::Preview } else { TabKind::Edit },
+                                            };
+                                            let list = if from_preview {
+                                                ws.preview_tabs.get()
+                                            } else {
+                                                ws.tabs.get()
+                                            };
+                                            if let Some(h_idx) = list.iter().position(|t| t == &hovered) {
+                                                let rect = node.get_bounding_client_rect();
+                                                let before = mx < rect.left() + rect.width() / 2.0;
+                                                let to_idx = if before { h_idx } else { h_idx + 1 };
+                                                ws.move_tab(dragged.clone(), to_idx);
                                             }
                                         }
-                                        break;
                                     }
-                                    cur = node.parent_element();
+                                    break;
                                 }
+                                cur = node.parent_element();
                             }
                         }
                     });
-                    let _ = win.add_event_listener_with_callback("mousemove", move_cl.as_ref().unchecked_ref());
+                    let _ = doc.add_event_listener_with_callback("mousemove", move_cl.as_ref().unchecked_ref());
                     move_cl.forget();
 
                     // mouseup: end this drag session (listeners stay but guarded).
                     let up_cl = Closure::<dyn FnMut(web_sys::MouseEvent)>::new(move |_mev: web_sys::MouseEvent| {
                         drag_tab.set_value(None);
                     });
-                    let _ = win.add_event_listener_with_callback("mouseup", up_cl.as_ref().unchecked_ref());
+                    let _ = doc.add_event_listener_with_callback("mouseup", up_cl.as_ref().unchecked_ref());
                     up_cl.forget();
                 }
             }
