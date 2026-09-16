@@ -1,8 +1,9 @@
 //! Long-running workspace actions: persist, help, import, template, prepare, ZIP.
 //!
 //! These methods share the [`Workspace`](super::Workspace) `loading` flag so
-//! the activity bar can disable overlapping work. Long paths report 0..=100
-//! through `progress_*` macros and yield a frame between blocks so the ray
+//! the activity bar can disable overlapping work. Long paths run on the
+//! browser event loop via `spawn_local` (WASM has no OS threads) and report
+//! 0..=100 through `progress_*` macros; each `set` yields a frame so the ray
 //! can paint.
 
 use std::collections::HashSet;
@@ -114,16 +115,14 @@ impl Workspace {
                 let picked = progress_block!(progress, 0.0, 30.0, {
                     workspace.take_pick(warning, pick_and_read_files().await)
                 });
-                yield_frame().await;
                 if let Some(PickedFiles { files }) = picked {
                     let installed = progress_block!(progress, 30.0, 90.0, {
                         workspace.flush_draft();
                         let mut vfs = workspace.vfs.get_untracked();
                         let subprocess = progress.new_subprocess(40.0, 90.0);
-                        let result = install_files(&mut vfs, &folder, &files, subprocess);
+                        let result = install_files(&mut vfs, &folder, &files, subprocess).await;
                         (vfs, result)
                     });
-                    yield_frame().await;
                     progress_block!(progress, 90.0, 100.0, {
                         match installed {
                             (vfs, Ok(n)) => {
@@ -155,17 +154,16 @@ impl Workspace {
                 let picked = progress_block!(progress, 0.0, 30.0, {
                     workspace.take_pick(warning, pick_and_read_folder().await)
                 });
-                yield_frame().await;
                 if let Some(PickedFolder { name, files, dirs }) = picked {
                     workspace.status.set("Loading folder…".into());
                     let installed = progress_block!(progress, 30.0, 90.0, {
                         workspace.flush_draft();
                         let mut vfs = workspace.vfs.get_untracked();
                         let subprocess = progress.new_subprocess(40.0, 90.0);
-                        let result = install_folder(&mut vfs, &name, &dirs, &files, subprocess);
+                        let result =
+                            install_folder(&mut vfs, &name, &dirs, &files, subprocess).await;
                         (vfs, result)
                     });
-                    yield_frame().await;
                     progress_block!(progress, 90.0, 100.0, {
                         match installed {
                             (vfs, Ok(folder)) => {
@@ -193,17 +191,13 @@ impl Workspace {
         spawn_local(async move {
             let progress = workspace.progress_handle();
             progress_wrapper!(progress, {
-                progress_block!(progress, 0.0, 10.0, {
-                    yield_frame().await;
-                });
-                yield_frame().await;
+                progress_block!(progress, 0.0, 10.0, {});
                 let prepared = progress_block!(progress, 10.0, 90.0, {
                     workspace.flush_draft();
                     let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
                     let result = deck_gen::prepare_html(fs.clone());
                     (fs, result)
                 });
-                yield_frame().await;
                 progress_block!(progress, 90.0, 100.0, {
                     let (fs, result) = prepared;
                     match result {
@@ -231,10 +225,7 @@ impl Workspace {
         spawn_local(async move {
             let progress = workspace.progress_handle();
             progress_wrapper!(progress, {
-                progress_block!(progress, 0.0, 10.0, {
-                    yield_frame().await;
-                });
-                yield_frame().await;
+                progress_block!(progress, 0.0, 10.0, {});
                 let prepared = progress_block!(progress, 10.0, 90.0, {
                     workspace.flush_draft();
                     let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
@@ -242,7 +233,6 @@ impl Workspace {
                     let result = deck_gen::prepare_pdf(fs.clone(), &engine).await;
                     (fs, result)
                 });
-                yield_frame().await;
                 progress_block!(progress, 90.0, 100.0, {
                     let (fs, result) = prepared;
                     match result {
@@ -273,14 +263,12 @@ impl Workspace {
                 progress_block!(progress, 0.0, 10.0, {
                     workspace.flush_draft();
                 });
-                yield_frame().await;
                 let installed = progress_block!(progress, 10.0, 90.0, {
                     let mut vfs = workspace.vfs.get_untracked();
                     let subprocess = progress.new_subprocess(10.0, 90.0);
                     let result = install_new_game(&mut vfs, subprocess).await;
                     (vfs, result)
                 });
-                yield_frame().await;
                 progress_block!(progress, 90.0, 100.0, {
                     match installed {
                         (vfs, Ok(installed)) => {
@@ -312,13 +300,12 @@ impl Workspace {
         spawn_local(async move {
             let progress = workspace.progress_handle();
             progress_wrapper!(progress, {
-                yield_frame().await;
                 let encoded = progress_block!(progress, 0.0, 50.0, {
                     workspace.flush_draft();
                     let subprocess = progress.new_subprocess(0.0, 50.0);
-                    workspace.vfs.with(|vfs| vfs_to_zip(vfs, subprocess))
+                    let vfs = workspace.vfs.get_untracked();
+                    vfs_to_zip(&vfs, subprocess).await
                 });
-                yield_frame().await;
                 progress_block!(progress, 50.0, 100.0, {
                     match encoded {
                         Ok(bytes) => {
@@ -337,10 +324,6 @@ impl Workspace {
             workspace.finish_async();
         });
     }
-}
-
-async fn yield_frame() {
-    gloo_timers::future::TimeoutFuture::new(0).await;
 }
 
 fn take_vfs(fs: Arc<VfsFs>) -> deck_gen_wasm_fs::Vfs {

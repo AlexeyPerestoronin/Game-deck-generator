@@ -17,7 +17,7 @@ pub fn unique_folder_name(base: &str, taken: impl Fn(&str) -> bool) -> String {
 }
 
 /// Copy `dirs` / `files` into `games/{unique}` and return that folder name.
-pub fn install_folder(
+pub async fn install_folder(
     vfs: &mut Vfs,
     name: &str,
     dirs: &[String],
@@ -42,7 +42,7 @@ pub fn install_folder(
 }
 
 /// Copy `files` into an existing workspace `folder` (file name only, no subdirs).
-pub fn install_files(
+pub async fn install_files(
     vfs: &mut Vfs,
     folder: &str,
     files: &[(String, FileBody)],
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn install_folder_writes_text_and_image() {
         let mut vfs = Vfs::default();
-        let folder = install_folder(
+        let folder = deck_gen_wasm_progress::poll_now(install_folder(
             &mut vfs,
             "demo",
             &["art".into()],
@@ -95,7 +95,7 @@ mod tests {
                 ("art/logo.png".into(), FileBody::Bytes(vec![0x89, 0x50])),
             ],
             silent(),
-        )
+        ))
         .unwrap();
         assert_eq!(folder, "demo");
         assert_eq!(vfs.read_file("games/demo/help.md"), Some("# hi"));
@@ -110,12 +110,12 @@ mod tests {
     fn install_files_into_existing_folder() {
         let mut vfs = Vfs::default();
         vfs.mkdir("games/demo").unwrap();
-        let n = install_files(
+        let n = deck_gen_wasm_progress::poll_now(install_files(
             &mut vfs,
             "games/demo",
             &[("logo.png".into(), FileBody::Bytes(vec![1, 2, 3]))],
             silent(),
-        )
+        ))
         .unwrap();
         assert_eq!(n, 1);
         assert!(vfs.is_file("games/demo/logo.png"));

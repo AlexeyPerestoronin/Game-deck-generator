@@ -1,12 +1,14 @@
 //! Percent reporting for long workspace actions, without Leptos or `deck_gen`.
 //!
-//! [`Progress`] only stores a callback. The three macros mark statement ranges
-//! so a caller can drive a 0..=100 signal. WASM UI yield (`TimeoutFuture`) is
-//! left to the caller, between blocks.
+//! [`Progress`] stores a callback plus an optional paint hook. The three macros
+//! mark statement ranges and `paint().await` after each `set` so a WASM UI can
+//! redraw without a worker thread.
 
 mod macros;
+mod poll;
 mod progress;
 
+pub use poll::poll_now;
 pub use progress::Progress;
 
 #[cfg(test)]
@@ -25,7 +27,7 @@ mod tests {
     #[test]
     fn wrapper_sets_0_then_100() {
         let (progress, log) = recorder();
-        let value = progress_wrapper!(progress, { 7 });
+        let value = poll_now(async { progress_wrapper!(progress, { 7 }) });
         assert_eq!(value, 7);
         assert_eq!(*log.borrow(), vec![0.0, 100.0]);
     }
@@ -33,7 +35,7 @@ mod tests {
     #[test]
     fn block_sets_from_then_to_and_returns_body() {
         let (progress, log) = recorder();
-        let value = progress_block!(progress, 10.0, 90.0, { 42 });
+        let value = poll_now(async { progress_block!(progress, 10.0, 90.0, { 42 }) });
         assert_eq!(value, 42);
         assert_eq!(*log.borrow(), vec![10.0, 90.0]);
     }
@@ -42,8 +44,10 @@ mod tests {
     fn loop_spreads_range_evenly_then_sets_to() {
         let (progress, log) = recorder();
         let mut seen = Vec::new();
-        progress_loop!(progress, 20.0, 40.0, vec![10, 20, 30, 40], |item| {
-            seen.push(item);
+        poll_now(async {
+            progress_loop!(progress, 20.0, 40.0, vec![10, 20, 30, 40], |item| {
+                seen.push(item);
+            });
         });
         assert_eq!(seen, vec![10, 20, 30, 40]);
         assert_eq!(*log.borrow(), vec![20.0, 25.0, 30.0, 35.0, 40.0]);
@@ -53,7 +57,9 @@ mod tests {
     fn empty_loop_only_sets_to() {
         let (progress, log) = recorder();
         let empty: Vec<i32> = Vec::new();
-        progress_loop!(progress, 20.0, 40.0, empty, |_item| {});
+        poll_now(async {
+            progress_loop!(progress, 20.0, 40.0, empty, |_item| {});
+        });
         assert_eq!(*log.borrow(), vec![40.0]);
     }
 
@@ -68,9 +74,11 @@ mod tests {
     #[test]
     fn wrapper_around_blocks_bookends_inner_sets() {
         let (progress, log) = recorder();
-        progress_wrapper!(progress, {
-            progress_block!(progress, 0.0, 10.0, {});
-            progress_block!(progress, 80.0, 100.0, {});
+        poll_now(async {
+            progress_wrapper!(progress, {
+                progress_block!(progress, 0.0, 10.0, {});
+                progress_block!(progress, 80.0, 100.0, {});
+            });
         });
         assert_eq!(*log.borrow(), vec![0.0, 0.0, 10.0, 80.0, 100.0, 100.0]);
     }
@@ -89,10 +97,28 @@ mod tests {
     fn subprocess_macros_fill_parent_proportionally() {
         let (progress, log) = recorder();
         let sub = progress.new_subprocess(40.0, 90.0);
-        progress_wrapper!(sub, {
-            progress_loop!(sub, 0.0, 100.0, vec![1, 2], |_item| {});
+        poll_now(async {
+            progress_wrapper!(sub, {
+                progress_loop!(sub, 0.0, 100.0, vec![1, 2], |_item| {});
+            });
         });
         // wrapper 0, loop i=0 → 0, i=1 → 50, loop end 100, wrapper 100
         assert_eq!(*log.borrow(), vec![40.0, 40.0, 65.0, 90.0, 90.0]);
+    }
+
+    #[test]
+    fn paint_hook_runs_after_each_macro_set() {
+        use std::cell::Cell;
+        let paints = Rc::new(Cell::new(0u32));
+        let paints2 = Rc::clone(&paints);
+        let (progress, _log) = recorder();
+        let progress = progress.with_paint(move || {
+            paints2.set(paints2.get() + 1);
+            std::future::ready(())
+        });
+        poll_now(async {
+            progress_block!(progress, 10.0, 90.0, {});
+        });
+        assert_eq!(paints.get(), 2);
     }
 }

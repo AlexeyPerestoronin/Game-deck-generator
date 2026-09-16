@@ -305,10 +305,11 @@ impl Workspace {
         self.loading.set(false);
     }
 
-    /// Callback that writes [`Self::progress`]. Does not yield; callers await a frame between blocks.
+    /// Callback that writes [`Self::progress`] and yields one frame so the ray redraws.
     pub(crate) fn progress_handle(&self) -> deck_gen_wasm_progress::Progress {
         let progress = self.progress;
         deck_gen_wasm_progress::Progress::new(move |pct| progress.set(pct))
+            .with_paint(|| gloo_timers::future::TimeoutFuture::new(0))
     }
 
     pub(crate) fn take_pick<T>(

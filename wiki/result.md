@@ -262,3 +262,39 @@
 - Не делали `vfs_to_zip` async (sync-цикл не отдаёт кадр до `yield_frame` после encode).
 
 (строк ~48)
+
+---
+
+# Результат по доработке №3 «progress ray» (UI не блокируется)
+
+## Краткий отчёт в формате было→стало (почему)
+
+было: WASM однопоточен; `install_*` / `vfs_to_zip` sync; луч не рисуется, пока цикл не вернётся на event loop.
+стало: макросы после каждого `set` делают `paint().await`. Workspace вешает `with_paint(|| TimeoutFuture::new(0))`. Каждое изменение `Workspace.progress` отдаёт кадр — Leptos перерисовывает луч.
+почему: «моментально сказывается визуально»; в браузере нет OS-thread для WASM+DOM (PDF тоже нужен main thread). Worker ломал бы архитектуру.
+
+было: `Progress` только callback `set`.
+стало: `with_paint` + `paint()`; `new_subprocess` копирует paint-hook.
+почему: subprocess-циклы тоже должны отдавать кадр.
+
+было: `install_files` / `install_folder` / `vfs_to_zip` sync.
+стало: `async`, макросы с `.await`; тесты через `poll_now`.
+почему: иначе `paint().await` в макросе не вставить.
+
+было: ручной `yield_frame()` между блоками в `actions.rs`.
+стало: убран; yield внутри макросов. Actions по-прежнему `spawn_local` (это и есть «фон» в WASM).
+почему: не дублировать yield; минимальный diff.
+
+было: нет проверки paint-hook.
+стало: тест `paint_hook_runs_after_each_macro_set` (2 paint на block from/to).
+почему: сложная логика yield — нужен unit-test.
+
+## Выполнение приёмки
+- `cargo test -p deck_gen_wasm_progress` — 9/9.
+- import 8/8, export 2/2, template 8/8, workspace 21/21.
+
+## Что не делали
+- Не Web Worker / `std::thread` (нет DOM в worker, SharedArrayBuffer, ломает архитектуру).
+- Не резали `deck_gen::prepare_html` на шаги: один sync-вызов движка всё ещё держит кадр на участке 10–90.
+
+(строк ~45)
