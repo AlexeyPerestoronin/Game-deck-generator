@@ -12,13 +12,23 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{HtmlAnchorElement, Url};
 
 use deck_gen_wasm_browser as js;
+use deck_gen_wasm_progress::{progress_wrapper, Progress};
 
 /// Save `bytes` as `filename`, preferring the save picker over an anchor click.
-pub async fn save_zip_bytes(bytes: Vec<u8>, filename: &str) -> Result<(), String> {
-    if js::has_window_fn("showSaveFilePicker") && save_with_picker(&bytes, filename).await.is_ok() {
-        return Ok(());
-    }
-    download_via_anchor(&bytes, filename)
+pub async fn save_zip_bytes(
+    bytes: Vec<u8>,
+    filename: &str,
+    progress: Progress,
+) -> Result<(), String> {
+    progress_wrapper!(progress, {
+        if js::has_window_fn("showSaveFilePicker")
+            && save_with_picker(&bytes, filename).await.is_ok()
+        {
+            Ok(())
+        } else {
+            download_via_anchor(&bytes, filename)
+        }
+    })
 }
 
 async fn save_with_picker(bytes: &[u8], filename: &str) -> Result<(), JsValue> {

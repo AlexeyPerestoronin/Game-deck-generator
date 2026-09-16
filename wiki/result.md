@@ -226,3 +226,39 @@
 - Не трогали UI луча, conf, кнопки.
 
 (строк ~55)
+
+---
+
+# Результат по доработке №2 «progress ray» (ZIP)
+
+## Краткий отчёт в формате было→стало (почему)
+
+было: `vfs_to_zip(vfs)` без прогресса; все записи пишутся в одном `visit_entries`.
+стало: `vfs_to_zip(vfs, progress)` — список записей, затем `progress_wrapper` + `progress_loop` 0..100 по числу dir/file; тело пишет ZIP как раньше (dir → `add_directory`, file → `read_bytes` + `start_file`).
+почему: «подпрогресс формирования zip … в зависимости от количества файлов»; цикл добавления живёт здесь, не в save picker.
+
+было: `save_zip_bytes(bytes, filename)` без `Progress`.
+стало: `save_zip_bytes(bytes, filename, progress)` + `progress_wrapper` вокруг picker/anchor (без раннего `return`, чтобы закрыть 100).
+почему: задача назвала эту функцию; сохранение — отдельный 50–100 на родителе.
+
+было: `download`: encode 0–50 одним `vfs.with(vfs_to_zip)`, save 50–100 без subprocess.
+стало: `new_subprocess(0, 50)` → `vfs_to_zip`; `new_subprocess(50, 100)` → `save_zip_bytes`.
+почему: тот же приём, что у `install_*`.
+
+было: export без `deck_gen_wasm_progress`.
+стало: зависимость в `export/Cargo.toml`.
+почему: параметр `Progress`.
+
+было: нет тестов на проценты ZIP.
+стало: 2 файла → `[0, 0, 50, 100, 100]`; пустой VFS → `[0, 100, 100]`.
+почему: приёмка крейта, который меняли.
+
+## Выполнение приёмки
+- `cargo test -p deck_gen_wasm_export` — 2/2.
+- `cargo test -p deck_gen_wasm_workspace` — 21/21.
+
+## Что не делали
+- Не меняли picker UI, формат ZIP, UI луча.
+- Не делали `vfs_to_zip` async (sync-цикл не отдаёт кадр до `yield_frame` после encode).
+
+(строк ~48)

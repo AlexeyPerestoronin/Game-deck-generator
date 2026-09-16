@@ -315,15 +315,21 @@ impl Workspace {
                 yield_frame().await;
                 let encoded = progress_block!(progress, 0.0, 50.0, {
                     workspace.flush_draft();
-                    workspace.vfs.with(vfs_to_zip)
+                    let subprocess = progress.new_subprocess(0.0, 50.0);
+                    workspace.vfs.with(|vfs| vfs_to_zip(vfs, subprocess))
                 });
                 yield_frame().await;
                 progress_block!(progress, 50.0, 100.0, {
                     match encoded {
-                        Ok(bytes) => match save_zip_bytes(bytes, ZIP_FILENAME).await {
-                            Ok(()) => workspace.status.set(format!("Downloaded {ZIP_FILENAME}")),
-                            Err(err) => workspace.status.set(err),
-                        },
+                        Ok(bytes) => {
+                            let subprocess = progress.new_subprocess(50.0, 100.0);
+                            match save_zip_bytes(bytes, ZIP_FILENAME, subprocess).await {
+                                Ok(()) => {
+                                    workspace.status.set(format!("Downloaded {ZIP_FILENAME}"))
+                                }
+                                Err(err) => workspace.status.set(err),
+                            }
+                        }
                         Err(err) => workspace.status.set(err),
                     }
                 });
