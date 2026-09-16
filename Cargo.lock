@@ -652,6 +652,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "deck_gen_wasm_feedback"
+version = "0.1.0"
+dependencies = [
+ "deck_gen_wasm_conf",
+ "web-sys",
+]
+
+[[package]]
 name = "deck_gen_wasm_fs"
 version = "0.1.0"
 dependencies = [
@@ -709,6 +717,7 @@ version = "0.1.0"
 dependencies = [
  "deck_gen_wasm_browser",
  "deck_gen_wasm_conf",
+ "deck_gen_wasm_feedback",
  "deck_gen_wasm_fs",
  "deck_gen_wasm_persist",
  "deck_gen_wasm_workspace",

@@ -5,6 +5,7 @@
 
 mod clear;
 mod download;
+mod feedback;
 mod load_game;
 mod new_file;
 mod new_folder;
@@ -15,6 +16,7 @@ mod split_preview;
 
 pub use clear::ClearButton;
 pub use download::DownloadButton;
+pub use feedback::FeedbackButton;
 pub use load_game::LoadGameButton;
 pub use new_file::NewFileButton;
 pub use new_folder::NewFolderButton;

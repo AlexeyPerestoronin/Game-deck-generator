@@ -82,3 +82,14 @@ pub fn ClearIcon() -> impl IntoView {
         </span>
     }
 }
+
+#[component]
+pub fn FeedbackIcon() -> impl IntoView {
+    view! {
+        <span class="activity-icon" aria-hidden="true">
+            <img class="state-off"   src="icons/buttons/feedback/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/feedback/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/feedback/click.drawio.png" width="40" height="40" />
+        </span>
+    }
+}

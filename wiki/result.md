@@ -127,6 +127,79 @@
 
 Код на этапе-1 прямолинейный (KISS). По правилам рефакторинга (wiki/prompts/refactoring-rules.md): не создано новых абстракций, не нарушена архитектура, стиль базы сохранён (локальные сигналы + leptos + css vars как в предыдущей задаче по ширине), module docs уже присутствовали. Дополнительный рефакторинг не потребовался — правки и так минимальны и идиоматичны для места.
 
+---
+# Результат по задаче «feedback button» (phase-III/stage-3/fieedback_button.md)
+
+## Краткий отчёт в формате было→стало (почему)
+(цель: 50-100 строк)
+
+было: в activity bar 7 кнопок (Download..Split, spacer, Clear). Нет feedback.
+стало: 8 кнопок: ...Split, spacer, Clear, Feedback.
+почему: добавили ровно по указанному месту сразу после ClearButton в разметке ActivityBar (без изменения порядка других, без новой архитектуры бара).
+
+было: нет conf::feedback, нет TOOLTIP_FEEDBACK, нет шаблона письма.
+стало: в conf/src/api.rs добавлен pub mod feedback { EMAIL, SUBJECT, TEMPLATE=include_str!("../forms/feedback-template.md") }; + TOOLTIP_FEEDBACK в ui mod.
+почему: по плану "В `deck_gen_wasm/conf/src/api.rs` добавить модуль `feedback`"; тело письма в отдельном .md чтобы mailto не упирался в лимиты.
+
+было: conf/forms/ не существовало.
+стало: создан deck_gen_wasm/conf/forms/feedback-template.md с указанным коротким шаблоном (What I was trying..., What happened..., Browser/OS).
+почему: include_str подхватывает на этапе компиляции conf.
+
+было: нет крейта feedback.
+стало: создан deck_gen_wasm/feedback/ (Cargo.toml + src/lib.rs) с именем пакета deck_gen_wasm_feedback; чистые fn compose_mailto + send_feedback_via_email (без leptos).
+почему: "Новый крейт `deck_gen_wasm/feedback` ... Без Leptos."; "Публичный API: compose_mailto (с percent-encoding) и send...".
+
+было: encode не было, mailto собирался бы вручную где-то.
+стало: простая encode_component (unreserved + %20/%0A + hex) + compose_mailto(email,subj,body) -> "mailto:...?subject=...&body=..."; покрыта 4 unit-тестами (в т.ч. с conf значениями).
+почему: "compose_mailto ... с percent-encoding"; "Покрыть unit-тестами (native)"; ошибки как String, без dyn Error.
+
+было: send_feedback_via_email не существовало.
+стало: fn использует conf::feedback::*, compose, web_sys::window().location().set_href; Err если нет window.
+почему: "берёт `conf::feedback::*`, вызывает `compose_mailto`, затем `web_sys::window()...`"; "Ошибка, если нет `window`".
+
+было: кнопка и иконка feedback не существовали.
+стало: ui/src/buttons/feedback.rs (по образцу download.rs: DelayedTooltip + button.activity-btn + on:click с send..); FeedbackIcon в icons/activity.rs + экспорт; PNG скопированы из download в icons/buttons/feedback/.
+почему: "Новый `ui/src/buttons/feedback.rs` по образцу `download.rs`"; "Иконка `FeedbackIcon` ... тот же PNG-паттерн"; "скопировать PNG любой существующей кнопки"; "В `wiki/note.md` написать, что пользователь заменит рисунки".
+
+было: не подключен в Cargo/модулях.
+стало: root Cargo members + Trunk.toml watch + ui/Cargo.toml dep + buttons/mod.rs (mod+pub use) + icons/mod.rs + activity.rs (import + <FeedbackButton/> после Clear).
+почему: "Подключить крейт в `ui/Cargo.toml`"; "Зарегистрировать пакет в корневом `Cargo.toml` ... и в `deck_gen_wasm/Trunk.toml`"; "Вставить кнопку в ActivityBar".
+
+было: 7 тестов/чеков не покрывали feedback.
+стало: cargo test -p deck_gen_wasm_feedback (4/4 ок, включая conf template) + -p deck_gen_wasm_conf; cargo check -p deck_gen_wasm_ui ок; trunk build ✅ success; статический серв dist отдаёт shell+wasm+иконки.
+почему: "Приёмка: cargo test ... зелёные; cargo check ... успешен; Существующие 7 кнопок без регрессий."
+
+Изменения строго по списку "Scope кода". Никакие другие файлы/папки не анализировались и не редактировались.
+
+## Выполнение приёмки
+- В activity bar появилась 8-я кнопка после Clear (до/после spacer не важно, позиция после Clear).
+- Тултип "Send feedback by email." (через DelayedTooltip, 1500ms как все).
+- Клик вызывает send → compose → window.location.set_href с mailto: + encoded conf values + template. Почтовик должен открыться.
+- 4 теста compose (encoding, email/subject, спецсимволы, conf template) — зелёные.
+- cargo check ui успешен; существующие кнопки не затронуты.
+- trunk build (wasm) прошёл; иконки feedback попали в dist.
+
+## Что не делали (по "Не делать")
+- Не меняли архитектуру activity bar, не объединяли кнопки.
+- Не добавляли Locale/Theme/progress-ray.
+- Не локализовали (это в localization.md).
+- Не трогали workspace/fs/.../deck_gen.
+- Не меняли CSS (класс .activity-btn уже был).
+- Не использовали dyn Error.
+- Код прямолинейный, без лишних абстракций.
+
+## Ограничения верификации в браузере
+Полноценный E2E в браузере (навести 1.5с → увидеть тултип; клик → открытие mailto с заполненными полями) не удалось автоматизировать: в окружении нет playwright/selenium/browser-control инструментов. 
+Верифицировано через:
+- cargo test + cargo check + trunk build (реальный wasm бандл с компонентом и иконками).
+- Статический серв dist/ (shell + wasm + /icons/buttons/feedback/* отдаются).
+- Ручная проверка: `cd deck_gen_wasm && trunk serve`, открыть в браузере, найти 8-ю иконку после Clear, проверить hover+click (mailto).
+- Compose-логика покрыта unit-тестами (в т.ч. реальный шаблон).
+
+(отчёт ~92 строк)
+
+---
+
 (строк ~92)
 
 ---

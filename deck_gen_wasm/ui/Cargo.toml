@@ -12,6 +12,8 @@ path = "src/lib.rs"
 deck_gen_wasm_browser = { path = "../browser" }
 # internal: extension tables for FileKind / highlight decisions
 deck_gen_wasm_conf = { path = "../conf" }
+# internal: mailto composer for Feedback button
+deck_gen_wasm_feedback = { path = "../feedback" }
 # internal: kind_of / syntax_name / can_highlight / extension_allowed
 deck_gen_wasm_fs = { path = "../fs" }
 # internal: binary vs text persistence split

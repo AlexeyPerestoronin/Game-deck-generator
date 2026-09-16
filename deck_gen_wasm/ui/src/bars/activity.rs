@@ -6,8 +6,8 @@
 use leptos::prelude::*;
 
 use crate::buttons::{
-    ClearButton, DownloadButton, LoadGameButton, NewGameButton, PrepareHtmlButton,
-    PreparePdfButton, SplitPreviewButton,
+    ClearButton, DownloadButton, FeedbackButton, LoadGameButton, NewGameButton,
+    PrepareHtmlButton, PreparePdfButton, SplitPreviewButton,
 };
 use crate::modals::{AlertModal, ConfirmModal};
 use deck_gen_wasm_workspace::Workspace;
@@ -42,6 +42,7 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
             <SplitPreviewButton workspace=workspace />
             <div class="activity-spacer"></div>
             <ClearButton on_open=move |_| show_clear.set(true) />
+            <FeedbackButton />
             <ConfirmModal
                 open=show_clear
                 title="Clear workspace?"

@@ -54,8 +54,6 @@ Browser / OS:
 
 ## Не делать
 - Не менять архитектуру activity bar (не объединять кнопки, не выносить бар в новый виджет).
-- Не добавлять Locale/Theme/progress-ray в этом заходе.
-- Не локализовать строки (это задача `localization.md`).
 - Не трогать workspace/fs/import/export/template/persist/`deck_gen`.
 - Не менять CSS, кроме случая если без этого кнопка не встаёт (не должно понадобиться — класс `.activity-btn` уже есть).
 - Не использовать `dyn Error` в сигнатуре (в кодовой базе ошибки — `String`).
@@ -77,7 +75,7 @@ Browser / OS:
 - прочие файлы и папки репозитория ИГНОРИРУЙ.
 
 ## Приёмка
-- В activity bar есть 8-я кнопка (после Split, до spacer). Тултип через 1.5 с: «Send feedback by email.»
+- В activity bar есть 8-я кнопка (после Clear). Тултип через 1.5 с: «Send feedback by email.»
 - Клик открывает почтовый клиент (или вкладку `mailto:`) с To/Subject/Body из conf+шаблона.
 - `cargo test -p deck_gen_wasm_feedback -p deck_gen_wasm_conf` зелёные; `compose_mailto` проверяет encoding и наличие email/subject.
 - `cargo check -p deck_gen_wasm_ui` успешен.

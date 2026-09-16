@@ -122,6 +122,7 @@ pub mod ui {
         "Generate card PDFs and A4 duplex sheets for every deck in this workspace.";
     pub const TOOLTIP_SPLIT_PREVIEW: &str =
         "Split for preview. Files stay on the left; previews open on the right.";
+    pub const TOOLTIP_FEEDBACK: &str = "Send feedback by email.";
 
     /// Minimum width (in CSS pixels) of each pane when the editor is split
     /// for preview. Used for the adjustable split resizer.
@@ -131,4 +132,14 @@ pub mod ui {
     /// and the explorer. Also used as the `.ide` grid column and in the explorer
     /// max-width formula.
     pub const PROGRESS_RAY_WIDTH_PX: u32 = 5;
+}
+
+/// Feedback button mailto configuration.
+pub mod feedback {
+    /// Recipient for user feedback.
+    pub const EMAIL: &str = "Alexey.Perestoronin@yandex.ru";
+    /// Subject line for the feedback email.
+    pub const SUBJECT: &str = "Game-Deck-Generator Feedback";
+    /// Email body template (loaded at compile time).
+    pub const TEMPLATE: &str = include_str!("../forms/feedback-template.md");
 }

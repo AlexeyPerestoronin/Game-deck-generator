@@ -14,6 +14,7 @@ members = [
     "deck_gen_wasm/template",
     "deck_gen_wasm/workspace",
     "deck_gen_wasm/progress",
+    "deck_gen_wasm/feedback",
     "deck_gen_wasm/ui",
 ]
 default-members = ["deck_gen", "prepare_pdf_host"]
