@@ -194,10 +194,17 @@
 стало: wrapper убран; рендерится напрямую `<DelayedTooltip text=...><button class=...>` (с `use crate::tooltips::DelayedTooltip;`), в точности как SplitPreviewButton и др. activity-кнопки.
 почему: "по образцу split" (явно в описании задачи на кнопку); лишний div ломал структуру прямых детей nav.activity-bar → activity-кнопки + explorer не занимали свои grid-колонки, интерфейс "съехал" влево, loading-текст обрезан. Только правка render в scoped buttons/locale.rs.
 
-- После: cargo test -p locale + ui, check, trunk build — зелёные.
-- Минимально, без CSS/архитектуры/других файлов.
+- После первой попытки: проблема по отчёту осталась.
 
-(этап-1 доработки)
+## Доработка №2 (продолжение фикса layout — анализ html-структуры)
+было: в loading-ветке App (когда workspace_slot None) текст делался как `{move || locale::localize(keys::EDITOR_LOADING)}` внутри .editor-empty (динамический child).
+стало: вынесено в тело App: `let loading_text = locale::localize(...);` (snapshot + инициализация сигнала), в view используется как обычное значение `{loading_text.clone()}` (как оригинальный литерал).
+почему: "все изменения в структуре должен были свестись к добавлению новой кнопки"; динамический текст в initial view (даже с тем же ключом) мог приводить к иному внутреннему представлению child node в Leptos (эффекты/фрагменты для реактивности), из-за чего .editor-empty / .ide отображался со сдвигом влево, текст обрезан, а chrome (кнопки, дерево) не занимал свои места в grid. Для transient loading live-update не критичен (в отличие от persistent chrome), snapshot использует dict, структура child'а идентична оригиналу. Остальные динамики (меню, статус, empty editor, модалки) оставлены — они нужны для live-переключения.
+
+- После: cargo check, тесты, trunk build — зелёные.
+- Изменения только в scoped (app.rs); откат только этой динамики, без нарушения целей локализации.
+
+(этап-1 доработки; проанализированы view! в app.rs, activity.rs, modals, explorer, editor/*, buttons/*, icons, menus — только добавление кнопки + необходимые reactive children для live chrome)
 
 ---
 # Результат по задаче «feedback button» (phase-III/stage-3/fieedback_button.md)

@@ -41,11 +41,16 @@ pub fn App() -> impl IntoView {
         workspace_slot.set(Some(workspace));
     });
 
+    // Snapshot loading text (and init locale signal) at App setup time.
+    // Loading state is transient; live update not required here (unlike persistent chrome).
+    // Using captured String makes the child node structurally identical to original literal text.
+    let loading_text = locale::localize(keys::EDITOR_LOADING);
+
     view! {
         {move || match workspace_slot.get() {
             None => view! {
                 <div class="ide">
-                    <div class="editor-empty">{move || locale::localize(keys::EDITOR_LOADING)}</div>
+                    <div class="editor-empty">{loading_text.clone()}</div>
                 </div>
             }
             .into_any(),
