@@ -214,6 +214,18 @@
 - После: тесты + build зелёные.
 - Соответствует "нажатие на кнопку должно приводить к смене локализации без перезагрузки" и live для открытого chrome.
 
+## Доработка №4 (live без F5 — сигнал инициализировался слишком рано)
+было: в app.rs для transient loading_text вызывался `locale::localize(...)` (плюс ensure/apply в LoadedApp Effect); это делало get_or_init RwSignal в корневом App() до монтирования LoadedApp и его view-компонентов.
+стало: loading_text — обычный литерал `"Loading workspace…".to_string()` (без вызова localize); сигнал инициализируется при первом обращении из LoadedApp (рендер explorer/editor, effect apply, move-замыкания).
+почему: ранняя инициализация статического RwSignal (до полного reactive owner/контекста для чайлд-компонент) приводила к тому, что подписчики view move || / Signal::derive на locale signal не регистрировались (или граф реактивности не привязывался); set в change_locale обновлял значение и document.title (через Effect), но chrome-лейблы (Games, +File, editor-empty, меню, префиксы табов) оставались на языке инициализации до F5 (полный re-mount с load_persisted). Убрали только ранний вызов (transient snapshot, структура child node сохранена как литерал) — минимально, без правки архитектуры, только app.rs из Scope.
+
+- После: cargo test (locale+workspace+ui), cargo check, trunk build — зелёные.
+- Клик по Locale теперь сразу переключает все реактивные строки chrome без перезагрузки (в т.ч. если открыть модалку/меню/превью-таб).
+- Загрузка флешится EN (как до локализации), основной интерфейс — на persisted языке с первого кадра LoadedApp; live-переключения работают.
+- Изменение только в scoped app.rs; dict/keys по-прежнему используются для всего persistent chrome.
+
+(соответствует "Изменения в коде должны быть минимальными!", "Запрещено менять существующую архитектуру", только Scope файлы)
+
 ---
 # Результат по задаче «feedback button» (phase-III/stage-3/fieedback_button.md)
 

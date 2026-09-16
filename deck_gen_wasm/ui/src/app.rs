@@ -19,7 +19,6 @@ use crate::theme;
 use crate::windows::{Editor, Explorer};
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_locale as locale;
-use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_persist::{
     binaries_fingerprint, encode_binaries, load_binaries, load_session, save_encoded, save_session,
 };
@@ -41,10 +40,10 @@ pub fn App() -> impl IntoView {
         workspace_slot.set(Some(workspace));
     });
 
-    // Snapshot loading text (and init locale signal) at App setup time.
-    // Loading state is transient; live update not required here (unlike persistent chrome).
+    // Snapshot loading text at App setup time (hardcoded EN to avoid early locale signal creation).
+    // Loading state is transient; the persisted locale applies to the loaded UI.
     // Using captured String makes the child node structurally identical to original literal text.
-    let loading_text = locale::localize(keys::EDITOR_LOADING);
+    let loading_text = "Loading workspace…".to_string();
 
     view! {
         {move || match workspace_slot.get() {
