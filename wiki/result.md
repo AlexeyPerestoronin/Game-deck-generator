@@ -206,6 +206,14 @@
 
 (этап-1 доработки; проанализированы view! в app.rs, activity.rs, modals, explorer, editor/*, buttons/*, icons, menus — только добавление кнопки + необходимые reactive children для live chrome)
 
+## Доработка №3 (live update без перезагрузки)
+было: в menus/context.rs для command labels и "Close all", и в editor/tab.rs для preview label — вызов localize(...) происходил один раз при построении view (снапшот на момент рендера меню/таба).
+стало: обёрнуто в {move || localize(...)} (для меню); для tab label — вычисление перенесено в move-замыкание внутри view! с захватом path/kind.
+почему: нажатие на кнопку Locale вызывает set на сигнале, но snapshot-тексты (в отличие от уже-reactive вроде explorer title, +File, editor empty) не обновлялись до F5 (когда re-render с persisted). move || заставляет замыкания перевычисляться при смене сигнала, давая live-переключение без reload. Минимально (только обёртки и один рефактор вычисления в scoped файлах), без изменения как status/warning set-ов (они intentional snapshot на момент action).
+
+- После: тесты + build зелёные.
+- Соответствует "нажатие на кнопку должно приводить к смене локализации без перезагрузки" и live для открытого chrome.
+
 ---
 # Результат по задаче «feedback button» (phase-III/stage-3/fieedback_button.md)
 

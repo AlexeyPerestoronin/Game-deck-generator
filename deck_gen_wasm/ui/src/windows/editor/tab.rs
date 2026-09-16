@@ -17,10 +17,8 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
     let tab_for_close = tab.clone();
     let tab_for_dnd = tab.clone(); // for dragstart data
     let tab_for_this = tab.clone(); // for this tab as hovered in its dragover
-    let label = match tab.kind {
-        TabKind::Edit => file_name(&tab.path).to_string(),
-        TabKind::Preview => format!("{}{}", locale::localize(keys::TAB_PREVIEW_PREFIX), file_name(&tab.path)),
-    };
+    let path = tab.path.clone();
+    let kind = tab.kind;
 
     let (menu_pos, set_menu_pos) = signal::<Option<(f64, f64)>>(None);
 
@@ -121,7 +119,16 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
                 // optional cleanup, data is in browser
             }
         >
-            <span class="editor-tab-label">{label}</span>
+            <span class="editor-tab-label">
+                {move || match kind {
+                    TabKind::Edit => file_name(&path).to_string(),
+                    TabKind::Preview => format!(
+                        "{}{}",
+                        locale::localize(keys::TAB_PREVIEW_PREFIX),
+                        file_name(&path)
+                    ),
+                }}
+            </span>
             <button
                 class="editor-tab-close"
                 type="button"

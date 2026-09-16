@@ -163,7 +163,7 @@ pub fn ContextMenu(
                                     on_dismiss.run(());
                                 }
                             >
-                                {locale::localize(command.label)}
+                                {move || locale::localize(command.label)}
                             </button>
                         }
                     })
@@ -281,7 +281,7 @@ pub fn TabContextMenu(
                         on_dismiss.run(());
                     }
                 >
-                    {locale::localize(keys::MENU_CLOSE_ALL)}
+                    {move || locale::localize(keys::MENU_CLOSE_ALL)}
                 </button>
             </div>
         </div>
