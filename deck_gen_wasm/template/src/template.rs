@@ -4,9 +4,10 @@
 //! retargeted when the unique folder is not literally `new-game`. This module
 //! owns install policy, not HTTP details.
 
+use crate::github;
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::{unique_name, Vfs};
-use crate::github;
+use deck_gen_wasm_progress::{progress_block, progress_loop, progress_wrapper, Progress};
 
 /// Result of copying the template into the workspace.
 pub struct InstalledGame {
@@ -17,29 +18,26 @@ pub struct InstalledGame {
 }
 
 /// Fetch the template and write it under a unique `games/` folder.
-pub async fn install_new_game(vfs: &mut Vfs) -> Result<InstalledGame, String> {
-    let (source, files) = load_template_files().await?;
-    let folder = unique_game_folder(|name| vfs.exists(&format!("games/{name}")));
-
-    for (path, content) in files {
-        if path == conf::template::GAMES_CONF {
-            if !vfs.exists(conf::template::GAMES_CONF) {
-                vfs.put_file(conf::template::GAMES_CONF, content)?;
+pub async fn install_new_game(vfs: &mut Vfs, progress: Progress) -> Result<InstalledGame, String> {
+    progress_wrapper!(progress, {
+        let (source, files) =
+            progress_block!(progress, 0.0, 40.0, { load_template_files().await? });
+        let folder = unique_game_folder(|name| vfs.exists(&format!("games/{name}")));
+        progress_loop!(progress, 40.0, 100.0, files, |(path, content)| {
+            if path == conf::template::GAMES_CONF {
+                if !vfs.exists(conf::template::GAMES_CONF) {
+                    vfs.put_file(conf::template::GAMES_CONF, content)?;
+                }
+            } else if let Some(rest) = path.strip_prefix(conf::template::PREFIX) {
+                if !rest.is_empty() {
+                    let dest = format!("games/{folder}/{rest}");
+                    let content = retarget_game_id(&content, conf::template::GAME, &folder);
+                    vfs.put_file(&dest, content)?;
+                }
             }
-            continue;
-        }
-        let Some(rest) = path.strip_prefix(conf::template::PREFIX) else {
-            continue;
-        };
-        if rest.is_empty() {
-            continue;
-        }
-        let dest = format!("games/{folder}/{rest}");
-        let content = retarget_game_id(&content, conf::template::GAME, &folder);
-        vfs.put_file(&dest, content)?;
-    }
-
-    Ok(InstalledGame { folder, source })
+        });
+        Ok(InstalledGame { folder, source })
+    })
 }
 
 /// Unique folder under `games/`, starting at `new-game`.

@@ -112,6 +112,59 @@ progress_wrapper!(progress, {
 
 ***
 
+# Задача на доработку №1
+Необходимо добавить метод `new_subprocess`, для возможности передачи в качестве параметра с целью отслеживать прогресс изнутри некоторого процесса.
+Например:
+```rs
+    /// Pick local files and copy them into an existing workspace `folder`.
+    pub fn load_files_into_folder(&self, folder: &str, warning: RwSignal<Option<String>>) {
+        if self.vfs.with(|vfs| !vfs.is_dir(folder)) {
+            warning.set(Some(format!("'{folder}' is not a folder")));
+            return;
+        }
+        if !self.try_begin_async("Select file(s)…") {
+            return;
+        }
+        let workspace = *self;
+        let folder = folder.to_string();
+        spawn_local(async move {
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                let picked = progress_block!(progress, 0.0, 30.0, {
+                    workspace.take_pick(warning, pick_and_read_files().await)
+                });
+                yield_frame().await;
+                if let Some(PickedFiles { files }) = picked {
+                    let installed = progress_block!(progress, 30.0, 90.0, {
+                        workspace.flush_draft();
+                        let mut vfs = workspace.vfs.get_untracked();
+                        let subprocess: deck_gen_wasm_progress::Progress = progress.new_subprocess(40.0, 90.0);
+                        // install_files - заполняет от 0 до 100 шкалу под-прогресса используя те же макросы, которая пропорционально заполняет родительскую шкалу прогресса от 40 до 90 процентов
+                        let result = install_files(&mut vfs, &folder, &files, subprocess);
+                        (vfs, result)
+                    });
+                    yield_frame().await;
+                    progress_block!(progress, 90.0, 100.0, {
+                        match installed {
+                            (vfs, Ok(n)) => {
+                                workspace.vfs.set(vfs);
+                                workspace.expand_ancestors(&folder);
+                                workspace.set_primary_selection(Some(folder.clone()));
+                                workspace
+                                    .status
+                                    .set(format!("Loaded {n} file(s) into {folder}"));
+                            }
+                            (_, Err(err)) => workspace.status.set(err),
+                        }
+                    });
+                }
+            });
+            workspace.finish_async();
+        });
+    }
+```
+Функции `install_files`, `install_folder` и `install_new_game` должны получить дополнительный параметр, который использовать для отслеживания внутреннего прогресса в своих циклах.
+
 # Особые указания
 1. Изменения в коде должны быть минимальными!
 2. Запрещено менять существующую архитектуру!

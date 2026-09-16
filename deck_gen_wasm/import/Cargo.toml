@@ -14,6 +14,8 @@ deck_gen_wasm_browser = { path = "../browser" }
 deck_gen_wasm_conf = { path = "../conf" }
 # internal: fs::kind for extension_allowed / is_image (delegated classification)
 deck_gen_wasm_fs = { path = "../fs" }
+# 0..=100 reporting inside install_files / install_folder loops
+deck_gen_wasm_progress = { path = "../progress" }
 # JS array / promise / reflect interop for FileList, directory entries, webkit paths
 js-sys = "0.3"
 # wasm bindings and cast helpers

@@ -182,3 +182,47 @@
 - Не трогали localization / themes / feedback.
 
 (строк ~70)
+
+---
+
+# Результат по доработке №1 «progress ray» (`new_subprocess`)
+
+## Краткий отчёт в формате было→стало (почему)
+
+было: `Progress` умеет только `new` + `set`; вложенный диапазон нельзя передать в чужой цикл.
+стало: `Progress: Clone` + `new_subprocess(from, to)` — детский `0..=100` линейно кладётся в родительский `[from, to]`.
+почему: пример в задаче: `install_files` говорит 0..100, родитель видит 40..90.
+
+было: макросы на subprocess не проверялись.
+стало: тесты `subprocess_maps_0_100_into_parent_range` (0→40, 50→65, 100→90) и `subprocess_macros_fill_parent_proportionally`.
+почему: расчёт процентов должен жить в `deck_gen_wasm_progress` без WASM.
+
+было: `install_files` / `install_folder` без прогресса, циклы «голые».
+стало: последний аргумент `Progress`; внутри `progress_wrapper` + `progress_loop` (folder: mkdir 0–10, dirs 10–40, files 40–100).
+почему: «использовать для отслеживания внутреннего прогресса в своих циклах».
+
+было: `install_new_game(vfs)` без прогресса.
+стало: `install_new_game(vfs, progress)`: fetch 0–40, запись файлов 40–100 теми же макросами. Политика skip/retarget та же.
+почему: цикл записи шаблона — длинный кусок New Game.
+
+было: workspace вызывал install без subprocess.
+стало: `load_files_into_folder` / `load_game_from_disk`: `progress.new_subprocess(40.0, 90.0)` внутри блока 30–90; `add_new_game`: subprocess 10–90 внутри блока 10–90.
+почему: как в примере доработки; родительская шкала заполняется пропорционально.
+
+было: import/template без зависимости на progress.
+стало: `deck_gen_wasm_progress` в их Cargo.toml (короткий комментарий зачем).
+почему: параметр `Progress` иначе не собрать.
+
+## Выполнение приёмки
+- `cargo test -p deck_gen_wasm_progress` — 8/8.
+- `cargo test -p deck_gen_wasm_workspace` — 21/21.
+- `cargo test -p deck_gen_wasm_import` — 8/8.
+- `cargo test -p deck_gen_wasm_template` — 8/8.
+- Бизнес-логика копирования файлов не менялась, только отчёты `set` вокруг циклов.
+
+## Что не делали
+- Не делали install_* async ради yield (WASM и так блокируется на sync-цикле).
+- Не лезли в `github.rs` / picker / `deck_gen`.
+- Не трогали UI луча, conf, кнопки.
+
+(строк ~55)

@@ -665,6 +665,7 @@ dependencies = [
  "deck_gen_wasm_browser",
  "deck_gen_wasm_conf",
  "deck_gen_wasm_fs",
+ "deck_gen_wasm_progress",
  "js-sys",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -696,6 +697,7 @@ dependencies = [
  "deck_gen_wasm_browser",
  "deck_gen_wasm_conf",
  "deck_gen_wasm_fs",
+ "deck_gen_wasm_progress",
  "serde",
  "serde_json",
 ]

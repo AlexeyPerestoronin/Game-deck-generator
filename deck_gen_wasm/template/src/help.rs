@@ -42,7 +42,10 @@ mod tests {
         assert!(vfs
             .read_file("user-help.md")
             .is_some_and(|body| body.starts_with('#')));
-        assert_eq!(vfs.read_file(conf::help::PATH), vfs.read_file("user-help.md"));
+        assert_eq!(
+            vfs.read_file(conf::help::PATH),
+            vfs.read_file("user-help.md")
+        );
         assert!(!vfs.is_dir("deck_gen_wasm"));
         assert!(!needs_install(&vfs));
     }

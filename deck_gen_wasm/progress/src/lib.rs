@@ -74,4 +74,25 @@ mod tests {
         });
         assert_eq!(*log.borrow(), vec![0.0, 0.0, 10.0, 80.0, 100.0, 100.0]);
     }
+
+    #[test]
+    fn subprocess_maps_0_100_into_parent_range() {
+        let (progress, log) = recorder();
+        let sub = progress.new_subprocess(40.0, 90.0);
+        sub.set(0.0);
+        sub.set(50.0);
+        sub.set(100.0);
+        assert_eq!(*log.borrow(), vec![40.0, 65.0, 90.0]);
+    }
+
+    #[test]
+    fn subprocess_macros_fill_parent_proportionally() {
+        let (progress, log) = recorder();
+        let sub = progress.new_subprocess(40.0, 90.0);
+        progress_wrapper!(sub, {
+            progress_loop!(sub, 0.0, 100.0, vec![1, 2], |_item| {});
+        });
+        // wrapper 0, loop i=0 → 0, i=1 → 50, loop end 100, wrapper 100
+        assert_eq!(*log.borrow(), vec![40.0, 40.0, 65.0, 90.0, 90.0]);
+    }
 }

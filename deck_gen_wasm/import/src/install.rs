@@ -2,6 +2,7 @@
 
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::{file_name, join_path, unique_name, Vfs};
+use deck_gen_wasm_progress::{progress_block, progress_loop, progress_wrapper, Progress};
 
 use super::FileBody;
 
@@ -21,16 +22,22 @@ pub fn install_folder(
     name: &str,
     dirs: &[String],
     files: &[(String, FileBody)],
+    progress: Progress,
 ) -> Result<String, String> {
     let folder = unique_folder_name(name, |candidate| vfs.exists(&format!("games/{candidate}")));
     let root = format!("games/{folder}");
-    vfs.mkdir(&root)?;
-    for dir in dirs {
-        vfs.mkdir(&join_path(&root, dir))?;
-    }
-    for (rel, body) in files {
-        put_body(vfs, &join_path(&root, rel), body)?;
-    }
+    progress_wrapper!(progress, {
+        progress_block!(progress, 0.0, 10.0, {
+            vfs.mkdir(&root)?;
+        });
+        progress_loop!(progress, 10.0, 40.0, dirs, |dir| {
+            vfs.mkdir(&join_path(&root, dir))?;
+        });
+        progress_loop!(progress, 40.0, 100.0, files, |item| {
+            let (rel, body) = item;
+            put_body(vfs, &join_path(&root, rel), body)?;
+        });
+    });
     Ok(folder)
 }
 
@@ -39,14 +46,18 @@ pub fn install_files(
     vfs: &mut Vfs,
     folder: &str,
     files: &[(String, FileBody)],
+    progress: Progress,
 ) -> Result<usize, String> {
     if !vfs.is_dir(folder) {
         return Err(format!("'{folder}' is not a folder"));
     }
-    for (name, body) in files {
-        let dest = join_path(folder, file_name(name));
-        put_body(vfs, &dest, body)?;
-    }
+    progress_wrapper!(progress, {
+        progress_loop!(progress, 0.0, 100.0, files, |item| {
+            let (name, body) = item;
+            let dest = join_path(folder, file_name(name));
+            put_body(vfs, &dest, body)?;
+        });
+    });
     Ok(files.len())
 }
 
@@ -60,6 +71,10 @@ fn put_body(vfs: &mut Vfs, path: &str, body: &FileBody) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn silent() -> Progress {
+        Progress::new(|_| {})
+    }
 
     #[test]
     fn unique_folder_gets_suffix() {
@@ -79,6 +94,7 @@ mod tests {
                 ("help.md".into(), FileBody::Text("# hi".into())),
                 ("art/logo.png".into(), FileBody::Bytes(vec![0x89, 0x50])),
             ],
+            silent(),
         )
         .unwrap();
         assert_eq!(folder, "demo");
@@ -98,6 +114,7 @@ mod tests {
             &mut vfs,
             "games/demo",
             &[("logo.png".into(), FileBody::Bytes(vec![1, 2, 3]))],
+            silent(),
         )
         .unwrap();
         assert_eq!(n, 1);

@@ -119,7 +119,8 @@ impl Workspace {
                     let installed = progress_block!(progress, 30.0, 90.0, {
                         workspace.flush_draft();
                         let mut vfs = workspace.vfs.get_untracked();
-                        let result = install_files(&mut vfs, &folder, &files);
+                        let subprocess = progress.new_subprocess(40.0, 90.0);
+                        let result = install_files(&mut vfs, &folder, &files, subprocess);
                         (vfs, result)
                     });
                     yield_frame().await;
@@ -160,7 +161,8 @@ impl Workspace {
                     let installed = progress_block!(progress, 30.0, 90.0, {
                         workspace.flush_draft();
                         let mut vfs = workspace.vfs.get_untracked();
-                        let result = install_folder(&mut vfs, &name, &dirs, &files);
+                        let subprocess = progress.new_subprocess(40.0, 90.0);
+                        let result = install_folder(&mut vfs, &name, &dirs, &files, subprocess);
                         (vfs, result)
                     });
                     yield_frame().await;
@@ -274,7 +276,8 @@ impl Workspace {
                 yield_frame().await;
                 let installed = progress_block!(progress, 10.0, 90.0, {
                     let mut vfs = workspace.vfs.get_untracked();
-                    let result = install_new_game(&mut vfs).await;
+                    let subprocess = progress.new_subprocess(10.0, 90.0);
+                    let result = install_new_game(&mut vfs, subprocess).await;
                     (vfs, result)
                 });
                 yield_frame().await;

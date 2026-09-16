@@ -11,5 +11,7 @@ path = "src/lib.rs"
 deck_gen_wasm_browser = { path = "../browser" }
 deck_gen_wasm_conf = { path = "../conf" }
 deck_gen_wasm_fs = { path = "../fs" }
+# 0..=100 reporting inside install_new_game loops
+deck_gen_wasm_progress = { path = "../progress" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

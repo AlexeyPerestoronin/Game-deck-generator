@@ -47,8 +47,8 @@ Browser / OS:
 - Тултип: `conf::ui::TOOLTIP_FEEDBACK` = `"Send feedback by email."`
 - Иконка `FeedbackIcon` в `icons/activity.rs` — тот же PNG-паттерн, что у Download (3 кадра).
 - Файлы иконок: `deck_gen_wasm/icons/buttons/feedback/{off,on,click}.drawio.png`. Пока нет оригинала — **скопировать** PNG любой существующей кнопки (например `download/`). В `wiki/note.md` написать, что пользователь заменит рисунки.
-- Вставить кнопку в `ActivityBar` **сразу после `SplitPreviewButton`, до spacer**. Итоговый порядок:
-  Download, NewGame, LoadGame, PrepareHtml, PreparePdf, SplitPreview, **Feedback**, spacer, Clear [, Locale/Theme если уже есть из соседних задач — не трогать].
+- Вставить кнопку в `ActivityBar` **сразу после `Clear`**. Итоговый порядок:
+  Download, NewGame, LoadGame, PrepareHtml, PreparePdf, SplitPreview, spacer, Clear, **Feedback** [, Locale/Theme если уже есть из соседних задач — не трогать].
 - Подключить крейт в `ui/Cargo.toml`.
 - Зарегистрировать пакет в корневом `Cargo.toml` `members` и в `deck_gen_wasm/Trunk.toml` `[watch]`.
 

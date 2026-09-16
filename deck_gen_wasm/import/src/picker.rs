@@ -13,8 +13,8 @@ use web_sys::FileList;
 use super::input::pick_with_hidden_input;
 use super::read::{collect_from_file_list, collect_tree, CollectedEntries, CollectedFolder};
 use super::{PickOutcome, PickResult, PickedFolder};
-use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_browser as js;
+use deck_gen_wasm_conf as conf;
 
 /// Open a directory picker and read allowed files (or a reject/cancel).
 pub async fn pick_and_read_folder() -> PickResult {

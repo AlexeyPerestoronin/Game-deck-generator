@@ -15,9 +15,9 @@ use web_sys::{File, FileList};
 
 use super::policy::{classify, ImportClass};
 use super::FileBody;
+use deck_gen_wasm_browser as js;
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::parent_path;
-use deck_gen_wasm_browser as js;
 
 /// Files, directories, extension rejects, and oversized images from one walk.
 pub(super) struct CollectedEntries {
@@ -141,20 +141,21 @@ fn classify_file(
 }
 
 async fn read_pending(pending: Vec<PendingRead>) -> Result<Vec<(String, FileBody)>, String> {
-    let results = deck_gen_wasm_browser::map_join(pending, conf::io::FILE_READ_PARALLEL, |item| async move {
-        match item.class {
-            ImportClass::Image => read_file_bytes(&item.file)
-                .await
-                .map(|bytes| (item.path, FileBody::Bytes(bytes))),
-            ImportClass::Text => read_file_text(&item.file)
-                .await
-                .map(|text| (item.path, FileBody::Text(text))),
-            ImportClass::Rejected | ImportClass::Oversized => {
-                Err("internal: classified file was not readable".to_string())
+    let results =
+        deck_gen_wasm_browser::map_join(pending, conf::io::FILE_READ_PARALLEL, |item| async move {
+            match item.class {
+                ImportClass::Image => read_file_bytes(&item.file)
+                    .await
+                    .map(|bytes| (item.path, FileBody::Bytes(bytes))),
+                ImportClass::Text => read_file_text(&item.file)
+                    .await
+                    .map(|text| (item.path, FileBody::Text(text))),
+                ImportClass::Rejected | ImportClass::Oversized => {
+                    Err("internal: classified file was not readable".to_string())
+                }
             }
-        }
-    })
-    .await;
+        })
+        .await;
     results.into_iter().collect()
 }
 

@@ -130,5 +130,5 @@ pub mod ui {
     /// Width (CSS pixels) of the vertical progress ray between the activity bar
     /// and the explorer. Also used as the `.ide` grid column and in the explorer
     /// max-width formula.
-    pub const PROGRESS_RAY_WIDTH_PX: u32 = 10;
+    pub const PROGRESS_RAY_WIDTH_PX: u32 = 5;
 }

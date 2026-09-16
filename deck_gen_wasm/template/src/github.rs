@@ -7,8 +7,8 @@
 
 use serde::Deserialize;
 
-use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_browser::fetch_text;
+use deck_gen_wasm_conf as conf;
 
 #[derive(Deserialize)]
 struct GithubTree {
