@@ -128,3 +128,57 @@
 Код на этапе-1 прямолинейный (KISS). По правилам рефакторинга (wiki/prompts/refactoring-rules.md): не создано новых абстракций, не нарушена архитектура, стиль базы сохранён (локальные сигналы + leptos + css vars как в предыдущей задаче по ширине), module docs уже присутствовали. Дополнительный рефакторинг не потребовался — правки и так минимальны и идиоматичны для места.
 
 (строк ~92)
+
+---
+
+# Результат по задаче «progress ray» (phase-III/stage-3)
+
+## Краткий отчёт в формате было→стало (почему)
+
+было: `.ide` grid `48px var(--explorer-width, 260px) 4px 1fr` — ActivityBar | Explorer | resizer | Editor, колонки под луч нет.
+стало: `48px var(--progress-ray-width, 10px) var(--explorer-width, 260px) 4px 1fr` + `<ProgressRay/>` между баром и деревом.
+почему: узкая полоска на всю высоту `.ide` между панелью кнопок и explorer, без перевода grid на flex.
+
+было: ширина луча нигде не задана.
+стало: `conf::ui::PROGRESS_RAY_WIDTH_PX = 10`; колонка `.ide` и `--progress-ray-width` берутся из неё.
+почему: константы UI живут в conf, не хардкод в компоненте.
+
+было: max ширины explorer `(ww - 48) / 2`.
+стало: `(ww - 48 - PROGRESS_RAY_WIDTH_PX) / 2`.
+почему: новая колонка 10px должна входить в формулу, explorer по-прежнему ресайзится.
+
+было: долгие операции — бинарный `Workspace.loading`; процента нет; `download()` статус ставит, `loading` не поднимает.
+стало: `progress: RwSignal<f32>` рядом с `loading`; `try_begin_async` ставит `loading=true` и `progress=0`; `finish_async` только `loading=false`; `download()` тоже через `try_begin_async`.
+почему: виджет idle при `loading==false` (зелёный); running рисует луч по `progress`; Download должен двигать луч; persist/Session не трогали.
+
+было: нет API для нарезки процентов, нет proc-macro и нельзя `#[progress_block]` на statements.
+стало: крейт `deck_gen_wasm/progress` (`deck_gen_wasm_progress`): `Progress` (callback `Rc<dyn Fn(f32)>`) + declarative `progress_wrapper!` / `progress_block!` / `progress_loop!`. Без Leptos/`deck_gen`. Юнит-тесты на расчёт процентов — в этом крейте.
+почему: обязательные имена макросов, stable Rust, без нового proc-macro.
+
+было: `prepare_html` / `prepare_pdf` — один yield 0ms и целый вызов движка; `add_new_game` / load / download без процентов.
+стало: обёртка макросами только wasm-обвязки: html/pdf 0–10 yield, 10–90 flush+движок, 90–100 запись vfs/status; new game 0–10 flush, 10–90 `install_new_game`, 90–100 select; load/load_files pick 0–30, install 30–90, select 90–100; download encode 0–50, save 50–100. Между блоками `TimeoutFuture::new(0)`.
+почему: внутрь `deck_gen` / `prepare_pdf_web` / template не лезем; callback только пишет сигнал.
+
+было: нет виджета луча, цвета в Rust не задавались.
+стало: `ui/src/bars/progress_ray.rs`, экспорт из `bars/mod.rs`. Idle — класс `is-idle` (зелёный `--progress-idle`); running — два отрезка от центра (`--ray-arm: p/2`) + seed-точка при p=0 (`--progress-run`). `pointer-events: none`.
+почему: idle/running без подписей и кликов; цвета только CSS-переменные.
+
+было: `Cargo.toml` members и Trunk watch без `progress`.
+стало: member `deck_gen_wasm/progress`, watch `progress`.
+почему: новый крейт должен собираться и пересобирать trunk.
+
+## Выполнение приёмки
+- `cargo test -p deck_gen_wasm_progress` — 6/6.
+- `cargo test -p deck_gen_wasm_workspace` — 21/21.
+- `cargo check -p deck_gen_wasm_conf -p deck_gen_wasm_ui` — ok.
+- `cargo check -p deck_gen_wasm_ui -p deck_gen_wasm_workspace --target wasm32-unknown-unknown` — ok.
+- Split/Clear не обёрнуты — луч не запускают.
+- Кнопки по-прежнему `disabled` через `loading` (файлы кнопок не менялись).
+- Интерактив в браузере в этой сессии не гонялся (нет browser automation).
+
+## Что не делали
+- Не меняли `deck_gen`, `prepare_pdf_*`, explorer, editor, кнопки, import picker.
+- Не вводили proc-macro, workers, persist прогресса, процент в status line.
+- Не трогали localization / themes / feedback.
+
+(строк ~70)

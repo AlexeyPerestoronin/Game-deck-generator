@@ -8,8 +8,8 @@
 use leptos::prelude::*;
 
 use super::iframe::inline_relative_iframes;
-use deck_gen_wasm_fs::kind::{self, FileKind};
 use deck_gen_wasm_browser as js;
+use deck_gen_wasm_fs::kind::{self, FileKind};
 use deck_gen_wasm_workspace::Workspace;
 
 /// Active-tab preview: HTML, Markdown, PDF, or image, chosen by file extension.
@@ -66,7 +66,11 @@ fn markdown_to_html(src: &str) -> String {
 
 #[component]
 fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
-    let bytes = Memo::new(move |_| workspace.vfs.with(|vfs| vfs.read_bytes(&path).map(Vec::from)));
+    let bytes = Memo::new(move |_| {
+        workspace
+            .vfs
+            .with(|vfs| vfs.read_bytes(&path).map(Vec::from))
+    });
     let src = RwSignal::new(String::new());
     Effect::new(move |_| {
         let next = bytes
@@ -90,7 +94,11 @@ fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
 fn ImagePreview(workspace: Workspace, path: String) -> impl IntoView {
     let mime = kind::image_mime(&path);
     let alt = path.clone();
-    let bytes = Memo::new(move |_| workspace.vfs.with(|vfs| vfs.read_bytes(&path).map(Vec::from)));
+    let bytes = Memo::new(move |_| {
+        workspace
+            .vfs
+            .with(|vfs| vfs.read_bytes(&path).map(Vec::from))
+    });
     let src = RwSignal::new(String::new());
     Effect::new(move |_| {
         let next = bytes

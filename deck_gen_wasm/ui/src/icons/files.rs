@@ -142,6 +142,9 @@ mod tests {
         assert_eq!(kind::explorer_icon("notes.txt"), None);
         assert_eq!(kind::explorer_icon("LICENSE"), None);
         assert_eq!(kind::explorer_icon("script.js"), Some(ExplorerIcon::Js));
-        assert_eq!(kind::explorer_icon("face-layout.j2"), Some(ExplorerIcon::J2));
+        assert_eq!(
+            kind::explorer_icon("face-layout.j2"),
+            Some(ExplorerIcon::J2)
+        );
     }
 }

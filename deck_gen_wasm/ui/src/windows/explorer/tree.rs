@@ -9,9 +9,9 @@ use std::collections::HashSet;
 
 use leptos::prelude::*;
 
-use deck_gen_wasm_fs::{join_path, Vfs};
 use crate::icons::FileTypeIcon;
 use crate::menus::{EntryKind, MenuState};
+use deck_gen_wasm_fs::{join_path, Vfs};
 use deck_gen_wasm_workspace::{row_looks_selected, Workspace};
 
 #[component]

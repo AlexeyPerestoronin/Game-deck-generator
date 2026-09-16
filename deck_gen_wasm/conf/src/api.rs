@@ -116,11 +116,19 @@ pub mod ui {
     pub const TOOLTIP_DOWNLOAD: &str = "Download the workspace as a ZIP archive.";
     pub const TOOLTIP_LOAD_GAME: &str = "Load a game folder from disk into games/.";
     pub const TOOLTIP_NEW_GAME: &str = "Add a new game from the GitHub master template.";
-    pub const TOOLTIP_PREPARE_HTML: &str = "Generate HTML preview for every deck in this workspace.";
-    pub const TOOLTIP_PREPARE_PDF: &str = "Generate card PDFs and A4 duplex sheets for every deck in this workspace.";
-    pub const TOOLTIP_SPLIT_PREVIEW: &str = "Split for preview. Files stay on the left; previews open on the right.";
+    pub const TOOLTIP_PREPARE_HTML: &str =
+        "Generate HTML preview for every deck in this workspace.";
+    pub const TOOLTIP_PREPARE_PDF: &str =
+        "Generate card PDFs and A4 duplex sheets for every deck in this workspace.";
+    pub const TOOLTIP_SPLIT_PREVIEW: &str =
+        "Split for preview. Files stay on the left; previews open on the right.";
 
     /// Minimum width (in CSS pixels) of each pane when the editor is split
     /// for preview. Used for the adjustable split resizer.
     pub const SPLIT_PANE_MIN_WIDTH_PX: u32 = 150;
+
+    /// Width (CSS pixels) of the vertical progress ray between the activity bar
+    /// and the explorer. Also used as the `.ide` grid column and in the explorer
+    /// max-width formula.
+    pub const PROGRESS_RAY_WIDTH_PX: u32 = 10;
 }

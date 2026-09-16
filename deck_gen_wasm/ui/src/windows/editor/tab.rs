@@ -3,9 +3,9 @@
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
+use crate::menus::{TabCloseMenu, TabContextMenu};
 use deck_gen_wasm_fs::file_name;
 use deck_gen_wasm_workspace::{OpenTab, TabKind, Workspace};
-use crate::menus::{TabCloseMenu, TabContextMenu};
 
 /// Tab chip. `preview_pane` compares active state against the right-hand strip.
 #[component]
@@ -13,7 +13,7 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
     let tab_for_active = tab.clone();
     let tab_for_click = tab.clone();
     let tab_for_close = tab.clone();
-    let tab_for_dnd = tab.clone();  // for dragstart data
+    let tab_for_dnd = tab.clone(); // for dragstart data
     let tab_for_this = tab.clone(); // for this tab as hovered in its dragover
     let label = match tab.kind {
         TabKind::Edit => file_name(&tab.path).to_string(),
@@ -22,18 +22,20 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
 
     let (menu_pos, set_menu_pos) = signal::<Option<(f64, f64)>>(None);
 
-    let show_menu = move || menu_pos.get().map(|(x, y)| {
-        view! {
-            <TabContextMenu
-                state=TabCloseMenu { x, y }
-                on_dismiss=move |_| set_menu_pos.set(None)
-                on_close_all=move |_| {
-                    set_menu_pos.set(None);
-                    workspace.close_all_tabs();
-                }
-            />
-        }
-    });
+    let show_menu = move || {
+        menu_pos.get().map(|(x, y)| {
+            view! {
+                <TabContextMenu
+                    state=TabCloseMenu { x, y }
+                    on_dismiss=move |_| set_menu_pos.set(None)
+                    on_close_all=move |_| {
+                        set_menu_pos.set(None);
+                        workspace.close_all_tabs();
+                    }
+                />
+            }
+        })
+    };
 
     view! {
         <div

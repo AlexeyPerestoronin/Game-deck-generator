@@ -2,10 +2,11 @@
 //!
 //! [`Workspace`] is a cheap `Copy` handle to Leptos signals (VFS, selection,
 //! multi-selection, copy plan, expanded folders, tabs, split preview, status,
-//! loading). Explorer, editor, and the activity bar all clone it. Mutations
-//! go through the VFS; async work (`prepare_html`, `prepare_pdf`, folder pick,
-//! template fetch, ZIP) uses `spawn_local` and the `loading` flag so two long
-//! actions cannot overlap.
+//! loading, progress). Explorer, editor, and the activity bar all clone it.
+//! Mutations go through the VFS; async work (`prepare_html`, `prepare_pdf`,
+//! folder pick, template fetch, ZIP) uses `spawn_local` and the `loading` flag
+//! so two long actions cannot overlap. `progress` is a 0..=100 hint for the
+//! activity-bar ray and is not part of [`Session`].
 
 use std::collections::HashSet;
 
@@ -61,6 +62,8 @@ pub struct Workspace {
     pub status: RwSignal<String>,
     /// True while an async action (load / template / HTML / PDF / ZIP) is running.
     pub loading: RwSignal<bool>,
+    /// 0..=100 fill of the progress ray while [`Self::loading`] is true. Not persisted.
+    pub progress: RwSignal<f32>,
     /// Focused editor text not yet written into [`Self::vfs`].
     pub draft: RwSignal<Option<(String, String)>>,
 }
@@ -84,6 +87,7 @@ impl Workspace {
             expanded: RwSignal::new(expanded),
             status: RwSignal::new(String::new()),
             loading: RwSignal::new(false),
+            progress: RwSignal::new(0.0),
             draft: RwSignal::new(None),
         }
     }
@@ -124,9 +128,8 @@ impl Workspace {
     /// Serializable snapshot for localStorage (binaries omitted; they go to IndexedDB).
     pub fn snapshot(&self) -> Session {
         self.flush_draft();
-        self.vfs.with(|vfs| {
-            Session::from_workspace(vfs, self.selected.get(), &self.expanded.get())
-        })
+        self.vfs
+            .with(|vfs| Session::from_workspace(vfs, self.selected.get(), &self.expanded.get()))
     }
 
     /// Select `path`; folders also toggle expansion. Files open an edit tab.
@@ -218,10 +221,12 @@ impl Workspace {
                 *selected = None;
             }
         });
-        self.multi_selected.update(|set| retain_not_under(set, path));
+        self.multi_selected
+            .update(|set| retain_not_under(set, path));
         self.copy_planned.update(|set| retain_not_under(set, path));
         self.expanded.update(|set| retain_not_under(set, path));
-        let (remaining, next) = crate::split::forget_tabs(self.tabs.get(), self.active_tab.get(), &gone);
+        let (remaining, next) =
+            crate::split::forget_tabs(self.tabs.get(), self.active_tab.get(), &gone);
         let (preview_remaining, preview_next) = crate::split::forget_tabs(
             self.preview_tabs.get(),
             self.active_preview_tab.get(),
@@ -285,18 +290,25 @@ impl Workspace {
         });
     }
 
-    /// True if an async action may start; sets `loading` and the status line.
+    /// True if an async action may start; sets `loading`, `progress = 0`, and the status line.
     pub(crate) fn try_begin_async(&self, status: impl Into<String>) -> bool {
         if self.loading.get() {
             return false;
         }
         self.loading.set(true);
+        self.progress.set(0.0);
         self.status.set(status.into());
         true
     }
 
     pub(crate) fn finish_async(&self) {
         self.loading.set(false);
+    }
+
+    /// Callback that writes [`Self::progress`]. Does not yield; callers await a frame between blocks.
+    pub(crate) fn progress_handle(&self) -> deck_gen_wasm_progress::Progress {
+        let progress = self.progress;
+        deck_gen_wasm_progress::Progress::new(move |pct| progress.set(pct))
     }
 
     pub(crate) fn take_pick<T>(

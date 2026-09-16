@@ -65,10 +65,7 @@ pub fn Editor(workspace: Workspace) -> impl IntoView {
                 }
             })
         };
-        let _ = win.add_event_listener_with_callback(
-            "mousemove",
-            move_cb.as_ref().unchecked_ref(),
-        );
+        let _ = win.add_event_listener_with_callback("mousemove", move_cb.as_ref().unchecked_ref());
         move_cb.forget();
 
         let up_cb = {

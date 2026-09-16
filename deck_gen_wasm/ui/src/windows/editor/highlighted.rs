@@ -20,9 +20,8 @@ pub(super) fn HighlightedEditor(workspace: Workspace, path: String) -> impl Into
     let initial = workspace
         .vfs
         .with_untracked(|vfs| vfs.read_file(&path).unwrap_or("").to_string());
-    let overlay = RwSignal::new(
-        highlight_html(&path, &initial).unwrap_or_else(|| text_to_html(&initial)),
-    );
+    let overlay =
+        RwSignal::new(highlight_html(&path, &initial).unwrap_or_else(|| text_to_html(&initial)));
     let generation = RwSignal::new(0u32);
     let path_html = path.clone();
     Effect::new(move |_| {

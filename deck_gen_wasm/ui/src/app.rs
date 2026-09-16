@@ -14,7 +14,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::spawn_local;
 use web_sys::MouseEvent as WasmMouseEvent;
 
-use crate::bars::ActivityBar;
+use crate::bars::{ActivityBar, ProgressRay};
 use crate::windows::{Editor, Explorer};
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_persist::{
@@ -86,7 +86,10 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
                     .inner_width()
                     .ok()
                     .and_then(|v| v.as_f64())
-                    .map(|ww| ((ww - 48.0) / 2.0).floor() as i32)
+                    .map(|ww| {
+                        ((ww - 48.0 - f64::from(conf::ui::PROGRESS_RAY_WIDTH_PX)) / 2.0).floor()
+                            as i32
+                    })
                     .unwrap_or(400);
                 if w > max_w {
                     w = max_w;
@@ -96,8 +99,10 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
             let mup = Closure::<dyn FnMut(WasmMouseEvent)>::new(move |_ev: WasmMouseEvent| {
                 drag_sig.set(false);
             });
-            let _ = window.add_event_listener_with_callback("mousemove", mmove.as_ref().unchecked_ref());
-            let _ = window.add_event_listener_with_callback("mouseup", mup.as_ref().unchecked_ref());
+            let _ = window
+                .add_event_listener_with_callback("mousemove", mmove.as_ref().unchecked_ref());
+            let _ =
+                window.add_event_listener_with_callback("mouseup", mup.as_ref().unchecked_ref());
             mmove.forget();
             mup.forget();
         }
@@ -116,9 +121,9 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
                 return;
             }
             let _ = save_session(&workspace.snapshot());
-            let (fp, encoded) = workspace.vfs.with_untracked(|vfs| {
-                (binaries_fingerprint(vfs), encode_binaries(vfs))
-            });
+            let (fp, encoded) = workspace
+                .vfs
+                .with_untracked(|vfs| (binaries_fingerprint(vfs), encode_binaries(vfs)));
             if fp != last_fp.get_untracked() {
                 last_fp.set(fp);
                 spawn_local(async move {
@@ -128,11 +133,18 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
         });
     });
 
-    let ide_style = move || format!("--explorer-width: {}px;", explorer_width.get());
+    let ide_style = move || {
+        format!(
+            "--explorer-width: {}px; --progress-ray-width: {}px;",
+            explorer_width.get(),
+            conf::ui::PROGRESS_RAY_WIDTH_PX
+        )
+    };
 
     view! {
         <div class="ide" style=ide_style>
             <ActivityBar workspace=workspace />
+            <ProgressRay workspace=workspace />
             <Explorer workspace=workspace />
             <div
                 class="resizer"

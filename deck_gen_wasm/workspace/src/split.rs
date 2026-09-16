@@ -445,13 +445,25 @@ mod tests {
         let c = edit("c");
         let tabs = vec![a.clone(), b.clone(), c.clone()];
         // move b to front
-        assert_eq!(move_tab_in(tabs.clone(), &b, 0), vec![b.clone(), a.clone(), c.clone()]);
+        assert_eq!(
+            move_tab_in(tabs.clone(), &b, 0),
+            vec![b.clone(), a.clone(), c.clone()]
+        );
         // move a after c (insert at 3 from orig view)
-        assert_eq!(move_tab_in(tabs.clone(), &a, 3), vec![b.clone(), c.clone(), a.clone()]);
+        assert_eq!(
+            move_tab_in(tabs.clone(), &a, 3),
+            vec![b.clone(), c.clone(), a.clone()]
+        );
         // move c between a and b
-        assert_eq!(move_tab_in(tabs.clone(), &c, 1), vec![a.clone(), c.clone(), b.clone()]);
+        assert_eq!(
+            move_tab_in(tabs.clone(), &c, 1),
+            vec![a.clone(), c.clone(), b.clone()]
+        );
         // noop
-        assert_eq!(move_tab_in(tabs.clone(), &b, 1), vec![a.clone(), b.clone(), c.clone()]);
+        assert_eq!(
+            move_tab_in(tabs.clone(), &b, 1),
+            vec![a.clone(), b.clone(), c.clone()]
+        );
     }
 
     #[test]
@@ -460,7 +472,10 @@ mod tests {
         let b = edit("b");
         let tabs = vec![a.clone(), b.clone()];
         // to beyond end
-        assert_eq!(move_tab_in(tabs.clone(), &a, 99), vec![b.clone(), a.clone()]);
+        assert_eq!(
+            move_tab_in(tabs.clone(), &a, 99),
+            vec![b.clone(), a.clone()]
+        );
         // move b before a
         assert_eq!(move_tab_in(tabs, &b, 0), vec![b.clone(), a.clone()]);
     }

@@ -1,0 +1,8 @@
+[package]
+name = "deck_gen_wasm_progress"
+version.workspace = true
+edition.workspace = true
+description = "Declarative progress reporting for long WASM workspace actions"
+
+[lib]
+path = "src/lib.rs"

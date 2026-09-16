@@ -1,8 +1,9 @@
 //! Long-running workspace actions: persist, help, import, template, prepare, ZIP.
 //!
 //! These methods share the [`Workspace`](super::Workspace) `loading` flag so
-//! the activity bar can disable overlapping work. Async paths yield once before
-//! `prepare_*` so Leptos can paint the status line.
+//! the activity bar can disable overlapping work. Long paths report 0..=100
+//! through `progress_*` macros and yield a frame between blocks so the ray
+//! can paint.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -11,15 +12,16 @@ use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use super::{OpenTab, TabKind, Workspace};
+use crate::vfs_fs::VfsFs;
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
-use crate::vfs_fs::VfsFs;
-use deck_gen_wasm_template as help;
 use deck_gen_wasm_import::{
     install_files, install_folder, pick_and_read_files, pick_and_read_folder, PickedFiles,
     PickedFolder,
 };
 use deck_gen_wasm_persist::{save_binaries, save_session};
+use deck_gen_wasm_progress::{progress_block, progress_wrapper};
+use deck_gen_wasm_template as help;
 use deck_gen_wasm_template::install_new_game;
 
 impl Workspace {
@@ -107,23 +109,35 @@ impl Workspace {
         let workspace = *self;
         let folder = folder.to_string();
         spawn_local(async move {
-            if let Some(PickedFiles { files }) =
-                workspace.take_pick(warning, pick_and_read_files().await)
-            {
-                workspace.flush_draft();
-                let mut vfs = workspace.vfs.get_untracked();
-                match install_files(&mut vfs, &folder, &files) {
-                    Ok(n) => {
-                        workspace.vfs.set(vfs);
-                        workspace.expand_ancestors(&folder);
-                        workspace.set_primary_selection(Some(folder.clone()));
-                        workspace
-                            .status
-                            .set(format!("Loaded {n} file(s) into {folder}"));
-                    }
-                    Err(err) => workspace.status.set(err),
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                let picked = progress_block!(progress, 0.0, 30.0, {
+                    workspace.take_pick(warning, pick_and_read_files().await)
+                });
+                yield_frame().await;
+                if let Some(PickedFiles { files }) = picked {
+                    let installed = progress_block!(progress, 30.0, 90.0, {
+                        workspace.flush_draft();
+                        let mut vfs = workspace.vfs.get_untracked();
+                        let result = install_files(&mut vfs, &folder, &files);
+                        (vfs, result)
+                    });
+                    yield_frame().await;
+                    progress_block!(progress, 90.0, 100.0, {
+                        match installed {
+                            (vfs, Ok(n)) => {
+                                workspace.vfs.set(vfs);
+                                workspace.expand_ancestors(&folder);
+                                workspace.set_primary_selection(Some(folder.clone()));
+                                workspace
+                                    .status
+                                    .set(format!("Loaded {n} file(s) into {folder}"));
+                            }
+                            (_, Err(err)) => workspace.status.set(err),
+                        }
+                    });
                 }
-            }
+            });
             workspace.finish_async();
         });
     }
@@ -135,23 +149,35 @@ impl Workspace {
         }
         let workspace = *self;
         spawn_local(async move {
-            if let Some(PickedFolder { name, files, dirs }) =
-                workspace.take_pick(warning, pick_and_read_folder().await)
-            {
-                workspace.status.set("Loading folder…".into());
-                workspace.flush_draft();
-                let mut vfs = workspace.vfs.get_untracked();
-                match install_folder(&mut vfs, &name, &dirs, &files) {
-                    Ok(folder) => {
-                        workspace.vfs.set(vfs);
-                        let path = format!("games/{folder}");
-                        workspace.expand_ancestors(&path);
-                        workspace.set_primary_selection(Some(path.clone()));
-                        workspace.status.set(format!("Loaded {path}"));
-                    }
-                    Err(err) => workspace.status.set(err),
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                let picked = progress_block!(progress, 0.0, 30.0, {
+                    workspace.take_pick(warning, pick_and_read_folder().await)
+                });
+                yield_frame().await;
+                if let Some(PickedFolder { name, files, dirs }) = picked {
+                    workspace.status.set("Loading folder…".into());
+                    let installed = progress_block!(progress, 30.0, 90.0, {
+                        workspace.flush_draft();
+                        let mut vfs = workspace.vfs.get_untracked();
+                        let result = install_folder(&mut vfs, &name, &dirs, &files);
+                        (vfs, result)
+                    });
+                    yield_frame().await;
+                    progress_block!(progress, 90.0, 100.0, {
+                        match installed {
+                            (vfs, Ok(folder)) => {
+                                workspace.vfs.set(vfs);
+                                let path = format!("games/{folder}");
+                                workspace.expand_ancestors(&path);
+                                workspace.set_primary_selection(Some(path.clone()));
+                                workspace.status.set(format!("Loaded {path}"));
+                            }
+                            (_, Err(err)) => workspace.status.set(err),
+                        }
+                    });
                 }
-            }
+            });
             workspace.finish_async();
         });
     }
@@ -163,19 +189,33 @@ impl Workspace {
         }
         let workspace = *self;
         spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(0).await;
-            workspace.flush_draft();
-            let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
-            match deck_gen::prepare_html(fs.clone()) {
-                Ok(n) => {
-                    workspace.vfs.set(take_vfs(fs));
-                    workspace.status.set(format!("Prepared HTML for {n} decks"));
-                }
-                Err(err) => {
-                    warning.set(Some(err.to_string()));
-                    workspace.status.set(String::new());
-                }
-            }
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                progress_block!(progress, 0.0, 10.0, {
+                    yield_frame().await;
+                });
+                yield_frame().await;
+                let prepared = progress_block!(progress, 10.0, 90.0, {
+                    workspace.flush_draft();
+                    let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
+                    let result = deck_gen::prepare_html(fs.clone());
+                    (fs, result)
+                });
+                yield_frame().await;
+                progress_block!(progress, 90.0, 100.0, {
+                    let (fs, result) = prepared;
+                    match result {
+                        Ok(n) => {
+                            workspace.vfs.set(take_vfs(fs));
+                            workspace.status.set(format!("Prepared HTML for {n} decks"));
+                        }
+                        Err(err) => {
+                            warning.set(Some(err.to_string()));
+                            workspace.status.set(String::new());
+                        }
+                    }
+                });
+            });
             workspace.finish_async();
         });
     }
@@ -187,20 +227,34 @@ impl Workspace {
         }
         let workspace = *self;
         spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(0).await;
-            workspace.flush_draft();
-            let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
-            let engine = prepare_pdf_web::WebPdfEngine;
-            match deck_gen::prepare_pdf(fs.clone(), &engine).await {
-                Ok(n) => {
-                    workspace.vfs.set(take_vfs(fs));
-                    workspace.status.set(format!("Prepared PDF for {n} decks"));
-                }
-                Err(err) => {
-                    warning.set(Some(err.to_string()));
-                    workspace.status.set(String::new());
-                }
-            }
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                progress_block!(progress, 0.0, 10.0, {
+                    yield_frame().await;
+                });
+                yield_frame().await;
+                let prepared = progress_block!(progress, 10.0, 90.0, {
+                    workspace.flush_draft();
+                    let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
+                    let engine = prepare_pdf_web::WebPdfEngine;
+                    let result = deck_gen::prepare_pdf(fs.clone(), &engine).await;
+                    (fs, result)
+                });
+                yield_frame().await;
+                progress_block!(progress, 90.0, 100.0, {
+                    let (fs, result) = prepared;
+                    match result {
+                        Ok(n) => {
+                            workspace.vfs.set(take_vfs(fs));
+                            workspace.status.set(format!("Prepared PDF for {n} decks"));
+                        }
+                        Err(err) => {
+                            warning.set(Some(err.to_string()));
+                            workspace.status.set(String::new());
+                        }
+                    }
+                });
+            });
             workspace.finish_async();
         });
     }
@@ -212,45 +266,72 @@ impl Workspace {
         }
         let workspace = *self;
         spawn_local(async move {
-            workspace.flush_draft();
-            let mut vfs = workspace.vfs.get_untracked();
-            let result = install_new_game(&mut vfs).await;
-            match result {
-                Ok(installed) => {
-                    workspace.vfs.set(vfs);
-                    let path = format!("games/{}", installed.folder);
-                    workspace.expand_ancestors(&path);
-                    workspace.set_primary_selection(Some(path.clone()));
-                    workspace
-                        .status
-                        .set(format!("Added {path} from {}", installed.source));
-                }
-                Err(err) => {
-                    warning.set(Some(err));
-                    workspace.status.set(String::new());
-                }
-            }
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                progress_block!(progress, 0.0, 10.0, {
+                    workspace.flush_draft();
+                });
+                yield_frame().await;
+                let installed = progress_block!(progress, 10.0, 90.0, {
+                    let mut vfs = workspace.vfs.get_untracked();
+                    let result = install_new_game(&mut vfs).await;
+                    (vfs, result)
+                });
+                yield_frame().await;
+                progress_block!(progress, 90.0, 100.0, {
+                    match installed {
+                        (vfs, Ok(installed)) => {
+                            workspace.vfs.set(vfs);
+                            let path = format!("games/{}", installed.folder);
+                            workspace.expand_ancestors(&path);
+                            workspace.set_primary_selection(Some(path.clone()));
+                            workspace
+                                .status
+                                .set(format!("Added {path} from {}", installed.source));
+                        }
+                        (_, Err(err)) => {
+                            warning.set(Some(err));
+                            workspace.status.set(String::new());
+                        }
+                    }
+                });
+            });
             workspace.finish_async();
         });
     }
 
     /// Encode the tree as ZIP and offer it to the browser.
     pub fn download(&self) {
-        self.flush_draft();
-        match self.vfs.with(vfs_to_zip) {
-            Ok(bytes) => {
-                self.status.set("Downloading ZIP…".into());
-                let status = self.status;
-                spawn_local(async move {
-                    match save_zip_bytes(bytes, ZIP_FILENAME).await {
-                        Ok(()) => status.set(format!("Downloaded {ZIP_FILENAME}")),
-                        Err(err) => status.set(err),
+        if !self.try_begin_async("Downloading ZIP…") {
+            return;
+        }
+        let workspace = *self;
+        spawn_local(async move {
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                yield_frame().await;
+                let encoded = progress_block!(progress, 0.0, 50.0, {
+                    workspace.flush_draft();
+                    workspace.vfs.with(vfs_to_zip)
+                });
+                yield_frame().await;
+                progress_block!(progress, 50.0, 100.0, {
+                    match encoded {
+                        Ok(bytes) => match save_zip_bytes(bytes, ZIP_FILENAME).await {
+                            Ok(()) => workspace.status.set(format!("Downloaded {ZIP_FILENAME}")),
+                            Err(err) => workspace.status.set(err),
+                        },
+                        Err(err) => workspace.status.set(err),
                     }
                 });
-            }
-            Err(err) => self.status.set(err),
-        }
+            });
+            workspace.finish_async();
+        });
     }
+}
+
+async fn yield_frame() {
+    gloo_timers::future::TimeoutFuture::new(0).await;
 }
 
 fn take_vfs(fs: Arc<VfsFs>) -> deck_gen_wasm_fs::Vfs {
@@ -259,5 +340,3 @@ fn take_vfs(fs: Arc<VfsFs>) -> deck_gen_wasm_fs::Vfs {
         Err(arc) => arc.clone_vfs(),
     }
 }
-
-

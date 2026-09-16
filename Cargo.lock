@@ -686,6 +686,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "deck_gen_wasm_progress"
+version = "0.1.0"
+
+[[package]]
 name = "deck_gen_wasm_template"
 version = "0.1.0"
 dependencies = [
@@ -724,6 +728,7 @@ dependencies = [
  "deck_gen_wasm_fs",
  "deck_gen_wasm_import",
  "deck_gen_wasm_persist",
+ "deck_gen_wasm_progress",
  "deck_gen_wasm_template",
  "gloo-timers",
  "leptos",

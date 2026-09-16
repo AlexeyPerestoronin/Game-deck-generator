@@ -69,3 +69,24 @@
 - Изначально (до первого drag) используется 1fr fallback — равный split без лишнего кода.
 
 Если при ручной проверке что-то не так — можно править только эти два файла.
+
+---
+
+# Заметки по задаче «progress ray»
+
+## Пост-действия, которые требуются от пользователя
+1. Ручная приёмка в браузере (луч — визуальная UI-фича; в сессии нет browser automation):
+   - `cd deck_gen_wasm`
+   - `trunk serve`
+   - Открыть http://localhost:8080
+   - В покое: между activity bar и деревом файлов узкая (~10px) **зелёная** полоска на всю высоту.
+   - Prepare HTML, Prepare PDF, New Game, Load Game, Download: полоска становится синей от центра к краям и к концу операции заполняется, затем снова зелёная.
+   - Пока операция идёт, кнопки с `disabled=loading` неактивны.
+   - Explorer по-прежнему ресайзится; максимум чуть уже из‑за колонки 10px.
+   - Split Preview и Clear луч **не** запускают.
+2. Если trunk ещё не установлен — `cargo install trunk`, target `wasm32-unknown-unknown`.
+
+## Что не требуется по ТЗ
+- Процент в status line, persist прогресса, анимация Split/Clear.
+- Правки кнопок, explorer, editor, `deck_gen`.
+- localization / themes / feedback (отдельные задачи этапа).

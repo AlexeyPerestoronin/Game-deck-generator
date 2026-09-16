@@ -16,6 +16,7 @@ watch = [
     "import",
     "template",
     "workspace",
+    "progress",
     "ui",
 ]
 ignore = ["dist"]

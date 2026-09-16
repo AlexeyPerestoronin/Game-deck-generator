@@ -4,8 +4,8 @@
 //! page, so the app chrome is painted into the card strip. Sibling files from
 //! the workspace tree are inlined instead.
 
-use deck_gen_wasm_fs::{join_path, parent_path, Vfs};
 use crate::html_escape::srcdoc_attr;
+use deck_gen_wasm_fs::{join_path, parent_path, Vfs};
 
 /// Rewrite relative iframe `src` attributes in `html` using VFS siblings of `html_path`.
 pub fn inline_relative_iframes(vfs: &Vfs, html_path: &str, html: &str) -> String {
