@@ -53,10 +53,10 @@
 
 Дополнительные Задачи №3:
 Задачи **не объединены**: пересечение только точечное (вставка кнопки в `ActivityBar` / колонка в `.ide`). Делать **по одной**, не параллелить правки одних файлов. Фиксированный порядок кнопок после всех четырёх: Download, NewGame, LoadGame, PrepareHtml, PreparePdf, SplitPreview, Feedback, spacer, Clear, Locale, Theme. Рекомендуемый порядок внедрения: progress ray → feedback → themes → localization (последней, чтобы подобрать уже появившиеся тултипы).
-1. [Добавить поддержку обратной связи](./phase-III/stage-3/fieedback_button.md).
-2. [Сделать долгие операции наблюдаемыми (progress ray)](./phase-III/stage-3/progress_ray.md).
+1. ✅ [Добавить поддержку обратной связи через e-mail](./phase-III/stage-3/fieedback_button.md).
+2. ✅ [Сделать долгие операции наблюдаемыми (progress ray)](./phase-III/stage-3/progress_ray.md).
 3. [Добавить возможность смены локализации сайта (EN,RU)](./phase-III/stage-3/localization.md).
-4. [Добавить возможность смены светлой и тёмной темы (+ системная)](./phase-III/stage-3/themes.md).
+4. ✅ [Добавить возможность смены светлой и тёмной темы (+ системная)](./phase-III/stage-3/themes.md).
 
 Дополнительные Задачи №4:
 1. Создать коллекцию шаблонов игры (2-3 штуки), с которых можно начать новую разработку.

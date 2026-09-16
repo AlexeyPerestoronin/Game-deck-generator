@@ -7,7 +7,7 @@ use leptos::prelude::*;
 
 use crate::buttons::{
     ClearButton, DownloadButton, FeedbackButton, LoadGameButton, NewGameButton,
-    PrepareHtmlButton, PreparePdfButton, SplitPreviewButton,
+    PrepareHtmlButton, PreparePdfButton, SplitPreviewButton, ThemeButton,
 };
 use crate::modals::{AlertModal, ConfirmModal};
 use deck_gen_wasm_workspace::Workspace;
@@ -43,6 +43,7 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
             <div class="activity-spacer"></div>
             <ClearButton on_open=move |_| show_clear.set(true) />
             <FeedbackButton />
+            <ThemeButton />
             <ConfirmModal
                 open=show_clear
                 title="Clear workspace?"

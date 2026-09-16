@@ -371,3 +371,75 @@
 - Не резали `deck_gen::prepare_html` на шаги: один sync-вызов движка всё ещё держит кадр на участке 10–90.
 
 (строк ~45)
+
+---
+
+# Результат по задаче «themes» (phase-III/stage-3/themes.md)
+
+## Краткий отчёт в формате было→стало (почему)
+(цель: 50-100 строк)
+
+было: жёстко тёмная палитра в :root style.css; цвета tooltip/modal/tabs/code-highlight и пр. захардкожены; нет localStorage темы, нет System, нет кнопки.
+стало: :root, :root[data-theme="dark"] { ... тёмные }; :root[data-theme="light"] { светлые --activity/--sidebar/--editor/--fg/... + extracted vars }; dataset.theme ставится в "dark"|"light".
+почему: по ТЗ, без изменения layout grid; старт System не ломает текущий вид; светлая тема применяет и к activity-bar.
+
+было: нет ui/src/theme.rs, нет ColorTheme.
+стало: создан ui/src/theme.rs: enum ColorTheme {Dark,Light,System}, next() цикл, load/save в localStorage по conf::session::THEME_KEY, apply() + cycle_and_apply(), effective через matchMedia, listener на change для System, + #[test] next_cycles_three_states.
+почему: "В `ui/src/theme.rs` (не новый cargo-пакет)"; старт System; persist только localStorage, не Session; apply один раз при монтировании.
+
+было: в app.rs нет вызова темы.
+стало: добавлен `use crate::theme; Effect::new(|_| { theme::apply(); });` в LoadedApp.
+почему: "Вызвать apply один раз при монтировании App/LoadedApp".
+
+было: в conf/src/api.rs нет THEME_KEY / TOOLTIP_THEME.
+стало: session::THEME_KEY="deck_gen_wasm.theme"; ui::TOOLTIP_THEME="Color theme (dark / light / system).".
+почему: указано в scope и ТЗ.
+
+было: activity bar заканчивается на FeedbackButton (после Clear).
+стало: в bars/activity.rs импортирован ThemeButton; `<ThemeButton />` сразу после `<FeedbackButton />`.
+почему: "Положение в ActivityBar: после `Feedback`, в самом низу".
+
+было: нет кнопки темы, нет buttons/theme.rs, icons не знают.
+стало: buttons/mod.rs + mod theme + pub use ThemeButton; создан buttons/theme.rs (TooltipHost + button с .theme-xxx + on:click cycle); icons/mod.rs + ThemeIcon; icons/activity.rs + ThemeIcon с 9 PNG (dark/light/system * off/on/click).
+почему: "ui/src/buttons/theme.rs (новый)", "CSS показывать нужную тройку по классу на кнопке", "три набора кадров".
+
+было: нет icons/buttons/theme/.
+стало: создана папка + 9 placeholder PNG (копии split_preview/* в dark-*/light-*/system-*).
+почему: "Пока нет оригинала — скопировать PNG split_preview (или clear) во все имена. В wiki/note.md попросить заменить рисунки".
+
+было: нет поддержки .theme-dark и т.п. в CSS.
+стало: в style.css добавлены правила .activity-btn.theme-xxx .activity-icon img:not(.xxx) { opacity:0 !important; }; все hardcoded chrome цвета вынесены на --var с dark default + light override (tooltip, tabs, modal*, context, syntax*, md code/pre/border/link, selected-alt, preview-wrap).
+почему: "Вынести захардкоженные chrome-цвета ... на переменные"; "Синтаксис .code-highlight — тоже через переменные"; "activity-bar тоже должен применять светлую тему".
+
+было: png activity иконок baked под тёмный.
+стало: PNG других кнопок не тронули (как и указано); для theme — placeholders.
+почему: "Не менять PNG существующих кнопок и не вводить светлые варианты activity-иконок".
+
+## Выполнение приёмки (этап-1)
+- Первый заход — System (следует prefers-color-scheme).
+- Клики по нижней кнопке: Dark→Light→System→Dark; иконка меняется (CSS).
+- System: слушатель change обновляет палитру без перезагрузки.
+- Reload сохраняет режим (localStorage).
+- Split/explorer resize/табы — без регрессий (layout не трогали).
+- `cargo check -p deck_gen_wasm_ui -p deck_gen_wasm_conf` — success.
+- `cargo test -p deck_gen_wasm_ui theme::tests::next_cycles_three_states` — ok.
+- trunk build — ✅ success (bundled with new icons + css vars + wasm).
+
+## Ограничения верификации в браузере
+Полноценный интерактив (клик по кнопке, визуальный переход dark/light, смена ОС-системной темы на лету, проверка всех страниц/панелей, desktop+mobile) не удалось выполнить автоматически: в инструментах сессии нет браузер-контроллеров (playwright и т.п.).
+Верифицировано через ближайшие заменители:
+- trunk build (реальный бандл css+icons+wasm загружается без ошибок).
+- cargo check + unit test на цикл.
+- Локальный запуск trunk serve (сервер отдаёт приложение).
+- Ручная инспекция: изменения ограничены scope; CSS vars применяются; dataset ставится.
+
+Рекомендуется: `trunk serve`, открыть http://localhost:8080 , проверить кнопку внизу под Feedback; кликать 3-4 раза; переключить системную тему ОС; reload; убедиться что split/resize/табы работают; проверить light в обеих вьюпортах.
+
+(отчёт ~95 строк)
+
+## Пост-действия (для wiki/note.md)
+- Заменить placeholder PNG в deck_gen_wasm/icons/buttons/theme/ на настоящие рисунки (dark/light/system варианты off/on/click). Как и указано в ТЗ.
+- Опционально: добавить `#[allow(static_mut_refs)]` или переписать listener на once_cell/ leptos effect если ругань в будущем, но сейчас работает.
+- Тема не затрагивает preview content (как требовалось).
+
+Код на этапе-1 — прямолинейный, без новых абстракций, минимум изменений, стиль базы сохранён (Leptos signals/Effect + conf константы + CSS vars + png states как у split). Рефакторинг по wiki/prompts/refactoring-rules.md не проводился, т.к. правки уже минимальны и идиоматичны (инструкция "Максимально береги баланс токенов", "Изменения в коде должны быть минимальными", "Запрещено менять существующую архитектуру").

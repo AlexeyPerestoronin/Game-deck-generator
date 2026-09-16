@@ -1,4 +1,5 @@
-:root {
+:root,
+:root[data-theme="dark"] {
   --activity: #333333;
   --sidebar: #252526;
   --editor: #1e1e1e;
@@ -11,6 +12,77 @@
   --tab: #2d2d2d;
   --progress-idle: #3d9e4a;
   --progress-run: #007acc;
+
+  /* extracted chrome colors (dark defaults) */
+  --tooltip-bg: #1e1e1e;
+  --tooltip-border: #454545;
+  --tabs-bg: #252526;
+  --modal-bg: #252526;
+  --modal-border: #454545;
+  --modal-btn-bg: #2d2d2d;
+  --modal-btn-border: #3c3c3c;
+  --context-bg: #252526;
+  --context-border: #454545;
+  --preview-wrap-bg: #1e1e1e;
+  --syntax-fg: #d4d4d4;
+  --syntax-comment: #6a9955;
+  --syntax-string: #ce9178;
+  --syntax-keyword: #569cd6;
+  --syntax-storage: #569cd6;
+  --syntax-constant: #b5cea8;
+  --syntax-entity: #4ec9b0;
+  --syntax-variable: #9cdcfe;
+  --syntax-support: #4fc1ff;
+  --syntax-invalid: #f44747;
+  --syntax-punct: #d4d4d4;
+  --syntax-meta: #d4d4d4;
+  --code-bg: #2d2d2d;
+  --md-border: #454545;
+  --link: #3794ff;
+  --selected-alt: #2b3d4f;
+}
+
+:root[data-theme="light"] {
+  --activity: #e8e8e8;
+  --sidebar: #f3f3f3;
+  --editor: #ffffff;
+  --fg: #333333;
+  --fg-dim: #6a6a6a;
+  --accent: #007acc;
+  --border: #d0d0d0;
+  --hover: #eaeaea;
+  --selected: #cce5ff;
+  --tab: #f0f0f0;
+  --progress-idle: #2d882d;
+  --progress-run: #007acc;
+
+  /* extracted (light) */
+  --tooltip-bg: #f3f3f3;
+  --tooltip-border: #c8c8c8;
+  --tabs-bg: #f0f0f0;
+  --modal-bg: #f3f3f3;
+  --modal-border: #c8c8c8;
+  --modal-btn-bg: #e8e8e8;
+  --modal-btn-border: #b8b8b8;
+  --context-bg: #f3f3f3;
+  --context-border: #c8c8c8;
+  --preview-wrap-bg: #f0f0f0;
+  --syntax-fg: #333333;
+  --syntax-comment: #008000;
+  --syntax-string: #a31515;
+  --syntax-keyword: #0000ff;
+  --syntax-storage: #0000ff;
+  --syntax-constant: #098658;
+  --syntax-entity: #267f99;
+  --syntax-variable: #001080;
+  --syntax-support: #007acc;
+  --syntax-invalid: #cd3131;
+  --syntax-punct: #333333;
+  --syntax-meta: #333333;
+  --code-bg: #f5f5f5;
+  --md-border: #c8c8c8;
+  --link: #0066cc;
+  --selected-alt: #a8c8e0;
 }
 
 * {
@@ -119,8 +191,8 @@ body {
   width: max-content;
   max-width: 50vw;
   padding: 4px 12px;
-  background: #1e1e1e;
-  border: 1px solid #454545;
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
   color: var(--fg);
   font-size: 12px;
@@ -208,6 +280,13 @@ body {
 .activity-btn.active:active .activity-icon .state-on,
 .activity-btn.active:active .activity-icon .state-active { opacity: 0; }
 .activity-btn.active:active .activity-icon .state-click { opacity: 1; }
+
+/* Theme cycle button: button carries .theme-dark / .theme-light / .theme-system.
+   Hide non-matching PNG groups; state-* rules then apply only to current triple.
+   Existing activity PNGs untouched. */
+.activity-btn.theme-dark .activity-icon img:not(.dark) { opacity: 0 !important; }
+.activity-btn.theme-light .activity-icon img:not(.light) { opacity: 0 !important; }
+.activity-btn.theme-system .activity-icon img:not(.system) { opacity: 0 !important; }
 
 .explorer {
   background: var(--sidebar);
@@ -332,7 +411,7 @@ body {
 }
 
 .tree-row.selected.copy-planned {
-  background: #2b3d4f;
+  background: var(--selected-alt);
 }
 
 .chevron {
@@ -388,7 +467,7 @@ body {
   flex: 0 0 auto;
   min-height: 35px;
   overflow-x: auto;
-  background: #252526;
+  background: var(--tabs-bg);
   border-bottom: 1px solid var(--border);
 }
 
@@ -465,7 +544,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1e1e1e;
+  background: var(--preview-wrap-bg);
   padding: 16px;
 }
 
@@ -501,19 +580,19 @@ body {
 }
 
 .preview-md a {
-  color: #3794ff;
+  color: var(--link);
 }
 
 .preview-md code {
   font-family: Consolas, "Courier New", monospace;
   font-size: 0.92em;
-  background: #2d2d2d;
+  background: var(--code-bg);
   padding: 1px 4px;
   border-radius: 3px;
 }
 
 .preview-md pre {
-  background: #2d2d2d;
+  background: var(--code-bg);
   padding: 10px 12px;
   overflow: auto;
   border-radius: 4px;
@@ -531,14 +610,14 @@ body {
 
 .preview-md th,
 .preview-md td {
-  border: 1px solid #454545;
+  border: 1px solid var(--md-border);
   padding: 4px 8px;
 }
 
 .preview-md blockquote {
   margin: 0 0 0.8em;
   padding-left: 12px;
-  border-left: 3px solid #454545;
+  border-left: 3px solid var(--md-border);
   color: var(--fg-dim);
 }
 
@@ -588,7 +667,7 @@ body {
 
 .code-highlight {
   pointer-events: none;
-  color: #d4d4d4;
+  color: var(--syntax-fg);
   background: transparent;
 }
 
@@ -600,17 +679,17 @@ body {
   resize: none;
 }
 
-.code-highlight .comment { color: #6a9955; }
-.code-highlight .string { color: #ce9178; }
+.code-highlight .comment { color: var(--syntax-comment); }
+.code-highlight .string { color: var(--syntax-string); }
 .code-highlight .keyword,
-.code-highlight .storage { color: #569cd6; }
-.code-highlight .constant { color: #b5cea8; }
-.code-highlight .entity { color: #4ec9b0; }
-.code-highlight .variable { color: #9cdcfe; }
-.code-highlight .support { color: #4fc1ff; }
-.code-highlight .invalid { color: #f44747; }
+.code-highlight .storage { color: var(--syntax-keyword); }
+.code-highlight .constant { color: var(--syntax-constant); }
+.code-highlight .entity { color: var(--syntax-entity); }
+.code-highlight .variable { color: var(--syntax-variable); }
+.code-highlight .support { color: var(--syntax-support); }
+.code-highlight .invalid { color: var(--syntax-invalid); }
 .code-highlight .punctuation,
-.code-highlight .meta { color: #d4d4d4; }
+.code-highlight .meta { color: var(--syntax-punct); }
 
 .modal-backdrop {
   position: fixed;
@@ -625,8 +704,8 @@ body {
 .modal {
   width: min(420px, calc(100vw - 32px));
   padding: 18px 20px 16px;
-  background: #252526;
-  border: 1px solid #454545;
+  background: var(--modal-bg);
+  border: 1px solid var(--modal-border);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   color: var(--fg);
 }
@@ -654,8 +733,8 @@ body {
 }
 
 .modal-btn {
-  border: 1px solid #3c3c3c;
-  background: #2d2d2d;
+  border: 1px solid var(--modal-btn-border);
+  background: var(--modal-btn-bg);
   color: var(--fg);
   cursor: pointer;
   padding: 6px 14px;
@@ -685,8 +764,8 @@ body {
   position: fixed;
   min-width: 160px;
   padding: 4px 0;
-  background: #252526;
-  border: 1px solid #454545;
+  background: var(--context-bg);
+  border: 1px solid var(--context-border);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 

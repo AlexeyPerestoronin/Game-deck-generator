@@ -15,6 +15,7 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::MouseEvent as WasmMouseEvent;
 
 use crate::bars::{ActivityBar, ProgressRay};
+use crate::theme;
 use crate::windows::{Editor, Explorer};
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_persist::{
@@ -54,6 +55,9 @@ pub fn App() -> impl IntoView {
 /// Autosave + three panes once localStorage and IndexedDB have been merged.
 #[component]
 fn LoadedApp(workspace: Workspace) -> impl IntoView {
+    // Apply persisted (or default System) theme once on mount. Also sets up OS listener for System.
+    Effect::new(|_| { theme::apply(); });
+
     let last_fp = RwSignal::new(workspace.vfs.with_untracked(binaries_fingerprint));
     let generation = RwSignal::new(0u32);
 

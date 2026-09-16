@@ -36,6 +36,8 @@ pub mod help {
 pub mod session {
     /// Key under which [`crate::persist::Session`] JSON is stored (text tree).
     pub const STORAGE_KEY: &str = "deck_gen_wasm.session";
+    /// Key for color theme preference (localStorage only; not in Session).
+    pub const THEME_KEY: &str = "deck_gen_wasm.theme";
     /// IndexedDB database for PDF / image bytes (localStorage quota is too small).
     pub const IDB_NAME: &str = "deck_gen_wasm";
     /// Object store inside [`IDB_NAME`].
@@ -123,6 +125,7 @@ pub mod ui {
     pub const TOOLTIP_SPLIT_PREVIEW: &str =
         "Split for preview. Files stay on the left; previews open on the right.";
     pub const TOOLTIP_FEEDBACK: &str = "Send feedback by email.";
+    pub const TOOLTIP_THEME: &str = "Color theme (dark / light / system).";
 
     /// Minimum width (in CSS pixels) of each pane when the editor is split
     /// for preview. Used for the adjustable split resizer.

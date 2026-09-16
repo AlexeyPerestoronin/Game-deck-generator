@@ -93,3 +93,20 @@ pub fn FeedbackIcon() -> impl IntoView {
         </span>
     }
 }
+
+#[component]
+pub fn ThemeIcon() -> impl IntoView {
+    view! {
+        <span class="activity-icon" aria-hidden="true">
+            <img class="state-off dark"   src="icons/buttons/theme/dark-off.drawio.png"   width="40" height="40" />
+            <img class="state-on dark"    src="icons/buttons/theme/dark-on.drawio.png"    width="40" height="40" />
+            <img class="state-click dark" src="icons/buttons/theme/dark-click.drawio.png" width="40" height="40" />
+            <img class="state-off light"   src="icons/buttons/theme/light-off.drawio.png"   width="40" height="40" />
+            <img class="state-on light"    src="icons/buttons/theme/light-on.drawio.png"    width="40" height="40" />
+            <img class="state-click light" src="icons/buttons/theme/light-click.drawio.png" width="40" height="40" />
+            <img class="state-off system"   src="icons/buttons/theme/system-off.drawio.png"   width="40" height="40" />
+            <img class="state-on system"    src="icons/buttons/theme/system-on.drawio.png"    width="40" height="40" />
+            <img class="state-click system" src="icons/buttons/theme/system-click.drawio.png" width="40" height="40" />
+        </span>
+    }
+}

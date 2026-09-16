@@ -1,12 +1,12 @@
 # Задача: «themes»
 
-Добавить циклическое переключение цветовой темы: тёмная → светлая → системная → тёмная. Кнопка на activity bar под `Clear`.
+Добавить циклическое переключение цветовой темы: тёмная → светлая → системная → тёмная. Кнопка на activity bar под `Feedback`.
 
 ## Текущее состояние (из анализа `deck_gen_wasm`)
 - Весь chrome — тёмная VS Code-подобная палитра в `style.css` `:root` (`--activity`, `--sidebar`, `--editor`, `--fg`, …).
 - Часть цветов **захардкожена** мимо переменных (tooltip `#1e1e1e`/`#454545`, модалки, табы, `.code-highlight .*`).
 - Activity-иконки — PNG, нарисованные под тёмный `--activity: #333333`. Смены темы нет, `localStorage` темы нет, `prefers-color-scheme` не читается.
-- Кнопок под `Clear` нет (под ним конец `<nav>`). `Clear` стоит после `.activity-spacer`.
+- Кнопок под `Feedback` нет (под ним конец `<nav>`). `Feedback` стоит после `Clear`.
 - Паттерн 2-состояний: `SplitPreviewButton` + класс `.activity-btn.active` + 4-й PNG `state-active`. Для **трёх** режимов этого мало — нужен класс/data на кнопке.
 
 ## Что сделать
@@ -14,24 +14,23 @@
 ### 1. Модель темы (без нового workspace-крейта)
 В `ui` простой модуль `ui/src/theme.rs` (не новый cargo-пакет):
 - `enum ColorTheme { Dark, Light, System }` + цикл `next()`.
-- Старт: **Dark** (текущий вид сайта не должен измениться до первого клика).
+- Старт: **System** (текущий вид сайта не должен измениться до первого клика).
 - Persist: `localStorage` ключ `conf::session::THEME_KEY = "deck_gen_wasm.theme"` (`"dark"|"light"|"system"`). Не класть в `Session` / IndexedDB.
 - Применить к документу: `document.documentElement.dataset.theme = "dark"|"light"` (для System — резолв через `matchMedia("(prefers-color-scheme: dark)")` + слушатель `change`, чтобы смена ОС обновляла палитру, а кнопка оставалась в режиме System).
 - Вызвать apply один раз при монтировании `App`/`LoadedApp`.
 
 ### 2. CSS
 - `:root, :root[data-theme="dark"]` — нынешние значения переменных (вид 1-в-1 как сейчас).
-- `:root[data-theme="light"]` — светлая палитра explorer/editor/tabs/modals/tooltips (светлый фон, тёмный текст, тот же `--accent: #007acc`).
-- **`--activity` оставить тёмным во всех темах** (`#333333`), чтобы существующие PNG кнопок остались читаемыми. Не делать светлые наборы иконок.
+- `:root[data-theme="light"]` — светлая палитра explorer/editor/tabs/modals/tooltips/activity-bar (светлый фон, тёмный текст, тот же `--accent: #007acc`).
+- **`activity-bar` тоже должен применять светлую тему** (существующие PNG кнопок останутся читаемыми, но без видимо окантовки).
 - Вынести захардкоженные chrome-цвета (tooltip, modal, tab, status, tree hover/selected, resizer) на переменные. Синтаксис `.code-highlight` — тоже через переменные с dark-дефолтами и light-переопределением, **не** меняя разметку хайлайтера.
 - Не переписывать layout grid.
 
 ### 3. Кнопка
 - `ui/src/buttons/theme.rs`: цикл по клику, тултип `conf::ui::TOOLTIP_THEME` = `"Color theme (dark / light / system)."`, `aria-label` по текущему режиму.
 - Иконка: три набора кадров в `icons/buttons/theme/` — `dark-{off,on,click}.drawio.png`, `light-…`, `system-…`. Пока нет оригинала — **скопировать** PNG `split_preview` (или clear) во все имена. В `wiki/note.md` попросить заменить рисунки.
-- CSS: показывать нужную тройку по классу на кнопке (`.theme-dark` / `.theme-light` / `.theme-system`), hover/click как у остальных `.activity-btn`. Не использовать `.active` от split.
-- Положение в `ActivityBar`: **после `ClearButton`**, в самом низу. Если уже есть кнопка Locale из соседней задачи — Theme **под** Locale. Не двигать остальные кнопки.
-  Порядок снизу: [Theme] ← последняя; над ней Locale если есть; над ней Clear; выше spacer.
+- CSS: показывать нужную тройку по классу на кнопке (`.theme-dark` / `.theme-light` / `.theme-system`), hover/click как у остальных `.activity-btn`.
+- Положение в `ActivityBar`: **после `Feedback `**, в самом низу.
 
 ## Не делать
 - Не менять PNG существующих кнопок и не вводить светлые варианты activity-иконок.
@@ -45,7 +44,7 @@
 - `deck_gen_wasm/ui/src/lib.rs` (mod theme)
 - `deck_gen_wasm/ui/src/theme.rs` (новый)
 - `deck_gen_wasm/ui/src/app.rs` (вызов apply при загрузке)
-- `deck_gen_wasm/ui/src/bars/activity.rs` (одна кнопка после Clear)
+- `deck_gen_wasm/ui/src/bars/activity.rs` (одна кнопка после Feedback)
 - `deck_gen_wasm/ui/src/buttons/mod.rs`
 - `deck_gen_wasm/ui/src/buttons/theme.rs` (новый)
 - `deck_gen_wasm/ui/src/icons/mod.rs`
@@ -55,9 +54,8 @@
 - прочие файлы и папки репозитория ИГНОРИРУЙ.
 
 ## Приёмка
-- Первый заход на сайт — как сейчас (тёмная тема).
+- Первый заход на сайт — системная тема.
 - Клики по нижней кнопке: Dark → Light → System → Dark; иконка меняется.
-- Light: дерево/редактор/модалки светлые, activity bar по-прежнему тёмный, иконки читаемы.
 - System: следует ОС; смена темы ОС без перезагрузки обновляет палитру, если выбран System.
 - Reload сохраняет выбранный режим.
 - Split/explorer resize/табы без регрессий.

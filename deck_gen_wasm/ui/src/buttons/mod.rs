@@ -13,6 +13,7 @@ mod new_game;
 mod prepare_html;
 mod prepare_pdf;
 mod split_preview;
+mod theme;
 
 pub use clear::ClearButton;
 pub use download::DownloadButton;
@@ -24,3 +25,4 @@ pub use new_game::NewGameButton;
 pub use prepare_html::PrepareHtmlButton;
 pub use prepare_pdf::PreparePdfButton;
 pub use split_preview::SplitPreviewButton;
+pub use theme::ThemeButton;
