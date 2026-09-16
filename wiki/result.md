@@ -189,6 +189,16 @@
 
 Этап-1 (решение + работоспособность) завершён.
 
+## Доработка №1 (фикс регрессии layout)
+было: LocaleButton рендерился с обёрткой `<div class="tooltip-host"><DelayedTooltip ...><button class="activity-btn locale-...">` (скопировано с Theme).
+стало: wrapper убран; рендерится напрямую `<DelayedTooltip text=...><button class=...>` (с `use crate::tooltips::DelayedTooltip;`), в точности как SplitPreviewButton и др. activity-кнопки.
+почему: "по образцу split" (явно в описании задачи на кнопку); лишний div ломал структуру прямых детей nav.activity-bar → activity-кнопки + explorer не занимали свои grid-колонки, интерфейс "съехал" влево, loading-текст обрезан. Только правка render в scoped buttons/locale.rs.
+
+- После: cargo test -p locale + ui, check, trunk build — зелёные.
+- Минимально, без CSS/архитектуры/других файлов.
+
+(этап-1 доработки)
+
 ---
 # Результат по задаче «feedback button» (phase-III/stage-3/fieedback_button.md)
 

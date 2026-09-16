@@ -4,6 +4,7 @@
 use leptos::prelude::*;
 
 use crate::icons::LocaleIcon;
+use crate::tooltips::DelayedTooltip;
 use deck_gen_wasm_locale::{self as locale, keys};
 
 #[component]
@@ -34,16 +35,14 @@ pub fn LocaleButton() -> impl IntoView {
 
     let tip: &'static str = Box::leak(locale::localize(keys::TOOLTIP_LOCALE).into_boxed_str());
     view! {
-        <div class="tooltip-host">
-            <crate::tooltips::DelayedTooltip text=tip>
-                <button
-                    class=btn_class
-                    on:click=on_click
-                    aria-label=aria
-                >
-                    <LocaleIcon />
-                </button>
-            </crate::tooltips::DelayedTooltip>
-        </div>
+        <DelayedTooltip text=tip>
+            <button
+                class=btn_class
+                on:click=on_click
+                aria-label=aria
+            >
+                <LocaleIcon />
+            </button>
+        </DelayedTooltip>
     }
 }

@@ -69,6 +69,12 @@
 - Сборка, тесты (locale+workspace+ui), trunk build — зелёные.
 - Использованы только файлы из "Scope кода"; X/Web search не применялись.
 
+## Доработка №1 (layout regression)
+- Причина: лишняя `<div class="tooltip-host">` вокруг LocaleButton (вопреки "по образцу split").
+- Исправлено минимально (только структура render в buttons/locale.rs).
+- После фикса: re-check + re-build + тесты — ок.
+- Пост-действие: повторная ручная верификация в браузере (FF/Edge): `trunk serve`, проверить что activity-кнопки, explorer tree, весь chrome на месте и не съезжает влево; loading-текст полностью виден; Locale переключает как раньше.
+
 ---
 
 # Заметки по этапу «themes»
