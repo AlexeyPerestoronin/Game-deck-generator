@@ -5,6 +5,8 @@ use wasm_bindgen::JsCast;
 
 use crate::menus::{TabCloseMenu, TabContextMenu};
 use deck_gen_wasm_fs::file_name;
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::{OpenTab, TabKind, Workspace};
 
 /// Tab chip. `preview_pane` compares active state against the right-hand strip.
@@ -17,7 +19,7 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
     let tab_for_this = tab.clone(); // for this tab as hovered in its dragover
     let label = match tab.kind {
         TabKind::Edit => file_name(&tab.path).to_string(),
-        TabKind::Preview => format!("Preview {}", file_name(&tab.path)),
+        TabKind::Preview => format!("{}{}", locale::localize(keys::TAB_PREVIEW_PREFIX), file_name(&tab.path)),
     };
 
     let (menu_pos, set_menu_pos) = signal::<Option<(f64, f64)>>(None);
@@ -123,7 +125,7 @@ pub(super) fn EditorTab(workspace: Workspace, tab: OpenTab, preview_pane: bool) 
             <button
                 class="editor-tab-close"
                 type="button"
-                title="Close"
+                title=move || locale::localize(keys::TAB_CLOSE)
                 draggable="false"
                 on:mousedown=move |ev| { ev.stop_propagation(); }
                 on:click=move |ev| {

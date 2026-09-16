@@ -14,16 +14,13 @@ use super::plain::PlainEditor;
 use super::preview::PreviewPane;
 use super::tab::EditorTab;
 use deck_gen_wasm_fs::kind;
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::{OpenTab, TabKind, Workspace};
 
 /// One tab strip plus the active editor or preview for that strip.
 #[component]
 pub(super) fn EditorPane(workspace: Workspace, preview_pane: bool) -> impl IntoView {
-    let empty = if preview_pane {
-        "No preview open."
-    } else {
-        "Select a file to edit, or create one in the explorer."
-    };
     view! {
         <main class="editor">
             <header class="editor-tabs" role="tablist">
@@ -54,29 +51,36 @@ pub(super) fn EditorPane(workspace: Workspace, preview_pane: bool) -> impl IntoV
                         vec![active]
                     }
                     key=body_key
-                    children=move |tab| pane_body(workspace, tab, empty)
+                    children=move |tab| pane_body(workspace, tab, preview_pane)
                 />
             </div>
         </main>
     }
 }
 
-fn pane_body(workspace: Workspace, active: Option<OpenTab>, empty: &'static str) -> AnyView {
+fn pane_body(workspace: Workspace, active: Option<OpenTab>, preview_pane: bool) -> AnyView {
     match active {
-        None => view! { <div class="editor-empty">{empty}</div> }.into_any(),
+        None => view! {
+            <div class="editor-empty">
+                {move || if preview_pane {
+                    locale::localize(keys::EDITOR_NO_PREVIEW)
+                } else {
+                    locale::localize(keys::EDITOR_SELECT_FILE)
+                }}
+            </div>
+        }.into_any(),
         Some(tab) if tab.kind == TabKind::Preview => view! {
             <PreviewPane workspace=workspace path=tab.path />
         }
         .into_any(),
         Some(tab) if kind::is_image(&tab.path) || kind::kind_of(&tab.path) == kind::FileKind::Pdf => view! {
             <div class="editor-empty">
-                {format!(
-                    "Binary file ({} bytes).",
-                    workspace.vfs.with_untracked(|vfs| vfs.read_bytes(&tab.path).map(|b| b.len()).unwrap_or(0))
-                )}
+                {move || {
+                    let bytes = workspace.vfs.with_untracked(|vfs| vfs.read_bytes(&tab.path).map(|b| b.len()).unwrap_or(0));
+                    locale::localize(keys::EDITOR_BINARY).replace("{}", &bytes.to_string())
+                }}
             </div>
-        }
-        .into_any(),
+        }.into_any(),
         Some(tab) if can_highlight(&tab.path) => view! {
             <HighlightedEditor workspace=workspace path=tab.path />
         }

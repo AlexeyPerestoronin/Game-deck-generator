@@ -4,7 +4,8 @@
 use leptos::prelude::*;
 
 use crate::icons::ThemeIcon;
-use deck_gen_wasm_conf as conf;
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 
 #[component]
 pub fn ThemeButton() -> impl IntoView {
@@ -15,13 +16,7 @@ pub fn ThemeButton() -> impl IntoView {
         format!("activity-btn theme-{}", t.as_str())
     };
 
-    let aria = move || {
-        match current.get() {
-            crate::theme::ColorTheme::Dark => "Color theme: dark. Click to cycle.",
-            crate::theme::ColorTheme::Light => "Color theme: light. Click to cycle.",
-            crate::theme::ColorTheme::System => "Color theme: system. Click to cycle.",
-        }
-    };
+    let aria = move || locale::localize(keys::ARIA_THEME);
 
     Effect::new({
         let sig = current;
@@ -36,9 +31,10 @@ pub fn ThemeButton() -> impl IntoView {
         current.set(next);
     };
 
+    let tip: &'static str = Box::leak(locale::localize(keys::TOOLTIP_THEME).into_boxed_str());
     view! {
         <div class="tooltip-host">
-            <crate::tooltips::DelayedTooltip text=conf::ui::TOOLTIP_THEME>
+            <crate::tooltips::DelayedTooltip text=tip>
                 <button
                     class=btn_class
                     on:click=on_click

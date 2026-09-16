@@ -110,3 +110,24 @@ pub fn ThemeIcon() -> impl IntoView {
         </span>
     }
 }
+
+#[component]
+pub fn LocaleIcon() -> impl IntoView {
+    // Reactive: src chosen from current locale so icon flips without remount.
+    // CSS .state-* still drives off/on/click via parent button classes.
+    view! {
+        <span class="activity-icon" aria-hidden="true">
+            {move || {
+                let prefix = match deck_gen_wasm_locale::get_active_locale() {
+                    deck_gen_wasm_locale::Locale::En => "en",
+                    deck_gen_wasm_locale::Locale::Ru => "ru",
+                };
+                view! {
+                    <img class="state-off"   src=format!("icons/buttons/locale/{}-off.drawio.png", prefix)   width="40" height="40" />
+                    <img class="state-on"    src=format!("icons/buttons/locale/{}-on.drawio.png", prefix)    width="40" height="40" />
+                    <img class="state-click" src=format!("icons/buttons/locale/{}-click.drawio.png", prefix) width="40" height="40" />
+                }
+            }}
+        </span>
+    }
+}

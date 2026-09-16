@@ -15,6 +15,8 @@ use wasm_bindgen_futures::spawn_local;
 use super::{OpenTab, TabKind, Workspace};
 use crate::vfs_fs::VfsFs;
 use deck_gen_wasm_conf as conf;
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
 use deck_gen_wasm_import::{
     install_files, install_folder, pick_and_read_files, pick_and_read_folder, PickedFiles,
@@ -34,7 +36,7 @@ impl Workspace {
                 let status = self.status;
                 spawn_local(async move {
                     match save_binaries(&vfs).await {
-                        Ok(()) => status.set("Saved in this browser".into()),
+                        Ok(()) => status.set(locale::localize(keys::STATUS_SAVED)),
                         Err(err) => status.set(err),
                     }
                 });
@@ -59,7 +61,7 @@ impl Workspace {
                 return;
             }
             None => {
-                self.status.set("Could not update workspace".into());
+                self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE));
                 return;
             }
             Some(Ok(())) => {}
@@ -77,7 +79,8 @@ impl Workspace {
             path,
             kind: TabKind::Preview,
         });
-        self.status.set(format!("Opened {}", conf::help::PATH));
+        let tmpl = locale::localize(keys::STATUS_OPENED);
+        self.status.set(tmpl.replace("{path}", conf::help::PATH));
     }
 
     /// Empty the tree and persist that empty session.
@@ -91,7 +94,7 @@ impl Workspace {
         self.preview_tabs.set(Vec::new());
         self.active_preview_tab.set(None);
         self.expanded.set(HashSet::new());
-        self.status.set("Workspace cleared".into());
+        self.status.set(locale::localize(keys::STATUS_WORKSPACE_CLEARED));
         let _ = save_session(&self.snapshot());
         spawn_local(async {
             let _ = save_binaries(&deck_gen_wasm_fs::Vfs::default()).await;
@@ -101,10 +104,11 @@ impl Workspace {
     /// Pick local files and copy them into an existing workspace `folder`.
     pub fn load_files_into_folder(&self, folder: &str, warning: RwSignal<Option<String>>) {
         if self.vfs.with(|vfs| !vfs.is_dir(folder)) {
-            warning.set(Some(format!("'{folder}' is not a folder")));
+            let tmpl = locale::localize(keys::STATUS_NOT_A_FOLDER);
+            warning.set(Some(tmpl.replace("{path}", folder)));
             return;
         }
-        if !self.try_begin_async("Select file(s)…") {
+        if !self.try_begin_async(locale::localize(keys::STATUS_SELECT_FILES)) {
             return;
         }
         let workspace = *self;
@@ -129,9 +133,10 @@ impl Workspace {
                                 workspace.vfs.set(vfs);
                                 workspace.expand_ancestors(&folder);
                                 workspace.set_primary_selection(Some(folder.clone()));
+                                let tmpl = locale::localize(keys::STATUS_LOADED_N_INTO);
                                 workspace
                                     .status
-                                    .set(format!("Loaded {n} file(s) into {folder}"));
+                                    .set(tmpl.replace("{n}", &n.to_string()).replace("{folder}", &folder));
                             }
                             (_, Err(err)) => workspace.status.set(err),
                         }
@@ -144,7 +149,7 @@ impl Workspace {
 
     /// Pick a local folder and copy it under `games/` with a unique name.
     pub fn load_game_from_disk(&self, warning: RwSignal<Option<String>>) {
-        if !self.try_begin_async("Select a folder…") {
+        if !self.try_begin_async(locale::localize(keys::STATUS_SELECT_FOLDER)) {
             return;
         }
         let workspace = *self;
@@ -155,7 +160,7 @@ impl Workspace {
                     workspace.take_pick(warning, pick_and_read_folder().await)
                 });
                 if let Some(PickedFolder { name, files, dirs }) = picked {
-                    workspace.status.set("Loading folder…".into());
+                    workspace.status.set(locale::localize(keys::STATUS_LOADING_FOLDER));
                     let installed = progress_block!(progress, 30.0, 90.0, {
                         workspace.flush_draft();
                         let mut vfs = workspace.vfs.get_untracked();
@@ -171,7 +176,8 @@ impl Workspace {
                                 let path = format!("games/{folder}");
                                 workspace.expand_ancestors(&path);
                                 workspace.set_primary_selection(Some(path.clone()));
-                                workspace.status.set(format!("Loaded {path}"));
+                                let tmpl = locale::localize(keys::STATUS_LOADED);
+                                workspace.status.set(tmpl.replace("{path}", &path));
                             }
                             (_, Err(err)) => workspace.status.set(err),
                         }
@@ -184,7 +190,7 @@ impl Workspace {
 
     /// Run [`deck_gen::prepare_html`] on the VFS after a 0ms yield so the UI can paint.
     pub fn prepare_html(&self, warning: RwSignal<Option<String>>) {
-        if !self.try_begin_async("Preparing HTML…") {
+        if !self.try_begin_async(locale::localize(keys::STATUS_PREPARING_HTML)) {
             return;
         }
         let workspace = *self;
@@ -203,7 +209,8 @@ impl Workspace {
                     match result {
                         Ok(n) => {
                             workspace.vfs.set(take_vfs(fs));
-                            workspace.status.set(format!("Prepared HTML for {n} decks"));
+                            let tmpl = locale::localize(keys::STATUS_PREPARED_HTML);
+                            workspace.status.set(tmpl.replace("{n}", &n.to_string()));
                         }
                         Err(err) => {
                             warning.set(Some(err.to_string()));
@@ -218,7 +225,7 @@ impl Workspace {
 
     /// Run [`deck_gen::prepare_pdf`] with the browser engine after a 0ms yield.
     pub fn prepare_pdf(&self, warning: RwSignal<Option<String>>) {
-        if !self.try_begin_async("Preparing PDF…") {
+        if !self.try_begin_async(locale::localize(keys::STATUS_PREPARING_PDF)) {
             return;
         }
         let workspace = *self;
@@ -238,7 +245,8 @@ impl Workspace {
                     match result {
                         Ok(n) => {
                             workspace.vfs.set(take_vfs(fs));
-                            workspace.status.set(format!("Prepared PDF for {n} decks"));
+                            let tmpl = locale::localize(keys::STATUS_PREPARED_PDF);
+                            workspace.status.set(tmpl.replace("{n}", &n.to_string()));
                         }
                         Err(err) => {
                             warning.set(Some(err.to_string()));
@@ -253,7 +261,7 @@ impl Workspace {
 
     /// Fetch the `new-game` template from GitHub and install it under `games/`.
     pub fn add_new_game(&self, warning: RwSignal<Option<String>>) {
-        if !self.try_begin_async("Loading new-game template…") {
+        if !self.try_begin_async(locale::localize(keys::STATUS_LOADING_TEMPLATE)) {
             return;
         }
         let workspace = *self;
@@ -276,9 +284,10 @@ impl Workspace {
                             let path = format!("games/{}", installed.folder);
                             workspace.expand_ancestors(&path);
                             workspace.set_primary_selection(Some(path.clone()));
+                            let tmpl = locale::localize(keys::STATUS_ADDED);
                             workspace
                                 .status
-                                .set(format!("Added {path} from {}", installed.source));
+                                .set(tmpl.replace("{path}", &path).replace("{source}", &installed.source));
                         }
                         (_, Err(err)) => {
                             warning.set(Some(err));
@@ -293,7 +302,7 @@ impl Workspace {
 
     /// Encode the tree as ZIP and offer it to the browser.
     pub fn download(&self) {
-        if !self.try_begin_async("Downloading ZIP…") {
+        if !self.try_begin_async(locale::localize(keys::STATUS_DOWNLOADING_ZIP)) {
             return;
         }
         let workspace = *self;
@@ -312,7 +321,8 @@ impl Workspace {
                             let subprocess = progress.new_subprocess(50.0, 100.0);
                             match save_zip_bytes(bytes, ZIP_FILENAME, subprocess).await {
                                 Ok(()) => {
-                                    workspace.status.set(format!("Downloaded {ZIP_FILENAME}"))
+                                    let tmpl = locale::localize(keys::STATUS_DOWNLOADED);
+                                    workspace.status.set(tmpl.replace("{filename}", ZIP_FILENAME))
                                 }
                                 Err(err) => workspace.status.set(err),
                             }

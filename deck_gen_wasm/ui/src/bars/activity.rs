@@ -6,10 +6,12 @@
 use leptos::prelude::*;
 
 use crate::buttons::{
-    ClearButton, DownloadButton, FeedbackButton, LoadGameButton, NewGameButton,
+    ClearButton, DownloadButton, FeedbackButton, LoadGameButton, LocaleButton, NewGameButton,
     PrepareHtmlButton, PreparePdfButton, SplitPreviewButton, ThemeButton,
 };
 use crate::modals::{AlertModal, ConfirmModal};
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::Workspace;
 
 /// Vertical action bar bound to one [`Workspace`].
@@ -18,7 +20,7 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
     let show_clear = RwSignal::new(false);
     let show_load = RwSignal::new(false);
     let warning = RwSignal::new(None::<String>);
-    let warning_title = RwSignal::new("Error".to_string());
+    let warning_title = RwSignal::new(locale::localize(keys::WARNING_ERROR));
 
     view! {
         <nav class="activity-bar" aria-label="Actions">
@@ -44,11 +46,12 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
             <ClearButton on_open=move |_| show_clear.set(true) />
             <FeedbackButton />
             <ThemeButton />
+            <LocaleButton />
             <ConfirmModal
                 open=show_clear
-                title="Clear workspace?"
-                message="This removes every file in the current browser session. It cannot be undone."
-                confirm_label="Clear"
+                title=Signal::derive(move || locale::localize(keys::CONFIRM_CLEAR_TITLE))
+                message=Signal::derive(move || locale::localize(keys::CONFIRM_CLEAR_MESSAGE))
+                confirm_label=Signal::derive(move || locale::localize(keys::CONFIRM_CLEAR_LABEL))
                 danger=true
                 on_cancel=move |_| show_clear.set(false)
                 on_confirm=move |_| {
@@ -58,13 +61,13 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
             />
             <ConfirmModal
                 open=show_load
-                title="Load Game"
-                message="Choose a folder on disk. The whole folder will be copied into games/. Allowed files: md, json, json5, html, scss, and images jpg/png/icon (max 100 MB each)."
-                confirm_label="Select folder"
+                title=Signal::derive(move || locale::localize(keys::CONFIRM_LOAD_TITLE))
+                message=Signal::derive(move || locale::localize(keys::CONFIRM_LOAD_MESSAGE))
+                confirm_label=Signal::derive(move || locale::localize(keys::CONFIRM_LOAD_LABEL))
                 on_cancel=move |_| show_load.set(false)
                 on_confirm=move |_| {
                     show_load.set(false);
-                    warning_title.set("Cannot load folder".into());
+                    warning_title.set(locale::localize(keys::WARNING_CANNOT_LOAD_FOLDER));
                     workspace.load_game_from_disk(warning);
                 }
             />

@@ -1,10 +1,10 @@
 # Задача: «localization»
 
-Добавить переключение языка UI EN ↔ RU (по умолчанию EN) и провести **весь chrome интерфейса** через словарь. Кнопка `Locale` — внизу activity bar, сразу под `Clear`.
+Добавить переключение языка UI EN ↔ RU (по умолчанию EN) и провести **весь chrome интерфейса** через словарь. Кнопка `Locale` — внизу activity bar, сразу под `Themes`.
 
 ## Текущее состояние (из анализа `deck_gen_wasm`)
 - Все видимые строки — английские литералы. Крейта locale нет.
-- Тултипы семи кнопок: `conf::ui::TOOLTIP_*` (`conf/src/api.rs`).
+- Тултипы кнопок: `conf::ui::TOOLTIP_*` (`conf/src/api.rs`).
 - Модалки: `ConfirmModal` принимает `'static str` (title/message/confirm_label); `Cancel` захардкожен в `modals/confirm.rs`; `OK` — в `modals/alert.rs`. Тексты Clear/Load Game живут в `bars/activity.rs`.
 - Меню: `MenuCommand { label: &'static str }` в `menus/context.rs` (Rename/Delete/Copy/Preview/Past/load file(s)); вкладки — `"Close all"`, `"Close"`, префикс `"Preview "`.
 - Explorer: `"Games"`, `"New File"` / `"New Folder"` (title), `"Cannot load files"`.
@@ -47,7 +47,7 @@ Persist: `localStorage` ключ `conf::session::LOCALE_KEY = "deck_gen_wasm.loc
 ## Кнопка Locale
 - `ui/src/buttons/locale.rs` по образцу split: два визуальных состояния (EN/RU), класс на кнопке, иконки `icons/buttons/locale/{en,ru}-{off,on,click}.drawio.png`. Нет оригинала — скопировать PNG существующей кнопки. В `wiki/note.md` попросить заменить.
 - Клик → `change_locale()`. Тултип тоже через `localize(keys::TOOLTIP_LOCALE)`.
-- Место: **сразу под `ClearButton`**. Если уже есть Theme из соседней задачи — Locale **между** Clear и Theme. Не двигать верхние кнопки.
+- Место: **сразу под `Themes`**.
 
 ## Какие строки переводить (и только их)
 
@@ -56,8 +56,7 @@ Persist: `localStorage` ключ `conf::session::LOCALE_KEY = "deck_gen_wasm.loc
 Обязательный набор ключей (имена в `keys.rs` можно чуть унифицировать, но покрытие = этот список):
 
 **conf tooltips (перенести тексты в dict, константы `TOOLTIP_*` в conf удалить, кнопки читают `localize(keys::…)`):**
-- семь существующих TOOLTIP_* + тултип Locale.
-- если в баре уже есть Feedback/Theme из соседних задач — их тултипы тоже, **не** добавляя сами кнопки.
+- девять существующих TOOLTIP_* + тултип Locale.
 
 **activity / buttons / explorer header:**
 - aria-label всех activity-кнопок (Clear, Download, …)

@@ -1,0 +1,104 @@
+{
+  // tooltips
+  "tooltip-clear": { EN: "Clear the workspace in this browser.", RU: "Очистить рабочую область в этом браузере." },
+  "tooltip-download": { EN: "Download the workspace as a ZIP archive.", RU: "Скачать рабочую область как ZIP-архив." },
+  "tooltip-load-game": { EN: "Load a game folder from disk into games/.", RU: "Загрузить папку игры с диска в games/." },
+  "tooltip-new-game": { EN: "Add a new game from the GitHub master template.", RU: "Добавить новую игру из шаблона GitHub master." },
+  "tooltip-prepare-html": { EN: "Generate HTML preview for every deck in this workspace.", RU: "Сгенерировать HTML-превью для каждой колоды в этой рабочей области." },
+  "tooltip-prepare-pdf": { EN: "Generate card PDFs and A4 duplex sheets for every deck in this workspace.", RU: "Сгенерировать PDF карт и двусторонние листы A4 для каждой колоды." },
+  "tooltip-split-preview": { EN: "Split for preview. Files stay on the left; previews open on the right.", RU: "Разделить для предпросмотра. Файлы слева; предпросмотр справа." },
+  "tooltip-feedback": { EN: "Send feedback by email.", RU: "Отправить отзыв по email." },
+  "tooltip-theme": { EN: "Color theme (dark / light / system).", RU: "Цветовая тема (тёмная / светлая / системная)." },
+  "tooltip-locale": { EN: "UI language (EN / RU).", RU: "Язык интерфейса (EN / RU)." },
+
+  // aria labels for activity buttons
+  "aria-clear": { EN: "Clear", RU: "Очистить" },
+  "aria-download": { EN: "Download", RU: "Скачать" },
+  "aria-load-game": { EN: "Load Game", RU: "Загрузить игру" },
+  "aria-new-game": { EN: "New game", RU: "Новая игра" },
+  "aria-prepare-html": { EN: "Prepare HTML", RU: "Подготовить HTML" },
+  "aria-prepare-pdf": { EN: "Prepare PDF", RU: "Подготовить PDF" },
+  "aria-split-preview": { EN: "Split for preview", RU: "Разделить предпросмотр" },
+  "aria-feedback": { EN: "Feedback", RU: "Отзыв" },
+  "aria-theme": { EN: "Color theme", RU: "Цветовая тема" },
+  "aria-locale": { EN: "Locale", RU: "Локаль" },
+
+  // modals
+  "modal-cancel": { EN: "Cancel", RU: "Отмена" },
+  "modal-ok": { EN: "OK", RU: "ОК" },
+
+  "confirm-clear-title": { EN: "Clear workspace?", RU: "Очистить рабочую область?" },
+  "confirm-clear-message": { EN: "This removes every file in the current browser session. It cannot be undone.", RU: "Это удалит все файлы в текущей сессии браузера. Действие нельзя отменить." },
+  "confirm-clear-label": { EN: "Clear", RU: "Очистить" },
+  "confirm-load-title": { EN: "Load Game", RU: "Загрузить игру" },
+  "confirm-load-message": { EN: "Choose a folder on disk. The whole folder will be copied into games/. Allowed files: md, json, json5, html, scss, and images jpg/png/icon (max 100 MB each).", RU: "Выберите папку на диске. Вся папка будет скопирована в games/. Разрешённые файлы: md, json, json5, html, scss, а также изображения jpg/png/icon (макс. 100 МБ каждый)." },
+  "confirm-load-label": { EN: "Select folder", RU: "Выбрать папку" },
+
+  // warning titles
+  "warning-error": { EN: "Error", RU: "Ошибка" },
+  "warning-cannot-load-folder": { EN: "Cannot load folder", RU: "Не удалось загрузить папку" },
+  "warning-cannot-prepare-html": { EN: "Cannot prepare HTML", RU: "Не удалось подготовить HTML" },
+  "warning-cannot-prepare-pdf": { EN: "Cannot prepare PDF", RU: "Не удалось подготовить PDF" },
+  "warning-cannot-load-new-game": { EN: "Cannot load new-game", RU: "Не удалось загрузить new-game" },
+  "warning-cannot-load-files": { EN: "Cannot load files", RU: "Не удалось загрузить файлы" },
+
+  // explorer
+  "explorer-games": { EN: "Games", RU: "Игры" },
+  "explorer-new-file": { EN: "New File", RU: "Новый файл" },
+  "explorer-new-folder": { EN: "New Folder", RU: "Новая папка" },
+
+  // editor
+  "editor-no-preview": { EN: "No preview open.", RU: "Нет открытого предпросмотра." },
+  "editor-select-file": { EN: "Select a file to edit, or create one in the explorer.", RU: "Выберите файл для редактирования или создайте его в проводнике." },
+  "editor-binary": { EN: "Binary file ({} bytes).", RU: "Бинарный файл ({} байт)." },
+  "editor-loading": { EN: "Loading workspace…", RU: "Загрузка рабочей области…" },
+
+  // menus
+  "menu-rename": { EN: "Rename", RU: "Переименовать" },
+  "menu-delete": { EN: "Delete", RU: "Удалить" },
+  "menu-copy": { EN: "Copy", RU: "Копировать" },
+  "menu-preview": { EN: "Preview", RU: "Предпросмотр" },
+  "menu-load-files": { EN: "load file(s)", RU: "загрузить файл(ы)" },
+  "menu-past": { EN: "Past", RU: "Вставить" },
+  "menu-close-all": { EN: "Close all", RU: "Закрыть все" },
+  "tab-close": { EN: "Close", RU: "Закрыть" },
+  "tab-preview-prefix": { EN: "Preview ", RU: "Предпросмотр " },
+
+  // explorer buttons text
+  "button-new-file": { EN: "+ File", RU: "+ Файл" },
+  "button-new-folder": { EN: "+ Folder", RU: "+ Папка" },
+
+  // prompts
+  "prompt-new-file": { EN: "New file name", RU: "Имя нового файла" },
+  "prompt-new-folder": { EN: "New folder name", RU: "Имя новой папки" },
+  "prompt-new-name": { EN: "New name", RU: "Новое имя" },
+
+  // status / prompts
+  "status-could-not-update": { EN: "Could not update workspace", RU: "Не удалось обновить рабочую область" },
+  "status-nothing-to-paste": { EN: "Nothing to paste", RU: "Нечего вставить" },
+  "status-unknown-command": { EN: "Unknown command {other}", RU: "Неизвестная команда {other}" },
+  "status-pasted": { EN: "Pasted {n} item(s) into {dest}", RU: "Вставлено {n} элемент(ов) в {dest}" },
+  "status-deleted": { EN: "Deleted {path}", RU: "Удалено {path}" },
+  "status-renamed": { EN: "Renamed to {new_path}", RU: "Переименовано в {new_path}" },
+  "status-workspace-cleared": { EN: "Workspace cleared", RU: "Рабочая область очищена" },
+  "status-opened": { EN: "Opened {path}", RU: "Открыто {path}" },
+  "status-saved": { EN: "Saved in this browser", RU: "Сохранено в этом браузере" },
+  "status-select-files": { EN: "Select file(s)…", RU: "Выберите файл(ы)…" },
+  "status-select-folder": { EN: "Select a folder…", RU: "Выберите папку…" },
+  "status-loading-folder": { EN: "Loading folder…", RU: "Загрузка папки…" },
+  "status-loaded-n-into": { EN: "Loaded {n} file(s) into {folder}", RU: "Загружено {n} файл(ов) в {folder}" },
+  "status-loaded": { EN: "Loaded {path}", RU: "Загружено {path}" },
+  "status-preparing-html": { EN: "Preparing HTML…", RU: "Подготовка HTML…" },
+  "status-prepared-html": { EN: "Prepared HTML for {n} decks", RU: "Подготовлен HTML для {n} колод" },
+  "status-preparing-pdf": { EN: "Preparing PDF…", RU: "Подготовка PDF…" },
+  "status-prepared-pdf": { EN: "Prepared PDF for {n} decks", RU: "Подготовлен PDF для {n} колод" },
+  "status-loading-template": { EN: "Loading new-game template…", RU: "Загрузка шаблона new-game…" },
+  "status-added": { EN: "Added {path} from {source}", RU: "Добавлено {path} из {source}" },
+  "status-downloading-zip": { EN: "Downloading ZIP…", RU: "Скачивание ZIP…" },
+  "status-downloaded": { EN: "Downloaded {filename}", RU: "Скачано {filename}" },
+  "status-not-a-folder": { EN: "'{path}' is not a folder", RU: "'{path}' не является папкой" },
+
+  // document
+  "html-lang": { EN: "en", RU: "ru" },
+  "document-title": { EN: "Game deck generator", RU: "Генератор колод для игр" }
+}

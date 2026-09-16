@@ -9,6 +9,8 @@
 
 use leptos::prelude::*;
 
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::is_previewable;
 
 /// Whether the context menu was opened on a file or a folder.
@@ -30,57 +32,57 @@ pub struct MenuCommand {
 const FILE_COMMANDS: &[MenuCommand] = &[
     MenuCommand {
         id: "rename",
-        label: "Rename",
+        label: keys::MENU_RENAME,
     },
     MenuCommand {
         id: "delete",
-        label: "Delete",
+        label: keys::MENU_DELETE,
     },
     MenuCommand {
         id: "copy",
-        label: "Copy",
+        label: keys::MENU_COPY,
     },
 ];
 
 const FILE_PREVIEW_COMMANDS: &[MenuCommand] = &[
     MenuCommand {
         id: "preview",
-        label: "Preview",
+        label: keys::MENU_PREVIEW,
     },
     MenuCommand {
         id: "rename",
-        label: "Rename",
+        label: keys::MENU_RENAME,
     },
     MenuCommand {
         id: "delete",
-        label: "Delete",
+        label: keys::MENU_DELETE,
     },
     MenuCommand {
         id: "copy",
-        label: "Copy",
+        label: keys::MENU_COPY,
     },
 ];
 
 const FOLDER_COMMANDS: &[MenuCommand] = &[
     MenuCommand {
         id: "load_files",
-        label: "load file(s)",
+        label: keys::MENU_LOAD_FILES,
     },
     MenuCommand {
         id: "rename",
-        label: "Rename",
+        label: keys::MENU_RENAME,
     },
     MenuCommand {
         id: "delete",
-        label: "Delete",
+        label: keys::MENU_DELETE,
     },
     MenuCommand {
         id: "copy",
-        label: "Copy",
+        label: keys::MENU_COPY,
     },
     MenuCommand {
         id: "past",
-        label: "Past",
+        label: keys::MENU_PAST,
     },
 ];
 
@@ -161,7 +163,7 @@ pub fn ContextMenu(
                                     on_dismiss.run(());
                                 }
                             >
-                                {command.label}
+                                {locale::localize(command.label)}
                             </button>
                         }
                     })
@@ -208,7 +210,7 @@ mod tests {
         );
         assert_eq!(
             commands_for(EntryKind::Folder, "games/a")[0].label,
-            "load file(s)"
+            keys::MENU_LOAD_FILES
         );
         let file_ids: Vec<_> = commands_for(EntryKind::File, "games/a/data.json5")
             .iter()
@@ -227,14 +229,14 @@ mod tests {
                 .iter()
                 .find(|c| c.id == "copy")
                 .map(|c| c.label),
-            Some("Copy")
+            Some(keys::MENU_COPY)
         );
         assert_eq!(
             commands_for(EntryKind::Folder, "games/a")
                 .iter()
                 .find(|c| c.id == "past")
                 .map(|c| c.label),
-            Some("Past")
+            Some(keys::MENU_PAST)
         );
     }
 }
@@ -279,7 +281,7 @@ pub fn TabContextMenu(
                         on_dismiss.run(());
                     }
                 >
-                    "Close all"
+                    {locale::localize(keys::MENU_CLOSE_ALL)}
                 </button>
             </div>
         </div>

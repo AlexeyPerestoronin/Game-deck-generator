@@ -9,6 +9,8 @@ use leptos::prelude::*;
 
 use super::copy_plan::{apply_copy_command, top_level_paths};
 use super::{OpenTab, TabKind, Workspace};
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 
 impl Workspace {
     /// Context-menu command (`rename` / `delete` / `preview` / `load_files` / `copy` / `past`) on an explorer entry.
@@ -23,7 +25,10 @@ impl Workspace {
             "load_files" => self.load_files_into_folder(path, warning),
             "copy" => self.mark_copy(path),
             "past" => self.paste_into(path),
-            other => self.status.set(format!("Unknown command {other}")),
+            other => {
+                let tmpl = locale::localize(keys::STATUS_UNKNOWN_COMMAND);
+                self.status.set(tmpl.replace("{other}", other));
+            }
         }
     }
 
@@ -36,7 +41,7 @@ impl Workspace {
     fn paste_into(&self, dest: &str) {
         let planned = self.copy_planned.get();
         if planned.is_empty() {
-            self.status.set("Nothing to paste".into());
+            self.status.set(locale::localize(keys::STATUS_NOTHING_TO_PASTE));
             return;
         }
         self.flush_draft();
@@ -48,10 +53,11 @@ impl Workspace {
             Some(Ok(n)) => {
                 self.copy_planned.set(HashSet::new());
                 self.expand_ancestors(dest);
-                self.status.set(format!("Pasted {n} item(s) into {dest}"));
+                let tmpl = locale::localize(keys::STATUS_PASTED);
+                self.status.set(tmpl.replace("{n}", &n.to_string()).replace("{dest}", dest));
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set("Could not update workspace".into()),
+            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
@@ -60,25 +66,27 @@ impl Workspace {
         match self.vfs.try_update(|vfs| vfs.remove(path)) {
             Some(Ok(())) => {
                 self.forget_path(path);
-                self.status.set(format!("Deleted {path}"));
+                let tmpl = locale::localize(keys::STATUS_DELETED);
+                self.status.set(tmpl.replace("{path}", path));
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set("Could not update workspace".into()),
+            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
     fn rename_entry(&self, path: &str) {
-        let Some(name) = crate::state::ask_name("New name") else {
+        let Some(name) = crate::state::ask_name(&locale::localize(keys::PROMPT_NEW_NAME)) else {
             return;
         };
         self.flush_draft();
         match self.vfs.try_update(|vfs| vfs.rename(path, &name)) {
             Some(Ok(new_path)) => {
                 self.rewrite_paths(path, &new_path);
-                self.status.set(format!("Renamed to {new_path}"));
+                let tmpl = locale::localize(keys::STATUS_RENAMED);
+                self.status.set(tmpl.replace("{new_path}", &new_path));
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set("Could not update workspace".into()),
+            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 }

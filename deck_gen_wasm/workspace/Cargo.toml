@@ -11,6 +11,8 @@ path = "src/lib.rs"
 deck_gen = { path = "../../deck_gen", default-features = false }
 # Shared configuration
 deck_gen_wasm_conf = { path = "../conf" }
+# localization for status/prompt strings (reactive)
+deck_gen_wasm_locale = { path = "../locale" }
 deck_gen_wasm_export = { path = "../export" }
 # VFS tree (Node + Vfs) + kind/path helpers
 deck_gen_wasm_fs = { path = "../fs" }

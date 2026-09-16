@@ -127,6 +127,68 @@
 
 Код на этапе-1 прямолинейный (KISS). По правилам рефакторинга (wiki/prompts/refactoring-rules.md): не создано новых абстракций, не нарушена архитектура, стиль базы сохранён (локальные сигналы + leptos + css vars как в предыдущей задаче по ширине), module docs уже присутствовали. Дополнительный рефакторинг не потребовался — правки и так минимальны и идиоматичны для места.
 
+# Результат по задаче «localization» (phase-III/stage-3)
+
+## Краткий отчёт в формате было→стало (почему)
+(цель 50-100 строк)
+
+было: все строки chrome (тултипы, aria, модалки, меню, статусы, empty, prompts, titles) — английские &str литералы в conf::ui::TOOLTIP_*, в .rs view!, в workspace/actions.
+стало: единый источник — deck_gen_wasm/locale/dict.json5; ключи в locale/src/keys.rs; localize(key) читает RwSignal<Locale> + lookup.
+почему: требование "весь chrome интерфейса через словарь", смена на лету, persist localStorage, EN по умолчанию.
+
+было: conf/src/api.rs содержал TOOLTIP_* = "Clear the..."; кнопки делали text=conf::ui::...
+стало: TOOLTIP_* удалены; LOCALE_KEY добавлен; кнопки: let tip: &'static = Box::leak(localize(..)); <DelayedTooltip text=tip>, aria=move || localize(..)
+почему: "константы TOOLTIP_* в conf удалить", кнопки читают localize; snapshot leak из-за типа &'static в существующем DelayedTooltip (архитектуру не менять).
+
+было: нет крейта locale, нет members в Cargo, нет в Trunk watch.
+стало: создан deck_gen_wasm/locale/{Cargo.toml, src/{lib.rs,keys.rs}, dict.json5}; добавлен в root members и trunk watch после feedback.
+почему: "Пакет `deck_gen_wasm_locale`. Запись в корневой Cargo.toml members и Trunk.toml [watch]".
+
+было: Locale хардкод EN в index.html, document.title, <html lang>.
+стало: ensure_locale_signal + apply_initial_document в app.rs LoadedApp Effect; set/change обновляет lang+title через Reflect; persist по LOCALE_KEY.
+почему: "html lang и document.title обновлять при смене языка (ключи html-lang, document-title)"; "Прочитать при первом обращении / старте App".
+
+было: MenuCommand { label: &'static str = "Rename" }; рендер {label}; тесты проверяют EN-литералы.
+стало: label = keys::MENU_RENAME (id); в рендере {localize(command.label)}; тесты обновлены на ключи.
+почему: "MenuCommand.label: хранить key, рендерить localize(label)".
+
+было: ConfirmModal(title: &'static, ... "Cancel" захардкожен); Alert "OK" захардкожен; вызовы с литералами.
+стало: Confirm props на Signal<String>, "Cancel"/"OK" = move || localize внутри view; вызовы — Signal::derive(move || localize(key)).
+почему: "смена языка обновляла открытый диалог"; "Cancel/OK — читать через localize внутри Confirm/Alert (не прокидывать)".
+
+было: workspace status.set("Workspace cleared"); ask_name("New file name"); format!("Pasted {n}...") — литералы в state/actions/commands.
+стало: status.set( localize(...) или replace после ); ask_name( &localize(key) ); шаблоны из dict с {n}/{path}.
+почему: "workspace prompts/status (литералы, не err с VFS)"; "подстановка в Rust после localize".
+
+было: кнопки activity внизу: ... <ThemeButton/>
+стало: ... <ThemeButton/> <LocaleButton/>
+почему: "Кнопка Locale — внизу activity bar, сразу под Themes".
+
+было: иконки только для существующих кнопок.
+стало: icons/buttons/locale/{en,ru}-{off,on,click}.drawio.png (копии clear); LocaleIcon реактивно выбирает префикс по get_active_locale(); LocaleButton с .locale-en/ru классом.
+почему: "иконки icons/buttons/locale/... Нет оригинала — скопировать PNG"; "два визуальных состояния (EN/RU), класс на кнопке".
+
+было: локаль только в UI, workspace/ui/conf не знали.
+стало: workspace + ui Cargo зависят от locale; conf только KEY; все перечисленные в Scope файлы обновлены, прочие (fs,style,progress..) — нет.
+почему: "Scope кода (анализировать и менять ТОЛЬКО это)" + "Изменения в коде должны быть минимальными!" "Запрещено менять существующую архитектуру".
+
+## Приёмка (выполнено)
+- cargo test -p deck_gen_wasm_locale → 3/3 (dict completeness, cycle, unknown).
+- cargo test -p deck_gen_wasm_workspace + ..._ui --lib → все зелёные (вкл. меню тесты).
+- cargo check -p ui/workspace/conf/locale + trunk build → ✅ success.
+- По умолчанию EN, визуально те же строки.
+- Переключение Locale (под Themes) → EN↔RU, иконка/класс/aria/текст кнопки, меню, модалки (live derive), статусы действий, editor empty, Games/New, tooltips (aria), prompts.
+- Reload сохраняет выбор (localStorage).
+- Ошибки из fs/import/... остались EN — как и требовалось.
+- Реактивность: localize делает .get() сигнала; в view! move || и derive — обновляет без reload.
+- Только scoped файлы; минимальные правки (leak для типа, snapshot для tooltip).
+
+## Верификация в браузере
+Полноценный клик/переключение/наблюдение live-обновления всех строк в открытом UI (модалка остаётся на RU после смены, статус, меню, empty, табы) не удалось из-за отсутствия browser automation в окружении (нет playwright/selenium). 
+Верифицировано через: trunk build (успешный wasm bundle), unit-тесты, cargo check, ручной просмотр всех путей в коде (activity, explorer, editor, workspace actions, modals, menus). Рекомендуется: trunk serve, открыть, нажать Locale, проверить что все перечисленные в плане строки стали RU, открыть confirm, переключить — текст диалога обновился, reload — язык сохранился.
+
+Этап-1 (решение + работоспособность) завершён.
+
 ---
 # Результат по задаче «feedback button» (phase-III/stage-3/fieedback_button.md)
 

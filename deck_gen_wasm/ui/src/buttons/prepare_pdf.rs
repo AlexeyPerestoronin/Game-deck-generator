@@ -4,7 +4,8 @@ use leptos::prelude::*;
 
 use crate::icons::PreparePdfIcon;
 use crate::tooltips::DelayedTooltip;
-use deck_gen_wasm_conf as conf;
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::Workspace;
 
 /// Generate card PDFs and A4 duplex sheets; errors go to `warning`.
@@ -14,14 +15,15 @@ pub fn PreparePdfButton(
     warning: RwSignal<Option<String>>,
     warning_title: RwSignal<String>,
 ) -> impl IntoView {
+    let tip: &'static str = Box::leak(locale::localize(keys::TOOLTIP_PREPARE_PDF).into_boxed_str());
     view! {
-        <DelayedTooltip text=conf::ui::TOOLTIP_PREPARE_PDF>
+        <DelayedTooltip text=tip>
             <button
                 class="activity-btn"
-                aria-label="prepare_pdf"
+                aria-label=move || locale::localize(keys::ARIA_PREPARE_PDF)
                 disabled=move || workspace.loading.get()
                 on:click=move |_| {
-                    warning_title.set("Cannot prepare PDF".into());
+                    warning_title.set(locale::localize(keys::WARNING_CANNOT_PREPARE_PDF));
                     workspace.prepare_pdf(warning);
                 }
             >

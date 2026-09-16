@@ -682,6 +682,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "deck_gen_wasm_locale"
+version = "0.1.0"
+dependencies = [
+ "deck_gen_wasm_conf",
+ "js-sys",
+ "json5",
+ "leptos",
+ "serde",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "deck_gen_wasm_persist"
 version = "0.1.0"
 dependencies = [
@@ -719,6 +732,7 @@ dependencies = [
  "deck_gen_wasm_conf",
  "deck_gen_wasm_feedback",
  "deck_gen_wasm_fs",
+ "deck_gen_wasm_locale",
  "deck_gen_wasm_persist",
  "deck_gen_wasm_workspace",
  "gloo-timers",
@@ -739,6 +753,7 @@ dependencies = [
  "deck_gen_wasm_export",
  "deck_gen_wasm_fs",
  "deck_gen_wasm_import",
+ "deck_gen_wasm_locale",
  "deck_gen_wasm_persist",
  "deck_gen_wasm_progress",
  "deck_gen_wasm_template",

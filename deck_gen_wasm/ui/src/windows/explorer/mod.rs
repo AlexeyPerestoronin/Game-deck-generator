@@ -11,6 +11,8 @@ use leptos::prelude::*;
 use crate::buttons::{NewFileButton, NewFolderButton};
 use crate::menus::{ChosenCommand, ContextMenu, MenuState};
 use crate::modals::AlertModal;
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::Workspace;
 
 mod tree;
@@ -26,7 +28,7 @@ pub fn Explorer(workspace: Workspace) -> impl IntoView {
     view! {
         <aside class="explorer">
             <div class="explorer-title-row">
-                <span class="explorer-title">"Games"</span>
+                <span class="explorer-title">{move || locale::localize(keys::EXPLORER_GAMES)}</span>
             </div>
             <header class="explorer-header">
                 <div class="explorer-actions">
@@ -53,7 +55,7 @@ pub fn Explorer(workspace: Workspace) -> impl IntoView {
             </Show>
             <AlertModal
                 open=Signal::derive(move || warning.get().is_some())
-                title=Signal::derive(move || "Cannot load files".to_string())
+                title=Signal::derive(move || locale::localize(keys::WARNING_CANNOT_LOAD_FILES))
                 message=Signal::derive(move || warning.get().unwrap_or_default())
                 on_close=move |_| warning.set(None)
             />

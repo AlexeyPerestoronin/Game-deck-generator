@@ -18,6 +18,8 @@ use crate::bars::{ActivityBar, ProgressRay};
 use crate::theme;
 use crate::windows::{Editor, Explorer};
 use deck_gen_wasm_conf as conf;
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_persist::{
     binaries_fingerprint, encode_binaries, load_binaries, load_session, save_encoded, save_session,
 };
@@ -43,7 +45,7 @@ pub fn App() -> impl IntoView {
         {move || match workspace_slot.get() {
             None => view! {
                 <div class="ide">
-                    <div class="editor-empty">"Loading workspace…"</div>
+                    <div class="editor-empty">{move || locale::localize(keys::EDITOR_LOADING)}</div>
                 </div>
             }
             .into_any(),
@@ -57,6 +59,12 @@ pub fn App() -> impl IntoView {
 fn LoadedApp(workspace: Workspace) -> impl IntoView {
     // Apply persisted (or default System) theme once on mount. Also sets up OS listener for System.
     Effect::new(|_| { theme::apply(); });
+
+    // Locale: ensure reactive signal (inside owner) and set <html lang> + document.title from persisted (default EN).
+    Effect::new(|_| {
+        locale::ensure_locale_signal();
+        locale::apply_initial_document();
+    });
 
     let last_fp = RwSignal::new(workspace.vfs.with_untracked(binaries_fingerprint));
     let generation = RwSignal::new(0u32);

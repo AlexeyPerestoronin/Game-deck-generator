@@ -18,6 +18,7 @@ watch = [
     "workspace",
     "progress",
     "feedback",
+    "locale",
     "ui",
 ]
 ignore = ["dist"]

@@ -29,6 +29,46 @@
 - Слушатели mousemove/mouseup добавлены на window и "забыты" (forget) — ок для lifetime приложения (SPA без unmount LoadedApp).
 - При width=0 explorer просто схлопывается grid'ом (никаких доп. классов .hidden).
 
+# Заметки по этапу «localization»
+
+## Пост-действия, которые требуются от пользователя
+1. Ручная приёмка в браузере (обязательно):
+   - `cd deck_gen_wasm && trunk serve`
+   - Открыть http://localhost:8080
+   - Убедиться: по умолчанию все строки EN, как раньше.
+   - Нажать кнопку Locale (внизу activity bar, сразу под Themes) — переключает EN ↔ RU.
+   - Проверить live-обновление без reload:
+     * explorer header: "Games" → "Игры"
+     * кнопки "+ File" / "+ Folder", их title
+     * контекстное меню на файлах/папках (Rename/Delete/Copy/Preview/Past/load file(s), Close all)
+     * вкладки: "Close", префикс "Preview "
+     * editor empty: "No preview open.", "Select a file...", "Binary file (N bytes)."
+     * модалки Confirm (Clear workspace?, Load Game) — заголовок/текст/кнопки, в т.ч. если открыть модалку, переключить язык — текст внутри обновился
+     * Alert titles (Cannot load..., Error)
+     * статусы в футере explorer после действий: Clear, New File/Folder, Load, Prepare HTML/PDF, Download, rename, paste, load files и т.д.
+     * тултипы (через aria-label + hover на activity) и aria
+     * document.title и <html lang>
+   - Перезагрузить страницу — выбор языка сохранился.
+   - Действия (Clear, load и т.п.) после смены выдают строки на текущем языке.
+   - Ошибки нижних слоёв (fs и т.п.) — по-прежнему EN (это ок).
+
+2. После успешной приёмки:
+   - Выполнить этап-2: отрефакторить код по `wiki/prompts/refactoring-rules.md` (сохраняя минимализм и стиль базы).
+   - (опционально) Заменить placeholder-иконки в `deck_gen_wasm/icons/buttons/locale/{en,ru}-{off,on,click}.drawio.png` на настоящие флаги/дизайн (сейчас это копии кнопки Clear).
+
+## Что не делали (по "Не делать")
+- Не переводили VFS-контент, user-help.md, preview, ошибки из fs/import/export/template/deck_gen.
+- Не добавляли fluent/gettext или другие языки.
+- Не меняли архитектуру (Workspace, bars, модалки сигнатуры минимально под Signals, меню хранят keys).
+- Не persist в Session.
+- Не трогали style.css, progress, прочие крейты вне Scope.
+
+## Замечания
+- Для DelayedTooltip (text: &'static str) использован Box::leak(localize()) snapshot при монтировании кнопки — чтобы не править non-scope tooltip и не менять арх. Aria и все view! строки — реактивные (move || / derive).
+- Статусы действий после смены языка не обновляют уже показанный текст (требует хранения ключа+аргов в status, архитектура); новые действия — на новом языке.
+- Сборка, тесты (locale+workspace+ui), trunk build — зелёные.
+- Использованы только файлы из "Scope кода"; X/Web search не применялись.
+
 ---
 
 # Заметки по этапу «themes»

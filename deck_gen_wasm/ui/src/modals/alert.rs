@@ -2,6 +2,9 @@
 
 use leptos::prelude::*;
 
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
+
 /// OK dialog on a click-to-dismiss backdrop.
 #[component]
 pub fn AlertModal(
@@ -28,7 +31,7 @@ pub fn AlertModal(
                     <p class="modal-body modal-pre">{move || message.get()}</p>
                     <div class="modal-actions">
                         <button class="modal-btn" on:click=move |_| on_close.run(())>
-                            "OK"
+                            {move || locale::localize(keys::MODAL_OK)}
                         </button>
                     </div>
                 </div>

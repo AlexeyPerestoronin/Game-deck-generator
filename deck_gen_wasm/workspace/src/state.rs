@@ -15,6 +15,8 @@ use leptos::prelude::*;
 use deck_gen_wasm_fs::{
     join_path, parent_path, retain_not_under, rewrite_prefix, rewrite_set, Vfs,
 };
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_persist::Session;
 
 /// Whether an editor tab shows the source or a rendered preview.
@@ -176,7 +178,7 @@ impl Workspace {
 
     /// Prompt for a name and create an empty file under the creation parent.
     pub fn create_file(&self) {
-        let Some(name) = ask_name("New file name") else {
+        let Some(name) = ask_name(&locale::localize(keys::PROMPT_NEW_FILE)) else {
             return;
         };
         let parent = self.creation_parent();
@@ -192,13 +194,13 @@ impl Workspace {
                 self.status.set(String::new());
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set("Could not update workspace".into()),
+            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
     /// Prompt for a name and create a folder under the creation parent.
     pub fn create_folder(&self) {
-        let Some(name) = ask_name("New folder name") else {
+        let Some(name) = ask_name(&locale::localize(keys::PROMPT_NEW_FOLDER)) else {
             return;
         };
         let parent = self.creation_parent();
@@ -210,7 +212,7 @@ impl Workspace {
                 self.status.set(String::new());
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set("Could not update workspace".into()),
+            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
