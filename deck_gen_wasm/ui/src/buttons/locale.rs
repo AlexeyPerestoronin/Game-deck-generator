@@ -6,6 +6,7 @@ use leptos::prelude::*;
 use crate::icons::LocaleIcon;
 use crate::tooltips::DelayedTooltip;
 use deck_gen_wasm_locale::{self as locale, keys};
+use web_sys;
 
 #[component]
 pub fn LocaleButton() -> impl IntoView {
@@ -31,6 +32,11 @@ pub fn LocaleButton() -> impl IntoView {
     let on_click = move |_| {
         let _ = locale::change_locale();
         current.set(locale::get_active_locale());
+        // Hard approach: force full reload of the interface.
+        // After persist, reload picks up new locale from localStorage (no live reactivity needed).
+        if let Some(win) = web_sys::window() {
+            let _ = win.location().reload();
+        }
     };
 
     let tip: &'static str = Box::leak(locale::localize(keys::TOOLTIP_LOCALE).into_boxed_str());

@@ -51,11 +51,11 @@
 3. ✅ [Управление открытыми вкладками (закрыть все + изменить порядок перетаскиванием) — единый scope из-за пересечения по коду](./phase-III/stage-2/tabs_management.md).
 4. ✅ [Добавить возможность регулировать ширину, разделяющую окно рабочей области и окно preview в активном режиме split-preview](./phase-III/stage-2/flex_adjust_width_of_workspace.md).
 
-Дополнительные Задачи №3:
+Дополнительные Задачи №3: выполнены!
 Задачи **не объединены**: пересечение только точечное (вставка кнопки в `ActivityBar` / колонка в `.ide`). Делать **по одной**, не параллелить правки одних файлов. Фиксированный порядок кнопок после всех четырёх: Download, NewGame, LoadGame, PrepareHtml, PreparePdf, SplitPreview, Feedback, spacer, Clear, Locale, Theme. Рекомендуемый порядок внедрения: progress ray → feedback → themes → localization (последней, чтобы подобрать уже появившиеся тултипы).
 1. ✅ [Добавить поддержку обратной связи через e-mail](./phase-III/stage-3/fieedback_button.md).
 2. ✅ [Сделать долгие операции наблюдаемыми (progress ray)](./phase-III/stage-3/progress_ray.md).
-3. [Добавить возможность смены локализации сайта (EN,RU)](./phase-III/stage-3/localization.md).
+3. ✅ [Добавить возможность смены локализации сайта (EN,RU)](./phase-III/stage-3/localization.md).
 4. ✅ [Добавить возможность смены светлой и тёмной темы (+ системная)](./phase-III/stage-3/themes.md).
 
 Дополнительные Задачи №4:
