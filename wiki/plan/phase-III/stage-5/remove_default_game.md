@@ -11,11 +11,30 @@
     - `--deck` - не обязательный параметр, который задаёт имя колоды для генерации в целевой игре (если не назначен = сгенерировать все колоды)
 
 # Что необходимо сделать
-<здесь необходимо описать сформулированную задачу в точных целях>
+<Необходимо удалить `default_game` и требование файла `games/conf.json5`.
+
+Точные цели:
+- Убрать поле `default_game` из `Conf` (deck_gen/src/conf/mod.rs) и удалить тип `GamesRootFile` (schema.rs).
+- Удалить загрузку `games/conf.json5` в `build_conf` и `load_workspace_fallback`, убрать валидацию по default_game и требование его присутствия.
+- Сделать `Conf::game` всегда требовать явный `id` (без fallback на default).
+- Переработать `catalog::name_matches_query` / `matching_located` — убрать параметр и логику default_game; теперь имена колод всегда передаются с префиксом игры (или как префикс `game.` для всех колод игры).
+- В CLI (cli.rs) заменить `name: Option<String>` во всех командах (`List`, `Html`, `Pdf`) на `--game <GAME>` (обязательный) и `--deck <DECK>` (опциональный).
+  - При отсутствии `--deck` передавать в prepare/catalog query = Some(game) (чтобы взять все колоды игры).
+  - При наличии `--deck` — Some(format!("{game}.{deck}")).
+- Обновить вызовы `conf()`, `prepare_html_named`, `prepare_pdf_named`, `catalog::*` под новую сигнатуру/логику.
+- Сделать так, чтобы работа без `games/conf.json5` (в т.ч. в VFS fallback) была полной и корректной.
+- cargo check + тесты deck_gen должны проходить.>
 
 # Scope кода (минимальная рабочая область)
-<здесь необходимо описать минимальную рабочую область кода для решения задачи>
-<если необходимо добавлять какие-то файлы, то необходимо описать какие и куда>
+<Минимальная рабочая область:
+- deck_gen/src/cli.rs (clap-структуры Command/List/Html/Pdf, функции *_command и run).
+- deck_gen/src/conf/mod.rs (Conf, load/build_conf/load_workspace_fallback, Conf::game / game_for_deck_name, удаление GamesRootFile, обновление fallback и ошибок).
+- deck_gen/src/conf/schema.rs (удалить GamesRootFile и связанные комментарии).
+- deck_gen/src/catalog.rs (matching_located, name_matches_query и вызовы с loaded.default_game).
+- Комментарии/доки в перечисленных модулях.
+
+Новые файлы не требуются.
+Изменения в deck_gen_wasm/* и в содержимом папки games/ — вне минимального scope (web использует deck_gen API как чёрный ящик).>
 
 ***
 
