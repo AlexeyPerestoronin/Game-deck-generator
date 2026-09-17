@@ -539,8 +539,17 @@ body {
   background: #fff;
 }
 
-/* Forces light color-scheme for PDF viewer (white pages) on the host div (not on the iframe itself). */
+/* Forces light color-scheme for PDF viewer (white pages).
+   - On ancestor for Chromium-based browsers (Chrome, Edge).
+   - On the iframe itself (.pdf-frame) only for Firefox (see is_firefox + pdf-frame class).
+   We never set color-scheme on .preview-frame unconditionally: with the old
+   position:absolute layout it made Chrome paint embedded JPEG card images black.
+   Flex layout + targeted application avoids that while giving white pages in FF. */
 .preview-pdf-host {
+  color-scheme: light;
+}
+
+.pdf-frame {
   color-scheme: light;
 }
 

@@ -4,6 +4,9 @@
 //! PDF must be `iframe.src = blob:` — not an `<embed>` inside a srcdoc shell.
 //! Nested embed keeps the viewer chrome and white paper but paints raster
 //! card images as black rectangles.
+//!
+//! White PDF pages in all browsers (incl. Firefox) are forced via color-scheme
+//! (on wrapper for Chromium, targeted on iframe for FF only). See PdfPreview.
 
 use leptos::prelude::*;
 
@@ -81,10 +84,19 @@ fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
         replace_object_url(src, next);
     });
     on_cleanup(move || js::revoke_object_url(&src.get_untracked()));
+
+    // UA sniff: Firefox pdf.js requires color-scheme directly on the <iframe>.
+    // We apply the .pdf-frame class only for FF; Chromium uses the ancestor rule.
+    let pdf_frame_class = if js::is_firefox() {
+        "preview-frame pdf-frame".to_string()
+    } else {
+        "preview-frame".to_string()
+    };
+
     view! {
         <div class="preview-host preview-pdf-host">
             <Show when=move || !src.get().is_empty()>
-                <iframe class="preview-frame" prop:src=move || src.get() />
+                <iframe class=pdf_frame_class.clone() prop:src=move || src.get() />
             </Show>
         </div>
     }
@@ -123,3 +135,5 @@ fn replace_object_url(slot: RwSignal<String>, next: String) {
         js::revoke_object_url(&prev);
     }
 }
+
+

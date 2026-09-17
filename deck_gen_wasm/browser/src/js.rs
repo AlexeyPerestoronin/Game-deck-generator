@@ -68,3 +68,16 @@ pub fn revoke_object_url(url: &str) {
         let _ = Url::revoke_object_url(url);
     }
 }
+
+/// Detect Firefox (pdf.js vs Chromium PDF plugin differ in how they apply color-scheme
+/// for forcing light page background in PDF preview).
+pub fn is_firefox() -> bool {
+    let call = Function::new_with_args(
+        "",
+        "try { return /firefox/i.test((navigator && navigator.userAgent) || ''); } catch(e){ return false; }",
+    );
+    call.call0(&JsValue::UNDEFINED)
+        .ok()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+}
