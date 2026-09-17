@@ -1,10 +1,14 @@
-//! Jinja + SCSS rendering of face / back / preview HTML.
+//! Jinja + SCSS rendering of face / back / preview HTML (and per-card variants).
 //!
 //! Templates are loaded from the deck directory first, then the game `views/`.
 //! `.scss` files are run through MiniJinja (so they can use the same globals)
 //! and then `grass`. That needs two environments: a “raw” loader without SCSS
 //! compilation, and the public loader that compiles `.scss` using the raw env.
 //! The MiniJinja loader is `'static`, so the [`FileSystem`] is held in an `Arc`.
+//!
+//! Full sheets (face.html etc.) render using the complete `cards` list.
+//! Per-card files (cards/html/card-N-*.html) are written as side artifacts by
+//! re-rendering the same face/back templates with a 1-element cards slice.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -58,17 +62,35 @@ where
 
     let face_template = deck.template_for("face")?;
     let back_template = deck.template_for("back")?;
-    let ctx = template_context(deck, cards);
+
+    let face_content = render_template(&env, &face_template, deck, cards)?;
+    let back_content = render_template(&env, &back_template, deck, cards)?;
+    let preview_content = render_template(&env, &game.output.preview_html, deck, cards)?;
 
     let face_path = out.join(&game.output.face_html);
     let back_path = out.join(&game.output.back_html);
     let preview_path = out.join(&game.output.preview_html);
-    fs.write(&face_path, &env.get_template(&face_template)?.render(&ctx)?)?;
-    fs.write(&back_path, &env.get_template(&back_template)?.render(&ctx)?)?;
-    fs.write(
-        &preview_path,
-        &env.get_template(&game.output.preview_html)?.render(&ctx)?,
-    )?;
+    fs.write(&face_path, &face_content)?;
+    fs.write(&back_path, &back_content)?;
+    fs.write(&preview_path, &preview_content)?;
+
+    // Per-card HTML artifacts live under cards/html/card-N-(face|back).html.
+    let cards_html_dir = out.join("cards").join("html");
+    fs.create_dir_all(&cards_html_dir)?;
+    for (i, card) in cards.iter().enumerate() {
+        let n = i + 1;
+        let single: &[Value] = std::slice::from_ref(card);
+        let face = render_template(&env, &face_template, deck, single)?;
+        let back = render_template(&env, &back_template, deck, single)?;
+        fs.write(
+            &cards_html_dir.join(format!("card-{}-face.html", n)),
+            &face,
+        )?;
+        fs.write(
+            &cards_html_dir.join(format!("card-{}-back.html", n)),
+            &back,
+        )?;
+    }
 
     Ok(HtmlArtifacts {
         preview: preview_path,
@@ -76,6 +98,19 @@ where
         back_html: back_path,
         card_count: cards.len(),
     })
+}
+
+/// Render given template using deck + provided cards slice (reused for full sheets and 1-card).
+fn render_template(
+    env: &Environment<'static>,
+    template_name: &str,
+    deck: &Deck,
+    cards: &[Value],
+) -> Result<String> {
+    let ctx = template_context(deck, cards);
+    env.get_template(template_name)?
+        .render(&ctx)
+        .map_err(Into::into)
 }
 
 fn template_context(deck: &Deck, cards: &[Value]) -> minijinja::value::Value {
