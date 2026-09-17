@@ -2,7 +2,30 @@
 
 Необходимо исправить цвет курсора в белой теме → в белой теме цвет курсора должен быть чёрным, чтобы его  было видно.
 
-<задача простая, но если необходимы дополнительные указания напиши>
+## Дополнительные указания (из анализа `deck_gen_wasm`)
+
+Баг не в системном CSS-`cursor` (указатель мыши) и не в `theme.rs`. Невидим **текстовый caret** в подсвеченном редакторе.
+
+- Подсветка: `HighlightedEditor` (`ui/src/windows/editor/highlighted.rs`) — `<textarea class="editor-area code-input">` поверх `<pre class="code-highlight">`.
+- Текст в textarea прозрачный (`color: transparent`), поэтому caret задан отдельно.
+- В `deck_gen_wasm/style.css` у `.code-input` стоит **`caret-color: #fff`** (всегда белый). В светлой теме `--editor: #ffffff` → белый caret на белом фоне.
+- Обычный `PlainEditor` (`class="editor-area"` без `.code-input`) caret не хардкодит: браузер берёт его от `color: var(--fg)` — в light уже тёмный. Его не ломать.
+
+### Что сделать
+1. В `:root` / `:root[data-theme="dark"]` добавить `--caret: #fff`; в `:root[data-theme="light"]` — `--caret: #000` (или `#333`, главное — контраст на белом).
+2. `.code-input { caret-color: var(--caret); }` вместо `#fff`.
+3. По желанию то же `caret-color: var(--caret)` на `.editor-area` — для единообразия, поведение не менять.
+
+### Не делать
+- Не трогать `theme.rs`, кнопки, activity bar, explorer, workspace.
+- Не менять PNG, `color: transparent` у `.code-input`, хайлайтер.
+- Не вводить JS для caret. Юнит-тесты для CSS не нужны.
+
+### Scope
+Только `deck_gen_wasm/style.css`. Прочие файлы не анализировать и не менять.
+
+### Приёмка
+Light: caret в подсвеченном редакторе чёрный и виден. Dark: белый, как сейчас. Сборка UI не обязательна (чистый CSS), регрессий layout нет.
 
 ***
 

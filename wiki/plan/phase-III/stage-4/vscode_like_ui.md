@@ -39,11 +39,150 @@
 На пока это минимальный функционал, который должна обеспечивать данная область.
 
 # Что необходимо сделать
-<здесь необходимо описать сформулированную задачу в точных целях>
+Сделать activity bar и левую панель по образцу VSCode: панель — контейнер вида (Explorer | Games | скрыта), на баре — переключатели вида + прежние действия без влияния на панель + меню Settings вместо отдельных кнопок темы/локали/feedback.
+
+## Текущее состояние (из анализа `deck_gen_wasm`)
+
+**Activity bar** (`ui/src/bars/activity.rs`), сверху вниз:
+`Download` (ZIP) → `NewGame` (GitHub `games/new-game/`) → `LoadGame` (папка с диска в `games/`) → `PrepareHtml` → `PreparePdf` → `SplitPreview` (класс `.active` + PNG `state-active`) → `activity-spacer` → `Clear` → `Feedback` (`mailto:`) → `Theme` (цикл Dark→Light→System) → `Locale` (EN/RU + reload).
+
+**Левая панель** всегда `Explorer` (`ui/src/windows/explorer/`): дерево VFS, New File/Folder, контекстное меню. Ширина — сигнал `explorer_width` в `LoadedApp` (`ui/src/app.rs`, старт 260, min 0). Скрытия по кнопке нет. Сетка `.ide`: `48px | progress-ray | var(--explorer-width) | 4px resizer | 1fr`.
+
+**GitHub** (`template/src/github.rs` + `template.rs`): только блобы `games/new-game/` и `games/conf.json5`. Список игр-папок в `games/` не строится. В репозитории `AlexeyPerestoronin/Game-deck-generator` @ `master` под `games/` сейчас каталоги `new-game` и `monopoly-2.0`. `Workspace::add_new_game` / `load_game_from_disk` — `workspace/src/actions.rs`. Confirm/Alert для load/clear живут в `ActivityBar`.
+
+**Меню:** `ui/src/menus/context.rs` — плавающее меню по координатам клика (explorer / вкладки). Отдельного gear-меню нет.
+
+**Иконки:** PNG `icons/buttons/<id>/{off,on,click}.drawio.png`; у split ещё `active.drawio.png`. CSS: `.activity-btn.active` + `.state-active`.
+
+## Цели (делать только это)
+
+### 1. Состояние вида боковой панели
+В `ui` (не новый cargo-пакет), рядом с `explorer_width` в `LoadedApp` (или крошечный `ui/src/sidebar.rs`):
+- `enum SidebarMode { Hidden, Explorer, Games }`.
+- Старт: **`Explorer`** (дерево как сейчас, без регрессии первого захода).
+- Клик **Explorer** / **Games**: если этот вид уже активен → `Hidden` и `explorer_width = 0`; иначе включить этот вид; если ширина была 0 — вернуть последнюю ненулевую (по умолчанию 260).
+- Одновременно активен только один из Explorer/Games (или ни одного).
+- `PrepareHtml` / `PreparePdf` / `SplitPreview` / `Clear` **не** меняют `SidebarMode` и ширину. `SplitPreview` по-прежнему только свой `.active` (split редактора).
+- Не persist в localStorage.
+
+Чистую функцию переключения (`toggle(current, clicked) -> SidebarMode`) покрыть unit-тестом.
+
+### 2. Activity bar — новый порядок
+Сверху вниз, **только**:
+1. **Explorer** (новая) — переключает `SidebarMode::Explorer` / Hidden.
+2. **Games** (новая) — переключает `SidebarMode::Games` / Hidden.
+3. **Preview Html** — нынешний `PrepareHtmlButton`, логика 1-в-1.
+4. **Preview Pdf** — нынешний `PreparePdfButton`, логика 1-в-1.
+5. **Split Workspace** — нынешний `SplitPreviewButton`, логика 1-в-1.
+6. `activity-spacer` (как сейчас).
+7. **Clear workspace** — нынешний `ClearButton` + тот же ConfirmModal.
+8. **Settings** (новая) — **не** вид панели; открывает меню (п. 3).
+
+Убрать с бара (не рендерить): `DownloadButton`, `NewGameButton`, `LoadGameButton`, `FeedbackButton`, `ThemeButton`, `LocaleButton`.
+- ZIP: `Workspace::download` / `buttons/download.rs` / иконку **не удалять**, только не ставить на бар (в новой раскладке кнопки нет, в Settings её нет).
+- Логику load/new-game не удалять — перенести в панель Games (п. 5–6).
+- Логику feedback / theme cycle / locale cycle не удалять — пункты меню Settings.
+
+Explorer и Games в активном виде: `class="activity-btn active"` и 4-й кадр `state-active`, как у Split. Settings — три кадра, без постоянного `.active` (можно подсветка только пока открыто меню).
+
+### 3. Меню Settings
+По клику — всплывающее меню у кнопки (якорь: `getBoundingClientRect` кнопки, меню над/справа, как gear в VSCode). Можно опереть на разметку/CSS `.context-menu`, не ломая explorer context menu.
+
+Пункты (сверху вниз), подписи локализовать через `locale/dict.json5` + `keys.rs`:
+1. **Send e-mail feedback** — `send_feedback_via_email()` как у `FeedbackButton`.
+2. **Change theme** (в постановке опечатка «Change them») — `theme::cycle_and_apply()`, цикл тот же.
+3. **Localization** — `locale::change_locale()` + `location.reload()`, как у `LocaleButton`.
+
+Кнопки Feedback / Theme / Locale с бара снять.
+
+### 4. Универсальный контейнер левой панели
+Слот `Explorer` в `LoadedApp` заменить контейнером (класс `.explorer` можно оставить ради CSS):
+- `Hidden` или ширина 0: пусто / ничего не показывать; resizer может остаться.
+- `Explorer`: нынешний `Explorer` без изменения дерева, New File/Folder, контекстного меню.
+- `Games`: вид п. 5–6, **не** дерево VFS.
+
+Заголовок explorer «Games» (`keys::EXPLORER_GAMES`) для режима дерева не переименовывать в этой задаче (это заголовок дерева, не кнопка бара).
+
+### 5. Режим Games — каркас как Extensions в VSCode
+Две сворачиваемые секции (chevron + строка, клик по заголовку сворачивает тело), по умолчанию **развернуты**:
+- **Local**
+- **Global**
+
+Минимум стилей в `style.css` (заголовок секции, список, full-width кнопка, строка игры). Не копировать VSCode pixel-perfect.
+
+### 6. Секция Local
+Сверху, на всю ширину панели: кнопка **Load Local Games**.
+Поведение = нынешний `LoadGameButton` + ConfirmModal в `ActivityBar`: подтверждение → `workspace.load_game_from_disk(warning)`. Confirm/Alert для этой кнопки держать в панели Games (или оставить модалки в `ActivityBar`, но триггер — только эта кнопка).
+
+Другого функционала Local в этой задаче нет.
+
+### 7. Секция Global
+При открытии режима Games (один раз за визит в режим достаточно) запросить GitHub git-tree (тот же API, что `github::list_template_blob_paths`):
+- элементы `type == "tree"` с путём ровно `games/<имя>` (один сегмент после `games/`);
+- подпись виджета = имя папки (`new-game`, `monopoly-2.0`, …).
+
+Каждая строка: имя + кнопка **Settings** → меню с единственным пунктом **Load Games**.
+Пункт вызывает установку **этой** игры с GitHub, не только `new-game`.
+
+Обобщить шаблон, не плодя крейт:
+- `conf::template::PREFIX` сейчас `"games/new-game/"` — для загрузки любой игры брать префикс `games/{folder}/`;
+- `games/conf.json5` по-прежнему копировать, только если в VFS нет;
+- уникальное имя папки под `games/`, retarget id как в `retarget_game_id`;
+- `Workspace::add_new_game` расширить до `add_game_from_github(folder, warning)` (или тонкая обёртка); кнопку New Game с бара убрать.
+
+Ошибки сети/парса — в существующий Alert (`warning` + `WARNING_CANNOT_LOAD_NEW_GAME` или новый ключ). Пока грузится список — короткий статус/пусто, без спиннера-крейта.
+
+Юнит-тесты (native) на фильтр имён папок из git-tree и на retarget/unique folder, если логику вынесли.
+
+### 8. Иконки и строки
+Новые PNG (пока нет рисунка — **скопировать** существующие: для Explorer/Games — кадры `split_preview` включая `active`; для Settings — `clear`). В `wiki/note.md` попросить заменить:
+- `deck_gen_wasm/icons/buttons/explorer/{off,on,click,active}.drawio.png`
+- `deck_gen_wasm/icons/buttons/games/{off,on,click,active}.drawio.png`
+- `deck_gen_wasm/icons/buttons/settings/{off,on,click}.drawio.png`
+
+Ключи EN/RU: тултипы/aria Explorer, Games, Settings; пункты Settings; заголовки Local/Global; Load Local Games; Load Games. Паттерн `locale/src/keys.rs` + `locale/dict.json5`.
+
+### Не делать
+- Не новый cargo-пакет, не менять архитектуру Workspace/VFS/persist Session.
+- Не менять prepare HTML/PDF, split, clear, progress ray, editor tabs, ZIP-движок.
+- Не persist `SidebarMode`.
+- Не тащить Download в Settings.
+- Не грузить с GitHub все блобы заранее — только список папок; блобы при Load Games.
+- Не реализовывать лишний функционал Local/Global (удаление, обновление, описание игр).
+- Не переписывать сетку `.ide` кроме зависимости от `--explorer-width`.
+- Не трогать задачу cursor caret (`caret-color`) — это `cursor_bug.md`.
 
 # Scope кода (минимальная рабочая область)
-<здесь необходимо описать минимальную рабочую область кода для решения задачи>
-<если необходимо добавлять какие-то файлы, то необходимо описать какие и куда>
+Анализировать и менять **только** это (остальной репозиторий игнорировать):
+
+Существующие:
+- `deck_gen_wasm/ui/src/app.rs` — `SidebarMode`, ширина панели, слот контейнера вместо голого `Explorer`
+- `deck_gen_wasm/ui/src/bars/activity.rs` — состав/порядок кнопок; модалки Clear (+ load, если не перенесены в Games)
+- `deck_gen_wasm/ui/src/buttons/mod.rs`
+- `deck_gen_wasm/ui/src/buttons/prepare_html.rs`, `prepare_pdf.rs`, `split_preview.rs`, `clear.rs` — только если нужно не сломать пропсы; логику не менять
+- `deck_gen_wasm/ui/src/buttons/load_game.rs`, `new_game.rs` — переиспользовать или перестать вешать на бар
+- `deck_gen_wasm/ui/src/buttons/feedback.rs`, `theme.rs`, `locale.rs` — логика уходит в пункты Settings; с бара убрать
+- `deck_gen_wasm/ui/src/icons/mod.rs`, `ui/src/icons/activity.rs`
+- `deck_gen_wasm/ui/src/windows/mod.rs`, `windows/explorer/` (без смены дерева)
+- `deck_gen_wasm/ui/src/menus/context.rs`, `menus/mod.rs` — только если переиспользовать меню для Settings / строки игры
+- `deck_gen_wasm/ui/src/lib.rs` — `mod` для новых модулей ui
+- `deck_gen_wasm/style.css` — секции Games, full-width кнопка, строка игры, chevron; не трогать `caret-color`
+- `deck_gen_wasm/locale/src/keys.rs`, `locale/dict.json5`
+- `deck_gen_wasm/conf/src/api.rs` — только если префикс шаблона надо параметризовать
+- `deck_gen_wasm/template/src/github.rs`, `template.rs`, `api.rs` — список папок `games/*`, установка выбранной игры
+- `deck_gen_wasm/workspace/src/actions.rs` (и `api.rs` при смене сигнатуры) — `add_game_from_github`
+
+Новые файлы:
+- `deck_gen_wasm/ui/src/sidebar.rs` — `SidebarMode` + `toggle` + unit-тест (если не оставлять enum в `app.rs`)
+- `deck_gen_wasm/ui/src/buttons/explorer.rs` — кнопка бара Explorer
+- `deck_gen_wasm/ui/src/buttons/games.rs` — кнопка бара Games
+- `deck_gen_wasm/ui/src/buttons/settings.rs` — кнопка бара Settings + открытие меню
+- `deck_gen_wasm/ui/src/windows/games/mod.rs` (или `windows/games.rs`) — панель Local/Global
+- `deck_gen_wasm/icons/buttons/explorer/` — 4 PNG
+- `deck_gen_wasm/icons/buttons/games/` — 4 PNG
+- `deck_gen_wasm/icons/buttons/settings/` — 3 PNG
+
+Не трогать: `deck_gen`, `prepare_pdf_*`, `fs`, `import`/`export` (кроме вызова уже существующих API), `persist`, `progress`, `feedback` crate, `browser`, `download.rs` (кроме снятия с бара).
 
 ***
 
