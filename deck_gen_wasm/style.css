@@ -539,11 +539,8 @@ body {
   background: #fff;
 }
 
-/* Forces light color-scheme for PDF viewer (white pages) via wrapper, not on iframe. */
+/* Forces light color-scheme for PDF viewer (white pages) on the host div (not on the iframe itself). */
 .preview-pdf-host {
-  flex: 1;
-  min-height: 0;
-  display: flex;
   color-scheme: light;
 }
 

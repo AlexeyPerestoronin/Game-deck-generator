@@ -82,11 +82,9 @@ fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
     });
     on_cleanup(move || js::revoke_object_url(&src.get_untracked()));
     view! {
-        <div class="preview-host">
+        <div class="preview-host preview-pdf-host">
             <Show when=move || !src.get().is_empty()>
-                <div class="preview-pdf-host">
-                    <iframe class="preview-frame" prop:src=move || src.get() />
-                </div>
+                <iframe class="preview-frame" prop:src=move || src.get() />
             </Show>
         </div>
     }

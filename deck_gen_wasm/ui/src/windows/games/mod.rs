@@ -15,14 +15,14 @@ use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::Workspace;
 
-/// Maps collapse state and ratio into (local, global) flex factors for the sections.
-fn section_flex(local_collapsed: bool, global_collapsed: bool, ratio: f32) -> (f64, f64) {
+/// Returns CSS `flex` values for Local/Global sections depending on collapse flags and split ratio.
+fn section_flex(local_collapsed: bool, global_collapsed: bool, ratio: f32) -> (String, String) {
     if local_collapsed {
-        (0.0, if global_collapsed { 0.0 } else { 1.0 })
+        ("0 0 auto".to_string(), if global_collapsed { "0 0 auto".to_string() } else { "1 1 0".to_string() })
     } else if global_collapsed {
-        (1.0, 0.0)
+        (format!("{} 1 0", ratio), "0 0 auto".to_string())
     } else {
-        (ratio as f64, (1.0 - ratio) as f64)
+        (format!("{} 1 0", ratio), format!("{} 1 0", 1.0 - ratio))
     }
 }
 
@@ -149,13 +149,16 @@ pub fn GamesPanel(
         workspace.add_game_from_github(&game, warning);
     };
 
-    // Section flex via pure helper. 0.5/0.5 => equal split of full height.
+    // Section flex via pure helper (see section_flex). Produces CSS flex value.
+    let ratio = split_ratio;
+    let lc = local_collapsed;
+    let gc = global_collapsed;
     let local_flex = move || {
-        let (l, _) = section_flex(local_collapsed.get(), global_collapsed.get(), split_ratio.get());
+        let (l, _) = section_flex(lc.get(), gc.get(), ratio.get());
         l
     };
     let global_flex = move || {
-        let (_, g) = section_flex(local_collapsed.get(), global_collapsed.get(), split_ratio.get());
+        let (_, g) = section_flex(lc.get(), gc.get(), ratio.get());
         g
     };
 
@@ -268,28 +271,28 @@ mod tests {
     #[test]
     fn default_ratio_gives_equal_flex() {
         let (l, g) = section_flex(false, false, 0.5);
-        assert!((l - 0.5).abs() < 1e-6);
-        assert!((g - 0.5).abs() < 1e-6);
+        assert!(l.starts_with("0.5"));
+        assert!(g.starts_with("0.5"));
     }
 
     #[test]
     fn collapsed_local_gives_full_to_global() {
         let (l, g) = section_flex(true, false, 0.3);
-        assert_eq!(l, 0.0);
-        assert_eq!(g, 1.0);
+        assert_eq!(l, "0 0 auto");
+        assert_eq!(g, "1 1 0");
     }
 
     #[test]
-    fn both_collapsed_gives_zero() {
+    fn both_collapsed_gives_auto_stack_at_top() {
         let (l, g) = section_flex(true, true, 0.7);
-        assert_eq!(l, 0.0);
-        assert_eq!(g, 0.0);
+        assert_eq!(l, "0 0 auto");
+        assert_eq!(g, "0 0 auto");
     }
 
     #[test]
     fn ratio_30_70() {
         let (l, g) = section_flex(false, false, 0.3);
-        assert!((l - 0.3).abs() < 1e-6);
-        assert!((g - 0.7).abs() < 1e-6);
+        assert!(l.starts_with("0.3"));
+        assert!(g.starts_with("0.7"));
     }
 }
