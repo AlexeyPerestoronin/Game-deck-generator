@@ -13,7 +13,7 @@ use minijinja::value::Value as JinjaValue;
 use minijinja::{context, AutoEscape, Environment};
 use serde_json::Value;
 
-use crate::conf::{views_for_deck_name, Conf};
+use crate::conf::Conf;
 use crate::error::Result;
 use crate::fs::FileSystem;
 use crate::model::Deck;
@@ -51,7 +51,7 @@ fn render_html<F>(
 where
     F: FileSystem + ?Sized + 'static,
 {
-    let game = loaded.game_for_deck_name(&deck.name)?;
+    let game = loaded.game(&deck.game_id)?;
     let env = jinja_env(fs.clone(), loaded, deck)?;
     let out = deck.output_dir(loaded)?;
     fs.create_dir_all(&out)?;
@@ -100,7 +100,7 @@ where
 {
     let search = Arc::new(vec![
         deck.directory.clone(),
-        views_for_deck_name(loaded, &deck.name)?,
+        loaded.game(&deck.game_id)?.views.clone(),
     ]);
     let mut raw_env = Environment::new();
     configure_env(&mut raw_env, deck);

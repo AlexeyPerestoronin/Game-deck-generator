@@ -60,8 +60,7 @@ where
 
 /// Same as [`prepare_pdf`], optionally restricted to a deck name/prefix and duplex mode.
 ///
-/// The `name` (when Some) is a full deck id "game.deck..." or game prefix "game"
-/// (selects all decks of the game).
+/// The `name` (when Some) is a game id (all decks), bare deck name, or "game.deckname".
 pub async fn prepare_pdf_named<F, E>(
     fs: Arc<F>,
     engine: &E,
@@ -76,7 +75,7 @@ where
     let decks = crate::catalog::find_decks(fs.as_ref(), &loaded, name)?;
     let mut out = Vec::new();
     for deck in decks {
-        let game = loaded.game_for_deck_name(&deck.name)?;
+        let game = loaded.game(&deck.game_id)?;
         let duplex_label = duplex_override.unwrap_or(&game.print.default_duplex);
         let duplex = Duplex::parse(duplex_label).map_err(Error::msg)?;
         fs.create_dir_all(&game.duplex)?;

@@ -77,7 +77,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Build the catalog query from CLI --game/--deck.
-/// When deck is None, query is just the game id (matches `game.` prefix for all its decks).
+/// Query is game id (all decks) or "game.deckname" (specific deck by its declared name).
 fn deck_query(game: &str, deck: Option<&str>) -> String {
     match deck {
         Some(d) => format!("{}.{}", game, d),

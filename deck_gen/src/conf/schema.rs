@@ -18,7 +18,7 @@ pub struct RootFile {
 /// `game.json5` in a game folder.
 #[derive(Debug, Deserialize)]
 pub struct GameFile {
-    /// Stable game id; becomes the prefix of every deck name.
+    /// Stable game id (deck names are independent, no longer prefixed by it).
     #[serde(rename = "game-name")]
     pub game_name: String,
     /// Folder names under the game root.

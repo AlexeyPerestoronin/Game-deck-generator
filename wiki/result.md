@@ -1,35 +1,49 @@
-# Результат доработки по remove_game_prefix_from_deck.md (2026-09-17)
+# Результат доработки: remove_game_prefix_from_deck (stage-5)
 
 ## Задача
-Убрать требование префикса имени игры в параметре `name` внутри data.json5 каждой колоды. Теперь `name` в data.json5 может быть относительным (без `game.`), полное имя колоды строится по расположению на диске. Изменения минимальны, без смены архитектуры. Целевой крейт: только deck_gen. Сборка и unit-тесты — OK. Отчёт в формате было→стало(почему). При необходимости — в note.md.
+Убрать требование, чтобы `name` колоды в data.json5 содержал префикс игры или совпадал с именем папки расположения. Имя колоды — любое (уникальное в рамках игры), не связано с game-name. Убрать legacy-логику проверки/подстановки префикса. Минимальные изменения, без смены архитектуры. Только крейт deck_gen. Сборка + unit-тесты OK. Проверить командами из "## Как проверить работоспособность".
 
-## Что было → стало (почему)
+## было → стало (почему)
 
 **было:**
-- В catalog::load_deck после Deck::from_manager делалась жёсткая проверка `if deck.name != expected_name` (где expected всегда "game.rel").
-- При несовпадении — ошибка "name {:?} must match relative path".
-- В data.json5 для колод требовалось писать полное имя с префиксом игры (дублирование game-name из game.json5).
-- Модуль-док и док find_decks утверждали "must match the `name` field inside the file".
-- (всё остальное: dotted_name, game_for_deck_name, output_dir_for_name, queries, labels — работали с полными именами "game.xxx").
+- dotted_name всегда строил `"{game.id}.{rel from folder path}"` как имя колоды.
+- load_deck: после from_manager (который берёт "name" из json) — если != expected (полное), брал rel, и если json name != rel-part → ошибка "name must match relative path".
+- В результате: имена колод внутри (Deck.name, labels, output paths derived, queries) всегда с префиксом "game.xxx"; нельзя было использовать json name отличное от имени папки.
+- game_for_deck_name / output_dir_for_name / name_matches_query / deck_query — жёстко завязаны на "game." префикс в deck name.
+- Доки утверждали "must match", "becomes the prefix of every deck name".
+- В примере new-game: "deck-2nd" папка с json "колода №2", "колода 3" с "дополнительная колода" — не работали (падали на prepare).
 
-**стало (этап-1: прямолинейный if + проверка на temp-данных; этап-2: минимальный рефакторинг по wiki/prompts/refactoring-rules.md — KISS/YAGNI, идиоматичный Rust, стиль базы, доки):**
-- В load_deck: если `deck.name != expected_name`, вычисляем относительную часть `exp_rel = expected_name.split_once('.').map_or(...)`, принимаем если `deck.name == exp_rel` (то есть префикс опущен), затем `deck.name = expected_name` (чтобы внутренние game_for_*/output/labels оставались полными).
-- Полные имена колод в catalog/CLI/API/файлах вывода — по-прежнему с префиксом (никаких изменений в архитектуре и downstream).
-- В data.json5 теперь допустимо `name: "rel.path"` (или полное) — префикс игры в `name` колоды больше не обязателен.
-- Обновлены только релевантные доки в catalog.rs (модуль и find_decks) — отражают реальное правило.
-- Код минимален (одно место, простой if + split_once), без новых абстракций/функций/модулей.
-- cargo test -p deck_gen (8/8) + cargo build — зелёные (существующие тесты).
-- Этап-1: код простой и прямой, без усложнений. Для убеждения во время работы использовал временные unit-тесты (приняли short/full, отвергли mismatch). Этап-2: упростил вычисление rel до split_once+map_or (идиоматичнее, короче), зачистил, доки в стиле.
-- Следуем правилам: минимальные изменения, без смены арх-ры (Deck.name, Conf, catalog flow те же), стиль базы (похожие split/strip в conf и catalog), KISS (никаких generics/trait-extract где не надо), обновление доков по правилам комментирования.
+**стало:**
+- declared_name: извлекает `name` из первого `"name": "..."` в raw data.json5 (простой regex, т.к. до expand).
+- catalog: LocatedDeck теперь хранит отдельно game_id + name (declared, без префикса); dotted_name переименован/заменён на declared_name (без добавления game.).
+- load_deck: убрана вся проверка и force name=expected; имя = то что в json; game_id проставляется из game.
+- name_matches_query: обновлён принимать Located, матч по game_id (для --game), по declared name, и по "game.deck" форме (split_once на первом .).
+- deck.name теперь короткое (deck-1st / колода №2 / дополнительная колода).
+- game lookup в prepare путях: используем deck.game_id (после добавления поля в Deck).
+- output_dir_for_name: ослаблено требование префикса (rest = strip или name целиком); model использует его через game_id+name.
+- CLI deck_query оставлен без изменений (продолжает генерировать "game" / "game.deck" для query).
+- Доки обновлены (модуль, функции, schema).
+- Стилистически: простой прямолинейный код (этап-1), затем минимальный рефакторинг (убран synthetic, прямая передача game_id в output_*, убраны неиспользуемые импорты, правки комментов).
+- Почему так: минимально (изменения сконцентрированы в catalog + 4 места lookup), без новой арх-ры (те же fn сигнатуры у публичных API catalog/find/prepare, те же flow), deck names теперь decoupled; regex уже был в зависимостях.
 
-**Проверка:**
-- cargo test -p deck_gen : OK (8 passed).
-- cargo build -p deck_gen : OK.
-- Логика: вручную через временные тесты до удаления (для минимизации изменений) — короткие имена без префикса принимаются, Deck.name внутри всегда canonical full, mismatch по-прежнему ловится.
-- Регрессий нет: полные имена работают как раньше, queries/labels/файлы — без изменений.
-- Только deck_gen (как указано).
+**Проверка работоспособности (команды из плана):**
+- list --game new-game → deck-1st \n колода №2 \n дополнительная колода
+- html/pdf --game new-game   (все 3 колоды)
+- html/pdf --game new-game --deck deck-1st
+- ... --game "new-game" --deck deck-1st
+- ... --game new-game --deck "колода №2"
+- ... --game new-game --deck "дополнительная колода"
+- ... --game "new-game" --deck "дополнительная колода"
+Все отработали без ошибок (render, output dirs с именами колод, pdf с chrome).
 
-## Файлы с изменениями (минимально)
-- deck_gen/src/catalog.rs (load_deck: поддержка short name; обновлены 2 док-комментария)
+cargo test -p deck_gen --features cli : 8/8 passed.
+cargo check/build -p deck_gen : OK.
+Только правки внутри deck_gen/src (как указано).
 
-(Полный diff см. в git. Никаких переименований/новых файлов/изменений вне deck_gen/src не было.)
+## Этапы по инструкции
+1. Решение + проверка (прямой код, запуск команд, тесты).
+2. Рефакторинг по wiki/prompts/refactoring-rules.md (KISS: нет лишних абстракций; стиль базы сохранён — короткие фактич. комменты, split_once как везде; Cargo.toml не трогал (regex уже использовался); добавил/обновил доки для публичных/модулей где вносил).
+
+## Файлы
+deck_gen/src/catalog.rs, model.rs, cli.rs, lib.rs, pdf_engine/mod.rs, render.rs, conf/mod.rs, conf/schema.rs
+(минимально по смыслу)
