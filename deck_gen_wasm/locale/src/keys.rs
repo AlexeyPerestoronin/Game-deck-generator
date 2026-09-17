@@ -11,6 +11,9 @@ pub const TOOLTIP_SPLIT_PREVIEW: &str = "tooltip-split-preview";
 pub const TOOLTIP_FEEDBACK: &str = "tooltip-feedback";
 pub const TOOLTIP_THEME: &str = "tooltip-theme";
 pub const TOOLTIP_LOCALE: &str = "tooltip-locale";
+pub const TOOLTIP_EXPLORER: &str = "tooltip-explorer";
+pub const TOOLTIP_GAMES: &str = "tooltip-games";
+pub const TOOLTIP_SETTINGS: &str = "tooltip-settings";
 
 pub const ARIA_CLEAR: &str = "aria-clear";
 pub const ARIA_DOWNLOAD: &str = "aria-download";
@@ -22,6 +25,9 @@ pub const ARIA_SPLIT_PREVIEW: &str = "aria-split-preview";
 pub const ARIA_FEEDBACK: &str = "aria-feedback";
 pub const ARIA_THEME: &str = "aria-theme";
 pub const ARIA_LOCALE: &str = "aria-locale";
+pub const ARIA_EXPLORER: &str = "aria-explorer";
+pub const ARIA_GAMES: &str = "aria-games";
+pub const ARIA_SETTINGS: &str = "aria-settings";
 
 pub const MODAL_CANCEL: &str = "modal-cancel";
 pub const MODAL_OK: &str = "modal-ok";
@@ -61,6 +67,16 @@ pub const TAB_PREVIEW_PREFIX: &str = "tab-preview-prefix";
 
 pub const BUTTON_NEW_FILE: &str = "button-new-file";
 pub const BUTTON_NEW_FOLDER: &str = "button-new-folder";
+
+pub const MENU_SETTINGS_FEEDBACK: &str = "menu-settings-feedback";
+pub const MENU_SETTINGS_THEME: &str = "menu-settings-theme";
+pub const MENU_SETTINGS_LOCALE: &str = "menu-settings-locale";
+
+pub const GAMES_LOCAL: &str = "games-local";
+pub const GAMES_GLOBAL: &str = "games-global";
+pub const GAMES_LOAD_LOCAL: &str = "games-load-local";
+pub const GAMES_LOAD: &str = "games-load";
+pub const GAMES_SETTINGS: &str = "games-settings";
 
 pub const PROMPT_NEW_FILE: &str = "prompt-new-file";
 pub const PROMPT_NEW_FOLDER: &str = "prompt-new-folder";

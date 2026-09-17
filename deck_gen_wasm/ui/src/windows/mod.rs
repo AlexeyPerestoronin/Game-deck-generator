@@ -2,6 +2,8 @@
 
 mod editor;
 mod explorer;
+mod games;
 
 pub use editor::Editor;
 pub use explorer::Explorer;
+pub use games::GamesPanel;

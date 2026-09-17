@@ -5,7 +5,9 @@
 
 mod clear;
 mod download;
+mod explorer;
 mod feedback;
+mod games;
 mod load_game;
 mod locale;
 mod new_file;
@@ -13,18 +15,17 @@ mod new_folder;
 mod new_game;
 mod prepare_html;
 mod prepare_pdf;
+mod settings;
 mod split_preview;
 mod theme;
 
 pub use clear::ClearButton;
 pub use download::DownloadButton;
-pub use feedback::FeedbackButton;
-pub use load_game::LoadGameButton;
-pub use locale::LocaleButton;
+pub use explorer::ExplorerButton;
+pub use games::GamesButton;
 pub use new_file::NewFileButton;
 pub use new_folder::NewFolderButton;
-pub use new_game::NewGameButton;
 pub use prepare_html::PrepareHtmlButton;
 pub use prepare_pdf::PreparePdfButton;
+pub use settings::SettingsButton;
 pub use split_preview::SplitPreviewButton;
-pub use theme::ThemeButton;

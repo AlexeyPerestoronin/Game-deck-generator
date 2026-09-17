@@ -1,10 +1,22 @@
-было: `.code-input { caret-color: #fff; }` (хардкод белый, невидим в light теме на --editor:#ffffff) → стало: в `:root, :root[data-theme="dark"]` добавлено `--caret: #fff;`, в `:root[data-theme="light"]` — `--caret: #000;`; `.code-input { caret-color: var(--caret); }` и `.editor-area { caret-color: var(--caret); }` (для единообразия)
+было: фиксированный Explorer в левой панели + разрозненные кнопки New/Load/Feedback/Theme/Locale на activity bar; нет Games панели и меню Settings.
 
-(почему: caret в HighlightedEditor прозрачный текст + отдельный caret; в light нужен контрастный чёрный. Следовали указаниям cursor_bug.md: только style.css, без theme.rs/JS/тестов CSS. В dark оставили белый.)
+стало (этап-1 прямолинейно + этап-2 по правилам рефакторинга):
+- Введён SidebarMode {Hidden, Explorer, Games} + чистая toggle() (с unit-тестами).
+- Activity bar перестроен по плану: Explorer, Games (переключают панель + active), PrepareHtml/Pdf, Download, Split, spacer, Clear, Settings (открывает меню).
+- Удалены с бара (не из кода логики): NewGame/Load/Feedback/Theme/Locale.
+- Левая панель — универсальный контейнер: при Hidden width=0 + пусто; Explorer — прежний; Games — новый.
+- Games: две сворачиваемые секции Local/Global (дефолт развернуты), resizable по высоте перетаскиванием (как split editor), full-width Load Local (через общий confirm), Global — list_game_folders() + строки с Settings→Load (add_game_from_github).
+- Обобщён github/template/workspace: list_game_folders + install_game(source) + add_game_from_github; legacy new-game делегирует.
+- Settings меню: всплывающее (getBoundingClientRect + backdrop + context-menu css), пункты вызывают старые send/cycle/change+reload.
+- Иконки: placeholder копии (split для explorer/games, clear для settings); старые feed/new/load/locale удалены из icons/.
+- Локализация: добавлены ключи/строки EN+RU.
+- CSS: минимальные правила для .games-section, .game-row, .games-full-btn, hresizer, chevron.
+- Состояние стартует Hidden (ширина 0). Prepare/Split/Clear/Download не трогают sidebar. Split active по-прежнему работает.
+- Крейты прошли cargo check + unit-тесты (sidebar toggle + github filter + template unique/retarget + ui другие = все ок). trunk build ✅ success.
+- Рефакторинг (этап-2): добавлены/улучшены module docs, pub fn docs, #[allow(dead_code)] на legacy, почищены реэкспорты, комментарии в Cargo.toml; без изменения поведения/алгоритмов (KISS, один модуль — ответственность, идиоматичный Rust где просто).
 
-Этап-1: прямое простое исправление.
-Этап-2: рефакторинг не потребовал изменений (код минимальный, стиль CSS базы соблюдён — объявления var в блоках :root по аналогии с --fg/--editor и др.).
-Крейт deck_gen_wasm_ui (владеющий UI) прошёл `cargo check` и `cargo test` (10/10 unit-тестов ок, только pre-existing warning).
-Браузерная визуальная проверка: недоступна (нет browser automation инструментов в окружении); использован ближайший заменитель — инспекция CSS + успешная сборка+тесты. Per spec: сборка UI не обязательна для чистого CSS.
+(почему: реализовано строго по vscode_like_ui.md "Цели (делать только это)" + "Scope кода". Левая панель теперь контейнер, activity — переключатели вида + прежние действия + Settings меню. GitHub обобщён без дублирования. Не persist, не новая архитектура, не тронуты prepare/split/clear/zip/editor.)
 
-Регрессий нет (scoped change).
+Браузерная проверка: trunk build прошёл (wasm bundle ок). Полноценное E2E (клик по Explorer/Games, переключение Hidden/active, collapse секций, drag высоты, Load Local, Global fetch+load конкретной игры, меню Settings, drag ширины sidebar) — не автоматизировано в этом окружении (нет browser инструментов); ближайший заменитель — сборка + тесты + ручная проверка по http://127.0.0.1:8080 после serve.bat. Регрессий в остальном не обнаружено (scoped).
+
+wiki/note.md обновлён (иконки).

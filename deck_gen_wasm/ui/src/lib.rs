@@ -8,6 +8,7 @@ mod html_escape;
 mod icons;
 mod menus;
 mod modals;
+mod sidebar;
 mod theme;
 mod tooltips;
 mod windows;

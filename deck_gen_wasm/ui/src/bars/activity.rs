@@ -1,36 +1,48 @@
-//! Left icon strip: ZIP, new/load game, prepare HTML/PDF, split preview, clear.
+//! ActivityBar: the left vertical strip of icon buttons (VSCode activity bar style).
 //!
-//! Each action is its own button module. This bar owns the shared confirm/alert
-//! dialogs and wires them to [`Workspace`](deck_gen_wasm_workspace::Workspace).
+//! Top group controls sidebar mode (Explorer/Games) or actions that leave sidebar unchanged.
+//! Bottom: Clear + Settings (menu).
+//! Owns the shared Confirm/Alert modals used by Clear and by Load (from Local section too).
+//! Receives sidebar signals from LoadedApp so buttons can coordinate width+mode.
 
 use leptos::prelude::*;
 
 use crate::buttons::{
-    ClearButton, DownloadButton, FeedbackButton, LoadGameButton, LocaleButton, NewGameButton,
-    PrepareHtmlButton, PreparePdfButton, SplitPreviewButton, ThemeButton,
+    ClearButton, DownloadButton, ExplorerButton, GamesButton, PrepareHtmlButton, PreparePdfButton,
+    SettingsButton, SplitPreviewButton,
 };
 use crate::modals::{AlertModal, ConfirmModal};
+use crate::sidebar::SidebarMode;
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::Workspace;
 
 /// Vertical action bar bound to one [`Workspace`].
 #[component]
-pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
+pub fn ActivityBar(
+    workspace: Workspace,
+    sidebar_mode: RwSignal<SidebarMode>,
+    explorer_width: RwSignal<i32>,
+    last_explorer_width: RwSignal<i32>,
+    // Lifted so Games panel (and old Load button if any) can trigger the same confirm.
+    show_load: RwSignal<bool>,
+    warning: RwSignal<Option<String>>,
+    warning_title: RwSignal<String>,
+) -> impl IntoView {
     let show_clear = RwSignal::new(false);
-    let show_load = RwSignal::new(false);
-    let warning = RwSignal::new(None::<String>);
-    let warning_title = RwSignal::new(locale::localize(keys::WARNING_ERROR));
 
     view! {
         <nav class="activity-bar" aria-label="Actions">
-            <DownloadButton workspace=workspace />
-            <NewGameButton
-                workspace=workspace
-                warning=warning
-                warning_title=warning_title
+            <ExplorerButton
+                sidebar_mode=sidebar_mode
+                explorer_width=explorer_width
+                last_explorer_width=last_explorer_width
             />
-            <LoadGameButton workspace=workspace on_open=move |_| show_load.set(true) />
+            <GamesButton
+                sidebar_mode=sidebar_mode
+                explorer_width=explorer_width
+                last_explorer_width=last_explorer_width
+            />
             <PrepareHtmlButton
                 workspace=workspace
                 warning=warning
@@ -41,12 +53,11 @@ pub fn ActivityBar(workspace: Workspace) -> impl IntoView {
                 warning=warning
                 warning_title=warning_title
             />
+            <DownloadButton workspace=workspace />
             <SplitPreviewButton workspace=workspace />
             <div class="activity-spacer"></div>
             <ClearButton on_open=move |_| show_clear.set(true) />
-            <FeedbackButton />
-            <ThemeButton />
-            <LocaleButton />
+            <SettingsButton />
             <ConfirmModal
                 open=show_clear
                 title=Signal::derive(move || locale::localize(keys::CONFIRM_CLEAR_TITLE))

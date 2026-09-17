@@ -131,3 +131,38 @@ pub fn LocaleIcon() -> impl IntoView {
         </span>
     }
 }
+
+#[component]
+pub fn ExplorerIcon() -> impl IntoView {
+    view! {
+        <span class="activity-icon" aria-hidden="true">
+            <img class="state-off"    src="icons/buttons/explorer/off.drawio.png"    width="40" height="40" />
+            <img class="state-on"     src="icons/buttons/explorer/on.drawio.png"     width="40" height="40" />
+            <img class="state-click"  src="icons/buttons/explorer/click.drawio.png"  width="40" height="40" />
+            <img class="state-active" src="icons/buttons/explorer/active.drawio.png" width="40" height="40" />
+        </span>
+    }
+}
+
+#[component]
+pub fn GamesIcon() -> impl IntoView {
+    view! {
+        <span class="activity-icon" aria-hidden="true">
+            <img class="state-off"    src="icons/buttons/games/off.drawio.png"    width="40" height="40" />
+            <img class="state-on"     src="icons/buttons/games/on.drawio.png"     width="40" height="40" />
+            <img class="state-click"  src="icons/buttons/games/click.drawio.png"  width="40" height="40" />
+            <img class="state-active" src="icons/buttons/games/active.drawio.png" width="40" height="40" />
+        </span>
+    }
+}
+
+#[component]
+pub fn SettingsIcon() -> impl IntoView {
+    view! {
+        <span class="activity-icon" aria-hidden="true">
+            <img class="state-off"   src="icons/buttons/settings/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/settings/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/settings/click.drawio.png" width="40" height="40" />
+        </span>
+    }
+}

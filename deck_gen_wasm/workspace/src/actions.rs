@@ -25,7 +25,7 @@ use deck_gen_wasm_import::{
 use deck_gen_wasm_persist::{save_binaries, save_session};
 use deck_gen_wasm_progress::{progress_block, progress_wrapper};
 use deck_gen_wasm_template as help;
-use deck_gen_wasm_template::install_new_game;
+use deck_gen_wasm_template::{install_game, install_new_game};
 
 impl Workspace {
     /// Write the text snapshot to localStorage and binaries to IndexedDB.
@@ -275,6 +275,48 @@ impl Workspace {
                     let mut vfs = workspace.vfs.get_untracked();
                     let subprocess = progress.new_subprocess(10.0, 90.0);
                     let result = install_new_game(&mut vfs, subprocess).await;
+                    (vfs, result)
+                });
+                progress_block!(progress, 90.0, 100.0, {
+                    match installed {
+                        (vfs, Ok(installed)) => {
+                            workspace.vfs.set(vfs);
+                            let path = format!("games/{}", installed.folder);
+                            workspace.expand_ancestors(&path);
+                            workspace.set_primary_selection(Some(path.clone()));
+                            let tmpl = locale::localize(keys::STATUS_ADDED);
+                            workspace
+                                .status
+                                .set(tmpl.replace("{path}", &path).replace("{source}", &installed.source));
+                        }
+                        (_, Err(err)) => {
+                            warning.set(Some(err));
+                            workspace.status.set(String::new());
+                        }
+                    }
+                });
+            });
+            workspace.finish_async();
+        });
+    }
+
+    /// Fetch a specific game folder (e.g. "monopoly-2.0") from GitHub and install under unique name in `games/`.
+    pub fn add_game_from_github(&self, source_game: &str, warning: RwSignal<Option<String>>) {
+        if !self.try_begin_async(locale::localize(keys::STATUS_LOADING_TEMPLATE)) {
+            return;
+        }
+        let workspace = *self;
+        let source_game = source_game.to_string();
+        spawn_local(async move {
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                progress_block!(progress, 0.0, 10.0, {
+                    workspace.flush_draft();
+                });
+                let installed = progress_block!(progress, 10.0, 90.0, {
+                    let mut vfs = workspace.vfs.get_untracked();
+                    let subprocess = progress.new_subprocess(10.0, 90.0);
+                    let result = install_game(&source_game, &mut vfs, subprocess).await;
                     (vfs, result)
                 });
                 progress_block!(progress, 90.0, 100.0, {

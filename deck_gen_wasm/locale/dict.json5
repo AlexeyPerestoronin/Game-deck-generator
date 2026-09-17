@@ -10,6 +10,9 @@
   "tooltip-feedback": { EN: "Send feedback by email.", RU: "Отправить отзыв по email." },
   "tooltip-theme": { EN: "Color theme (dark / light / system).", RU: "Цветовая тема (тёмная / светлая / системная)." },
   "tooltip-locale": { EN: "UI language (EN / RU).", RU: "Язык интерфейса (EN / RU)." },
+  "tooltip-explorer": { EN: "Explorer (project files).", RU: "Проводник (файлы проекта)." },
+  "tooltip-games": { EN: "Games (load local or from GitHub).", RU: "Игры (загрузка локальная или с GitHub)." },
+  "tooltip-settings": { EN: "Settings menu.", RU: "Меню настроек." },
 
   // aria labels for activity buttons
   "aria-clear": { EN: "Clear", RU: "Очистить" },
@@ -22,6 +25,9 @@
   "aria-feedback": { EN: "Feedback", RU: "Отзыв" },
   "aria-theme": { EN: "Color theme", RU: "Цветовая тема" },
   "aria-locale": { EN: "Locale", RU: "Локаль" },
+  "aria-explorer": { EN: "Explorer", RU: "Проводник" },
+  "aria-games": { EN: "Games", RU: "Игры" },
+  "aria-settings": { EN: "Settings", RU: "Настройки" },
 
   // modals
   "modal-cancel": { EN: "Cancel", RU: "Отмена" },
@@ -67,6 +73,18 @@
   // explorer buttons text
   "button-new-file": { EN: "+ File", RU: "+ Файл" },
   "button-new-folder": { EN: "+ Folder", RU: "+ Папка" },
+
+  // settings menu (replaces removed top-level buttons)
+  "menu-settings-feedback": { EN: "Send e-mail feedback", RU: "Отправить отзыв по e-mail" },
+  "menu-settings-theme": { EN: "Change theme", RU: "Сменить тему" },
+  "menu-settings-locale": { EN: "Localization", RU: "Локализация" },
+
+  // games sidebar panel
+  "games-local": { EN: "Local", RU: "Локальные" },
+  "games-global": { EN: "Global", RU: "Глобальные" },
+  "games-load-local": { EN: "Load Local Games", RU: "Загрузить локальную игру" },
+  "games-load": { EN: "Load Games", RU: "Загрузить игру" },
+  "games-settings": { EN: "Settings", RU: "Настройки" },
 
   // prompts
   "prompt-new-file": { EN: "New file name", RU: "Имя нового файла" },

@@ -15,8 +15,9 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::MouseEvent as WasmMouseEvent;
 
 use crate::bars::{ActivityBar, ProgressRay};
+use crate::sidebar::SidebarMode;
 use crate::theme;
-use crate::windows::{Editor, Explorer};
+use crate::windows::{Editor, Explorer, GamesPanel};
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
@@ -74,16 +75,25 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
     let last_fp = RwSignal::new(workspace.vfs.with_untracked(binaries_fingerprint));
     let generation = RwSignal::new(0u32);
 
-    // Local (not in Workspace) resizable width for the FS explorer pane.
-    // min=0 (hidden), max ~ half of (window - activity bar).
-    let explorer_width = RwSignal::new(260i32);
+    // VSCode-like sidebar state (local to UI, not persisted).
+    let sidebar_mode = RwSignal::new(SidebarMode::Hidden);
+    // Local (not in Workspace) resizable width for the sidebar pane (Explorer or Games).
+    // 0 means hidden (column collapses). Start hidden per spec.
+    let explorer_width = RwSignal::new(0i32);
+    let last_explorer_width = RwSignal::new(260i32);
     let is_dragging = RwSignal::new(false);
     let drag_start_x = RwSignal::new(0i32);
     let drag_start_w = RwSignal::new(0i32);
 
-    // Global listeners for drag (attached once; closures leaked for component lifetime).
+    // Lift modal state so both ActivityBar (Clear/Load) and Games panel can trigger the shared dialogs.
+    let show_load = RwSignal::new(false);
+    let warning = RwSignal::new(None::<String>);
+    let warning_title = RwSignal::new(locale::localize(keys::WARNING_ERROR));
+
+    // Global listeners for horizontal drag of sidebar width.
     Effect::new({
         let width_sig = explorer_width;
+        let last_w = last_explorer_width;
         let drag_sig = is_dragging;
         let sx = drag_start_x;
         let sw = drag_start_w;
@@ -112,6 +122,9 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
                     w = max_w;
                 }
                 width_sig.set(w);
+                if w > 0 {
+                    last_w.set(w);
+                }
             });
             let mup = Closure::<dyn FnMut(WasmMouseEvent)>::new(move |_ev: WasmMouseEvent| {
                 drag_sig.set(false);
@@ -158,11 +171,43 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
         )
     };
 
+    // Sidebar slot content (always emits a grid child in the explorer column position).
+    // Hidden: empty .explorer div (width=0 from CSS var collapses it visually).
+    // Explorer: the existing <Explorer/> (provides its own .explorer root + tree).
+    // Games: dedicated panel (will provide .explorer root + Local/Global sections).
+    let sidebar_slot = {
+        let ws = workspace;
+        let mode = sidebar_mode;
+        let show_l = show_load;
+        let warn = warning;
+        let warn_t = warning_title;
+        move || match mode.get() {
+            SidebarMode::Hidden => view! { <div class="explorer"></div> }.into_any(),
+            SidebarMode::Explorer => view! { <Explorer workspace=ws /> }.into_any(),
+            SidebarMode::Games => view! {
+                <GamesPanel
+                    workspace=ws
+                    show_load=show_l
+                    warning=warn
+                    warning_title=warn_t
+                />
+            }.into_any(),
+        }
+    };
+
     view! {
         <div class="ide" style=ide_style>
-            <ActivityBar workspace=workspace />
+            <ActivityBar
+                workspace=workspace
+                sidebar_mode=sidebar_mode
+                explorer_width=explorer_width
+                last_explorer_width=last_explorer_width
+                show_load=show_load
+                warning=warning
+                warning_title=warning_title
+            />
             <ProgressRay workspace=workspace />
-            <Explorer workspace=workspace />
+            {sidebar_slot}
             <div
                 class="resizer"
                 on:mousedown=move |ev: leptos::ev::MouseEvent| {
