@@ -59,6 +59,9 @@ where
 }
 
 /// Same as [`prepare_pdf`], optionally restricted to a deck name/prefix and duplex mode.
+///
+/// The `name` (when Some) is a full deck id "game.deck..." or game prefix "game"
+/// (selects all decks of the game).
 pub async fn prepare_pdf_named<F, E>(
     fs: Arc<F>,
     engine: &E,

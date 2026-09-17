@@ -1,4 +1,4 @@
-//! Serde shapes of the three `conf.json5` files.
+//! Serde shapes of the root and per-game `conf.json5` files.
 //!
 //! These types exist only to deserialize files. Runtime code uses [`super::Conf`]
 //! and [`super::GamePaths`], which store resolved `PathBuf`s instead of the
@@ -13,13 +13,6 @@ pub struct RootFile {
     pub games_root: String,
     /// How the native CLI finds a Chrome/Chromium executable.
     pub chrome: ChromeSettings,
-}
-
-/// `conf.json5` in the games folder.
-#[derive(Debug, Deserialize)]
-pub struct GamesRootFile {
-    /// Game id used when a deck query omits the `{game}.` prefix.
-    pub default_game: String,
 }
 
 /// `conf.json5` in a game folder.

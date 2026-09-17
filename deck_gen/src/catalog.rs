@@ -2,8 +2,8 @@
 //!
 //! A deck is a directory that contains `data.json5`. The public name is
 //! `{game_id}.{relative.dotted.path}` and must match the `name` field inside
-//! the file. Queries accept a full name, a name relative to the default game,
-//! or a prefix of either. Discovery is a walk + `BTreeMap` so output order is
+//! the file. Queries use a full name (game.deck...) or a game. prefix (to select
+//! all decks of one game). Discovery is a walk + `BTreeMap` so output order is
 //! stable across filesystems.
 
 use std::collections::BTreeMap;
@@ -61,7 +61,7 @@ where
     };
     let matched: Vec<LocatedDeck> = located
         .iter()
-        .filter(|item| name_matches_query(&item.name, needle, &loaded.default_game))
+        .filter(|item| name_matches_query(&item.name, needle))
         .cloned()
         .collect();
     if matched.is_empty() {
@@ -150,10 +150,6 @@ where
     Ok(deck)
 }
 
-fn name_matches_query(full: &str, query: &str, default_game: &str) -> bool {
-    let with_default = format!("{default_game}.{query}");
-    full == query
-        || full == with_default
-        || full.starts_with(&format!("{query}."))
-        || full.starts_with(&format!("{with_default}."))
+fn name_matches_query(full: &str, query: &str) -> bool {
+    full == query || full.starts_with(&format!("{query}."))
 }

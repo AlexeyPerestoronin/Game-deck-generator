@@ -1,10 +1,10 @@
-//! Runtime layout loaded from the three `conf.json5` files.
+//! Runtime layout loaded from the root `conf.json5` and per-game `conf.json5` files.
 //!
-//! There is a repository-root file (games folder + Chrome search), a games-root
-//! file (`default_game`), and one file per game (folders, output names, print).
-//! [`load`] walks a [`FileSystem`] and resolves every relative folder to a
-//! `PathBuf`. The native CLI caches the result in a process-wide cell; WASM
-//! always loads from the workspace VFS (or uses the empty-root fallback).
+//! There is a repository-root file (games folder + Chrome search) and one file
+//! per game (folders, output names, print). [`load`] walks a [`FileSystem`] and
+//! resolves every relative folder to a `PathBuf`. The native CLI caches the
+//! result in a process-wide cell; WASM always loads from the workspace VFS
+//! (or uses the empty-root fallback).
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -21,7 +21,7 @@ mod schema;
 pub use schema::{ChromeSettings, OutputNames, PrintSettings};
 
 use locate::find_conf_file;
-use schema::{GameFile, GamesRootFile, RootFile};
+use schema::{GameFile, RootFile};
 
 use locate::CONF_FILE_NAME;
 
@@ -34,8 +34,6 @@ pub struct Conf {
     pub root: PathBuf,
     /// Directory that contains per-game folders.
     pub games_root: PathBuf,
-    /// Game id used when a query omits the `{game}.` prefix.
-    pub default_game: String,
     /// Native Chrome search rules (ignored in wasm).
     pub chrome: ChromeSettings,
     /// Game id → resolved folders and output names.
@@ -109,19 +107,18 @@ where
 }
 
 impl Conf {
-    /// Look up a game by id, or the default game when `id` is `None`.
-    pub fn game(&self, id: Option<&str>) -> Result<&GamePaths> {
-        let key = id.unwrap_or(self.default_game.as_str());
-        self.games.get(key).ok_or_else(|| {
+    /// Look up a game by its explicit id.
+    pub fn game(&self, id: &str) -> Result<&GamePaths> {
+        self.games.get(id).ok_or_else(|| {
             let known = self.games.keys().cloned().collect::<Vec<_>>().join(", ");
-            Error::msg(format!("Unknown game {key:?}. Known: {known}"))
+            Error::msg(format!("Unknown game {id:?}. Known: {known}"))
         })
     }
 
     /// Game whose id is the first dotted segment of a deck name.
     pub fn game_for_deck_name(&self, name: &str) -> Result<&GamePaths> {
         let id = name.split('.').next().unwrap_or("");
-        self.game(Some(id))
+        self.game(id)
     }
 }
 
@@ -154,17 +151,9 @@ where
     } else {
         HashMap::new()
     };
-    let games_conf_path = games_root.join(CONF_FILE_NAME);
-    let default_game = if fs.is_file(&games_conf_path) {
-        let games_raw: GamesRootFile = parse_json5_file(fs, &games_conf_path)?;
-        games_raw.default_game
-    } else {
-        games.keys().next().cloned().unwrap_or_default()
-    };
     Ok(Conf {
         root: PathBuf::new(),
         games_root,
-        default_game,
         chrome: ChromeSettings::default(),
         games,
     })
@@ -180,8 +169,6 @@ where
         .ok_or_else(|| Error::file(&conf_path, "has no parent directory"))?
         .to_path_buf();
     let games_root = root.join(&raw.games_root);
-    let games_conf_path = games_root.join(CONF_FILE_NAME);
-    let games_raw: GamesRootFile = parse_json5_file(fs, &games_conf_path)?;
     let games = discover_games(fs, &games_root)?;
     if games.is_empty() {
         return Err(Error::file(
@@ -189,19 +176,9 @@ where
             "must contain at least one game folder with conf.json5",
         ));
     }
-    if !games.contains_key(&games_raw.default_game) {
-        return Err(Error::file(
-            &games_conf_path,
-            format!(
-                "default_game {:?} is not a known game-name",
-                games_raw.default_game
-            ),
-        ));
-    }
     Ok(Conf {
         root,
         games_root,
-        default_game: games_raw.default_game,
         chrome: raw.chrome,
         games,
     })

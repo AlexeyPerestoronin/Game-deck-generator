@@ -40,7 +40,8 @@ where
 
 /// Same as [`prepare_html`], but optionally restrict to a deck name or prefix.
 ///
-/// Each item is `(deck_name, artifacts)` in catalog order.
+/// The `name` (when Some) is a full deck id like "game.deck" or a game prefix "game"
+/// (to select all decks of that game). Each item is `(deck_name, artifacts)` in catalog order.
 pub fn prepare_html_named<F>(
     fs: Arc<F>,
     name: Option<&str>,

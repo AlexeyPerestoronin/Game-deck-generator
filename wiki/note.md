@@ -1,25 +1,26 @@
-# Note — доработка №5 (vscode_like_ui.md)
+# Note — remove_default_game (2026-09-17)
 
 ## Выполненные доработки
-1. PDF preview в Firefox: чёрные страницы → белые.
-   - Без поломки изображений карт в Chrome/Edge.
-   - Реализовано через targeted UA sniff: color-scheme только на iframe для Firefox; для Chromium — как раньше на wrapper div.
-   - Простой код, без изменений генерации PDF и без prepare_pdf_web.
+1. Удалён `default_game` + поддержка/загрузка `games/conf.json5`.
+2. CLI: вместо `--name` (с относительными именами) — обязательный `--game <GAME>` + опциональный `--deck <DECK>`.
+3. catalog упрощён (без default_game логики).
+4. Работа без games/conf.json5 подтверждена (в т.ч. через root conf путь).
+5. cargo check + тесты deck_gen — зелёные. Ручные запуски list/html с новыми флагами — работают.
+6. Обновлены релевантные доки/README (этап-2).
 
 ## Что проверено автоматически (этап-1 + рефакторинг)
-- cargo check -p deck_gen_wasm_ui — OK
-- cargo test -p deck_gen_wasm_ui — 16/16 OK
-- Изменён только код в deck_gen_wasm/ui (preview.rs + style.css). Бизнес-логика превью и PDF не затронута.
+- cargo check -p deck_gen --features cli + --no-default-features — OK.
+- cargo test -p deck_gen --features cli — 5/5 OK.
+- Изменения только в deck_gen (минимальный scope по плану). deck_gen_wasm не затронут (API prepare_* сохранены).
 
 ## Требуемые действия от пользователя (обязательно)
-Полная ручная верификация в браузерах (после `serve.bat` или `trunk serve`):
+1. Удалить файл `games/conf.json5` (он больше не требуется и не читается; можно `git rm`).
+2. Пересобрать `deck_gen.exe` (если используешь pre-built из корня): `cargo build --release -p deck_gen --features cli` + скопировать, или запустить `start.bat`.
+3. Обновить свои скрипты/вызовы CLI:
+   - старое: `deck_gen list foo` или `deck_gen html --name foo` (опиралось на default_game)
+   - новое: `deck_gen list --game new-game --deck foo`  (или без --deck чтобы все колоды игры)
+   - Для monopoly (id="monopoly", папка=monopoly-2.0): `--game monopoly`
+4. Если есть внешние ссылки на поведение "default game" или games/conf.json5 — поправить.
+5. (опционально) Проверить, что в твоём окружении `deck_gen list --game <id>` и генерация работают как раньше, только с явным --game.
 
-1. Открыть приложение в **Firefox** (приоритет), Chrome и Edge.
-2. Сгенерировать PDF через кнопку Prepare Pdf (или Preview Pdf).
-3. Открыть любой сгенерированный .pdf файл в превью (через split workspace или preview tab):
-   - Страницы должны быть **белыми** (стандартный цвет бумаги) во всех трёх браузерах.
-   - Содержимое (текст, карты) должно быть видно и в светлой, и в тёмной теме приложения.
-4. Убедиться, что превью HTML/Markdown/изображений не пострадало.
-5. Проверить, что в Chrome/Edge при просмотре PDF изображения карт внутри не стали чёрными прямоугольниками (регрессия по старой проблеме).
-
-Если в Firefox PDF теперь белый и нет регрессий по рендеру изображений в Chromium — задача закрыта.
+После удаления games/conf.json5 и пересборки — задача полностью закрыта.

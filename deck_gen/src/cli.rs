@@ -28,18 +28,30 @@ enum Command {
     List {
         #[arg(long)]
         json: bool,
-        /// Exact name, game-relative name, or a prefix
-        name: Option<String>,
+        /// Game id (required). All decks of the game are listed when --deck is omitted.
+        #[arg(long)]
+        game: String,
+        /// Deck name within the game (optional). If omitted, selects all decks of --game.
+        #[arg(long)]
+        deck: Option<String>,
     },
     /// Render face/back/preview HTML
     Html {
+        /// Game id (required).
         #[arg(long)]
-        name: Option<String>,
+        game: String,
+        /// Deck name within the game (optional). If omitted, renders all decks of --game.
+        #[arg(long)]
+        deck: Option<String>,
     },
     /// Render HTML, then card PDFs and an A4 duplex sheet (needs local Chrome)
     Pdf {
+        /// Game id (required).
         #[arg(long)]
-        name: Option<String>,
+        game: String,
+        /// Deck name within the game (optional). If omitted, renders all decks of --game.
+        #[arg(long)]
+        deck: Option<String>,
         #[arg(long)]
         duplex: Option<String>,
     },
@@ -48,17 +60,35 @@ enum Command {
 /// Parse argv and run `list`, `html`, or `pdf`.
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     match Cli::parse().command {
-        Command::List { json, name } => list_command(json, name.as_deref())?,
-        Command::Html { name } => html_command(name.as_deref())?,
-        Command::Pdf { name, duplex } => pdf_command(name.as_deref(), duplex.as_deref())?,
+        Command::List { json, game, deck } => {
+            let q = deck_query(&game, deck.as_deref());
+            list_command(json, Some(&q))?
+        }
+        Command::Html { game, deck } => {
+            let q = deck_query(&game, deck.as_deref());
+            html_command(Some(&q))?
+        }
+        Command::Pdf { game, deck, duplex } => {
+            let q = deck_query(&game, deck.as_deref());
+            pdf_command(Some(&q), duplex.as_deref())?
+        }
     }
     Ok(())
 }
 
-fn list_command(json: bool, name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+/// Build the catalog query from CLI --game/--deck.
+/// When deck is None, query is just the game id (matches `game.` prefix for all its decks).
+fn deck_query(game: &str, deck: Option<&str>) -> String {
+    match deck {
+        Some(d) => format!("{}.{}", game, d),
+        None => game.to_string(),
+    }
+}
+
+fn list_command(json: bool, query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = OsFs;
     let loaded = conf()?;
-    let names = catalog::matching_names(&fs, &loaded, name)?;
+    let names = catalog::matching_names(&fs, &loaded, query)?;
     if json {
         println!("{}", serde_json::to_string(&names)?);
     } else {
@@ -69,15 +99,15 @@ fn list_command(json: bool, name: Option<&str>) -> Result<(), Box<dyn std::error
     Ok(())
 }
 
-fn html_command(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+fn html_command(query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
-    for (label, artifacts) in crate::prepare_html_named(fs, name)? {
+    for (label, artifacts) in crate::prepare_html_named(fs, query)? {
         print_html_logs(&label, artifacts.card_count, &artifacts.preview, &artifacts.face_html, &artifacts.back_html);
     }
     Ok(())
 }
 
-fn pdf_command(name: Option<&str>, duplex_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+fn pdf_command(query: Option<&str>, duplex_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
     let loaded = conf()?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
@@ -85,7 +115,7 @@ fn pdf_command(name: Option<&str>, duplex_override: Option<&str>) -> Result<(), 
     let artifacts = pollster::block_on(crate::prepare_pdf_named(
         fs,
         &engine,
-        name,
+        query,
         duplex_override,
     ))?;
     for (label, pdf) in artifacts {
