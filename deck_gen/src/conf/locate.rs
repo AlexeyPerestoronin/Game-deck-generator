@@ -1,8 +1,7 @@
 //! Find the repository-root `conf.json5` without baking a path into the binary.
 //!
 //! Search order: `DECK_GEN_CONF` if it points at a file, then walk parents of
-//! each [`FileSystem::search_roots`] entry. Game folders also contain a
-//! `conf.json5`, so a hit counts only when the file has `games_root`.
+//! each [`FileSystem::search_roots`] entry. Only root confs declare `games_root`.
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -11,6 +10,8 @@ use crate::error::{Error, Result};
 use crate::fs::FileSystem;
 
 pub(crate) const CONF_FILE_NAME: &str = "conf.json5";
+/// Per-game marker (replaces the old per-game `conf.json5`).
+pub(crate) const GAME_CONF_FILE_NAME: &str = "game.json5";
 const CONF_PATH_ENV: &str = "DECK_GEN_CONF";
 
 /// Resolve the root conf path through `fs` (env override, then parent walk).
@@ -56,8 +57,8 @@ where
     }
 }
 
-/// Root conf is the one that points at the games folder. Game and games-root
-/// conf files share the same filename, so we must not stop at the first hit.
+/// Root conf is the one that points at the games folder (has `games_root`).
+/// We walk parents instead of stopping at first `conf.json5` hit.
 fn looks_like_root_conf<F>(fs: &F, path: &Path) -> bool
 where
     F: FileSystem + ?Sized,

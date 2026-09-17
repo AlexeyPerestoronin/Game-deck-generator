@@ -1,49 +1,52 @@
-# Результат доработки по remove_default_game.md (2026-09-17)
+# Результат доработки по rename_game_settings.md (2026-09-17)
 
 ## Задача
-Избавиться от `default_game` и `games/conf.json5`. В CLI заменить `--name` (опциональный, с fallback) на обязательный `--game <GAME>` + опциональный `--deck <DECK>`. Убрать загрузку и валидацию games/conf.json5. Сделать работу без этого файла полной (включая VFS fallback). Минимальные изменения, без смены архитектуры. cargo check + тесты deck_gen — OK. Отчёт в формате было→стало. При необходимости — действия в note.md.
+Изменить обнаружение игр: маркер per-game конфига `conf.json5` → `game.json5`; discovery в games_root перевести с прямого сканирования детей на BFS с pruning (не спускаться внутрь найденной игры). Это позволяет группировать игры в подпапках (group/gameA + group/gameB, group не является игрой). Минимальные изменения, без смены архитектуры. Сборка + unit-тесты deck_gen — OK. Обновить обращения, комментарии, ошибки, доки. Отчёт было→стало. При необходимости — в note.md.
 
 ## Что было → стало (почему)
 
-**было:**
-- `Conf` имела `default_game: String`.
-- Загружался `GamesRootFile` из `games/conf.json5` в `build_conf` (обязательно) и в `load_workspace_fallback` (fallback на first или "").
-- `Conf::game(id: Option<&str>)` использовал default при None.
-- `catalog::name_matches_query(full, query, default_game)` поддерживал bare names и "default.xxx".
-- CLI: List имел positional `name: Option`, Html/Pdf — `#[arg(long)] name: Option`. Запросы могли быть относительными к default.
-- Валидация: default_game должен существовать среди игр.
-- Документация и help описывали "относительно игры по умолчанию".
-- `games/conf.json5` требовался при наличии root conf.
+**было (этап-1 до рефакторинга):**
+- discover_games делал `for path in fs.read_dir(games_root)` — только прямые дети.
+- Маркер игры: `path.join(CONF_FILE_NAME)` где CONF_FILE_NAME="conf.json5" (общий с root).
+- Ошибка при 0 игр: "... with conf.json5".
+- Комментарии/доки в conf/* , README, help.md упоминали per-game `conf.json5`.
+- Существующие games/*/conf.json5 не позволили бы обнаружить игры после смены маркера.
+- Нет поддержки вложенности: group/ с играми внутри не работала бы (или находила бы group если бы был маркер).
+- locate.rs объяснял "Game folders also contain a conf.json5".
+- В тестах и примерах кода упоминался conf.json5 как per-game маркер.
 
-**стало (этап-1: прямолинейно + минимально; этап-2: рефакторинг по правилам):**
-- Удалён `default_game` из `Conf` и весь тип `GamesRootFile` (schema.rs).
-- `build_conf` и `load_workspace_fallback` больше не читают `games/conf.json5` и не валидируют default. Если файл отсутствует — OK.
-- `Conf::game(&self, id: &str)` — всегда явный id (без Option/fallback).
-- `name_matches_query(full, query)` упрощена: только exact или "query." prefix. Логика default_game убрана. Имена колод теперь всегда с префиксом игры (query="game" для всех колод игры, "game.deck" для конкретной).
-- CLI: `--game <GAME>` (обязательный String), `--deck <DECK>` (Option). В run вычисляется query = deck.map(|d| format!("{game}.{d}")).unwrap_or(game.to_string()), затем передаётся в list/html/pdf_command и в prepare_* / catalog.
-- Обновлены вызовы внутри cli, переименованы внутренние `name`→`query` для ясности (рефакторинг).
-- Дополнены/исправлены доки и комментарии в затронутых файлах + обновлены README.md и deck_gen/README.md (актуализация по правилам рефакторинга, без изменения архитектуры).
-- Удалён `use GamesRootFile`.
-- cargo check -p deck_gen (с/без cli) + cargo test — OK (5/5).
-- Ручная проверка: list/html с --game/--deck работают, без games/conf.json5 (временно убран) — работает, неизвестные игры/деки — корректные ошибки, префикс game. выбирает все колоды игры.
-
-Изменения строго в scope (cli.rs, conf/mod.rs + schema.rs, catalog.rs) + минимальные обновления публичных доков и README (чтобы не врать). Никаких новых абстракций, никаких изменений в prepare_* сигнатурах, сохранён стиль кодовой базы. WASM и содержимое games/ не трогали (как указано).
+**стало (этап-1: простой BFS + прямолинейный код + простые unit-тесты; этап-2: рефакторинг по правилам в wiki/prompts/refactoring-rules.md):**
+- Введена GAME_CONF_FILE_NAME = "game.json5" в locate.rs (CONF_FILE_NAME осталась только для root).
+- discover_games теперь: enqueue прямых детей games_root; BFS по очереди; если в dir есть game.json5 → load GameFile (должен иметь game-name иначе ошибка deserialize), добавить, `continue` (не enqueue детей); иначе — enqueue его child-dirs.
+- build_conf ошибка обновлена на "with game.json5".
+- Обновлены все комментарии, док-комменты, ошибки в deck_gen/src/conf/* (mod.rs, schema.rs, locate.rs).
+- Обновлены deck_gen/README.md, games/new-game/help.md, deck_gen_wasm/template/user-help.md (доки).
+- Минимально обновлён тестовый пример в github.rs.
+- Переименованы реальные маркеры: games/monopoly-2.0/conf.json5 → game.json5 и для new-game (необходимо для работоспособности после смены логики; shared games/conf.json5 не тронут).
+- Добавлены простые unit-тесты в conf::tests (flat, nested+prune, duplicate) — используют temp dirs + OsFs.
+- cargo check + cargo test -p deck_gen — OK (8 passed, включая 3 новых).
+- cargo test -p deck_gen_wasm_template — OK (крейт с минимальным изменением).
+- Ручная проверка: `cargo run -p deck_gen --features cli -- list --game monopoly` и `--game new-game` — успешно находят и перечисляют колоды (flat структура работает).
+- Unit-тесты подтверждают nested: group/sub-a + group/sub-b + direct обнаруживаются; prune предотвращает спуск и ложные находки глубже.
+- Изменения строго минимальны, архитектура не тронута (discover_games возвращает то же, Conf не меняется), стиль базы сохранён.
+- На этапе-2: убраны избыточные inline-комментарии (не narrate steps), подчищены упоминания; актуализированы README по правилам рефакторинга; без добавления абстракций (KISS/YAGNI).
 
 **Проверка:**
-- cargo check -p deck_gen --features cli : успех (и --no-default-features).
-- cargo test -p deck_gen --features cli : 5 passed.
-- Функциональные тесты CLI: `list --game new-game`, `list --game monopoly`, `list --game ... --deck ...`, `html --game ... --deck ...` — OK. Fallback без games/conf.json5 — OK.
-- Этап-1 был максимально прямым (простые удаления, match для query). На этапе-2: переименования параметров для читаемости, добавлены уточняющие доки, актуализированы README — без овер-инжиниринга, в стиле проекта.
+- cargo check -p deck_gen : OK.
+- cargo test -p deck_gen : 8 passed (flat, nested prune, dup + старые).
+- Функционал: list --game для обеих игр после rename — OK (много колод monopoly, 2 для new-game).
+- Нет регрессий в существующей плоской структуре.
+- WASM template build/test OK.
+- Этап-1: код прямой (VecDeque, явный цикл), добавил unit-тесты т.к. логика BFS позволяет их писать просто. Этап-2: чистка, доки, рефак по правилам (минимально, в стиле).
 
 ## Файлы с изменениями (минимально)
-- deck_gen/src/cli.rs
-- deck_gen/src/conf/mod.rs
-- deck_gen/src/conf/schema.rs
-- deck_gen/src/catalog.rs
-- deck_gen/src/lib.rs (только доки)
-- deck_gen/src/pdf_engine/mod.rs (только доки)
-- README.md
+- deck_gen/src/conf/mod.rs (главное: discover_games на BFS, тесты, сообщения, импорт)
+- deck_gen/src/conf/schema.rs (комменты)
+- deck_gen/src/conf/locate.rs (GAME_CONF_FILE_NAME + комменты)
 - deck_gen/README.md
-- deck_gen/arch.mermaid (маленькое)
+- games/new-game/help.md
+- deck_gen_wasm/template/user-help.md
+- deck_gen_wasm/template/src/github.rs (тестовые данные)
+- (файлы переименованы на диске: */game.json5)
 
-(Полный diff см. в git.)
+(Полный diff см. в git. Новые файлы не создавались.)

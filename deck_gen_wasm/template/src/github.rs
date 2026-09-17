@@ -93,7 +93,7 @@ mod tests {
         let t = make_tree(&[
             ("games/new-game", "tree"),
             ("games/monopoly-2.0", "tree"),
-            ("games/new-game/conf.json5", "blob"),
+            ("games/new-game/game.json5", "blob"),
             ("games/monopoly-2.0/decks/foo", "tree"),
             ("other/stuff", "tree"),
             ("games/conf.json5", "blob"),

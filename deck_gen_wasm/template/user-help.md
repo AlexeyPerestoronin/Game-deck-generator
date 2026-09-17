@@ -45,7 +45,7 @@ This site is an in-browser workspace for card-game decks. Files live in memory a
 
 Under `games/<id>/`:
 
-- `conf.json5` — game id (must match the folder name).
+- `game.json5` — game id (must match the folder name).
 - `vars/` — values for `${game:...}` and `${card:...}`.
 - `decks/` — one folder per deck, each with `data.json5`.
 - `views/` — templates named in `view.face` / `view.back`.

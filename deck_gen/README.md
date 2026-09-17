@@ -11,7 +11,7 @@
 Важные моменты:
 1. Два уровня конфигурации (default_game в games/conf.json5 удалён):
    1. `conf.json5` в корне проекта (games_root + chrome);
-   2. `./games/<game-name>/conf.json5` в каталоге каждой игры.
+   2. `./games/<game-name>/game.json5` в каталоге каждой игры.
 
 Схема: [`arch.mermaid`](arch.mermaid).
 
@@ -24,7 +24,7 @@ flowchart TB
 
   subgraph deck_gen [deck_gen]
     FS["FileSystem: OsFs или внешняя реализация"]
-    CONF["conf: root + per-game conf.json5 (no default_game)"]
+    CONF["conf: root + per-game game.json5 (no default_game)"]
     CAT["catalog: поиск колод data.json5"]
     LOAD["load + subst: плейсхолдеры JSON5"]
     MODEL["model / card"]
