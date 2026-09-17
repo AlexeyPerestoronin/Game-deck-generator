@@ -42,5 +42,5 @@ serde_json = { version = "1", features = ["preserve_order"] }
 thiserror = "2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# Chromium print + A4 duplex imposition; never linked into wasm builds.
+# Chromium (CDP) for PDF (print_to_pdf) and PNG (screenshot); native only.
 prepare_pdf_host = { path = "../prepare_pdf_host", optional = true }

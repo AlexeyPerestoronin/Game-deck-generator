@@ -1,5 +1,5 @@
 # prepare-pdf-web
 
-Движок HTML→PDF для браузера. Реализует `deck_gen::pdf_engine::PdfEngineGenerator` и вызывается из `deck_gen_wasm` после `prepare_html`.
+Движок HTML→PDF/PNG для браузера. Реализует `deck_gen::PdfEngineGenerator` и `CardPngGenerator`; используется из `deck_gen_wasm`.
 
-Карточный HTML кладётся в скрытый iframe (чтобы отработали CSS и скрипты вёрстки), живой DOM рисуется на canvas, страницы кодируются в JPEG (300 dpi) и собираются в PDF размера карты через `deck_gen`. Рисование из DOM, а не из SVG `foreignObject`, нужно, чтобы canvas в Chromium оставался «чистым».
+HTML одной или нескольких карт в скрытый iframe, DOM на canvas, JPEG (для PDF, 300dpi) или PNG (для per-card, 2x). DOM paint вместо foreignObject — для origin-clean canvas в Chromium.

@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use headless_chrome::protocol::cdp::Page::CaptureScreenshotFormatOption;
 use headless_chrome::types::PrintToPdfOptions;
 use headless_chrome::{Browser, LaunchOptions};
 
@@ -56,6 +57,29 @@ impl Chrome {
         tab.wait_until_navigated()?;
         let _ = tab.evaluate("window.__fitHeaderNames || document.fonts.ready", true);
         Ok(tab.print_to_pdf(Some(pdf_options(width_mm, height_mm)))?)
+    }
+
+    /// Render a per-card HTML file (standalone, one card) to PNG bytes via CDP screenshot.
+    /// Clips to the rendered card element for exact card-sized output.
+    pub fn html_to_png_bytes(&self, html: &str, width_mm: f64, height_mm: f64) -> Result<Vec<u8>> {
+        let html_path = unique_temp("html");
+        fs::write(&html_path, html)?;
+        let _guard = DeleteOnDrop(html_path.clone());
+        self.html_file_to_png_bytes(&html_path, width_mm, height_mm)
+    }
+
+    fn html_file_to_png_bytes(&self, html: &Path, _width_mm: f64, _height_mm: f64) -> Result<Vec<u8>> {
+        if !html.is_file() {
+            return Err(Error::file(html, "HTML file does not exist"));
+        }
+        let tab = self.browser.new_tab()?;
+        tab.navigate_to(&path_to_file_url(html)?)?;
+        tab.wait_until_navigated()?;
+        let _ = tab.evaluate("window.__fitHeaderNames || document.fonts.ready", true);
+        // tiny settle time for layout/scripts
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let el = tab.wait_for_element("article.card, article.card-back")?;
+        Ok(el.capture_screenshot(CaptureScreenshotFormatOption::Png)?)
     }
 }
 

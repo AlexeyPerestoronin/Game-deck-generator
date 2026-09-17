@@ -2,14 +2,14 @@
 name = "prepare_pdf_web"
 version.workspace = true
 edition.workspace = true
-description = "Browser HTML→PDF for deck_gen::PdfEngineGenerator"
+description = "Browser HTML→PDF/PNG for deck_gen (PdfEngineGenerator + CardPngGenerator)"
 
 [dependencies]
-# JPEG pages → card-size PDF (`pdf_from_jpeg_pages`); wasm omits the native engine.
+# Re-exports CardSize, provides pdf_from_jpeg_pages; no native/chrome.
 deck_gen = { path = "../deck_gen", default-features = false }
-# Read `{ data, width, height }` objects returned by `htmlToJpegPages`.
+# Typed arrays and Reflect for results from raster JS.
 js-sys = "0.3"
-# Bind `src/html_to_jpeg_pages.js`.
+# Bind htmlToJpegPages / htmlToPng from the JS module.
 wasm-bindgen = "0.2"
-# Await the `htmlToJpegPages` Promise.
+# Convert JS promises from canvas raster to Rust futures.
 wasm-bindgen-futures = "0.4"

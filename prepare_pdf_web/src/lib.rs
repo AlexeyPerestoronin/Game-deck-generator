@@ -1,14 +1,16 @@
 //! Browser `PdfEngineGenerator` used by `deck_gen_wasm`.
 //!
+//! Also provides WebPngEngine (CardPngGenerator) for per-card HTML → PNG raster
+//! using the same DOM-paint approach (canvas.toBlob('image/png')).
+//!
 //! Card HTML is laid out in a hidden iframe (so CSS and fit-header scripts run),
-//! painted to a canvas from the live DOM, encoded as JPEG, then wrapped in a
-//! card-size PDF by `deck_gen::pdf_engine`. Painting from the DOM keeps the
-//! canvas origin-clean in Chromium; drawing an SVG `<foreignObject>` does not.
+//! painted to a canvas from the live DOM, encoded as JPEG/PNG. Painting from the
+//! DOM keeps the canvas origin-clean in Chromium.
 
 use std::future::Future;
 
 use deck_gen::pdf_engine::{pdf_from_jpeg_pages, CardSize, JpegPage, PdfEngineGenerator};
-use deck_gen::{Error, Result};
+use deck_gen::{CardPngGenerator, Error, Result};
 use js_sys::{Reflect, Uint8Array};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -23,6 +25,28 @@ impl PdfEngineGenerator for WebPdfEngine {
     fn html_to_pdf(&self, html: &str, card: CardSize) -> impl Future<Output = Result<Vec<u8>>> {
         html_to_pdf(html.to_string(), card)
     }
+}
+
+/// Stateless PNG raster engine; uses same iframe+canvas paint path as the PDF one.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct WebPngEngine;
+
+impl CardPngGenerator for WebPngEngine {
+    fn html_to_png(&self, html: &str, card: CardSize) -> impl Future<Output = Result<Vec<u8>>> {
+        html_to_png(html.to_string(), card.width_mm, card.height_mm)
+    }
+}
+
+async fn html_to_png(html: String, width_mm: f64, height_mm: f64) -> Result<Vec<u8>> {
+    let promise = html_to_png_js(&html, width_mm, height_mm);
+    let value = JsFuture::from(promise)
+        .await
+        .map_err(|err| Error::msg(js_error(err)))?;
+    let bytes = Uint8Array::new(&value).to_vec();
+    if bytes.is_empty() {
+        return Err(Error::msg("browser produced empty PNG"));
+    }
+    Ok(bytes)
 }
 
 async fn html_to_pdf(html: String, card: CardSize) -> Result<Vec<u8>> {
@@ -75,4 +99,7 @@ fn js_error(err: JsValue) -> String {
 extern "C" {
     #[wasm_bindgen(js_name = htmlToJpegPages)]
     fn html_to_jpeg_pages(html: &str, width_mm: f64, height_mm: f64, dpi: f64) -> js_sys::Promise;
+
+    #[wasm_bindgen(js_name = htmlToPng)]
+    fn html_to_png_js(html: &str, width_mm: f64, height_mm: f64) -> js_sys::Promise;
 }

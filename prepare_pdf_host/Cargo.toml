@@ -5,6 +5,9 @@ edition.workspace = true
 description = "Host-only HTML→PDF via Chromium. Not for wasm."
 
 [dependencies]
+# Error type used by headless_chrome APIs (Chrome methods return anyhow::Result).
 anyhow = "1"
+# Chromium DevTools Protocol (CDP) automation for print_to_pdf and screenshots.
 headless_chrome = "1"
+# Error enum with From<anyhow> + thiserror derives.
 thiserror = "2"

@@ -1,8 +1,9 @@
-//! Native CLI: list / html / pdf. Compiled only with `--features cli`.
+//! Native CLI: list / html / pdf / png. Compiled only with `--features cli`.
 //!
 //! `list` and `html` stay inside this crate. `pdf` launches Chrome through
 //! `prepare_pdf_host` (via [`crate::pdf_engine::HostPdfEngine`]) after the same
-//! HTML render. The process filesystem is [`crate::fs::OsFs`].
+//! HTML render. `png` also uses Chrome (CDP screenshot) but consumes the per-card
+//! HTML files and writes per-card PNGs. The process filesystem is [`crate::fs::OsFs`].
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -55,6 +56,15 @@ enum Command {
         #[arg(long)]
         duplex: Option<String>,
     },
+    /// Render per-card PNGs (face/back) from per-card HTML (needs local Chrome)
+    Png {
+        /// Game id (required).
+        #[arg(long)]
+        game: String,
+        /// Deck name within the game (optional). If omitted, renders all decks of --game.
+        #[arg(long)]
+        deck: Option<String>,
+    },
 }
 
 /// Parse argv and run `list`, `html`, or `pdf`.
@@ -71,6 +81,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         Command::Pdf { game, deck, duplex } => {
             let q = deck_query(&game, deck.as_deref());
             pdf_command(Some(&q), duplex.as_deref())?
+        }
+        Command::Png { game, deck } => {
+            let q = deck_query(&game, deck.as_deref());
+            png_command(Some(&q))?
         }
     }
     Ok(())
@@ -129,6 +143,30 @@ fn pdf_command(query: Option<&str>, duplex_override: Option<&str>) -> Result<(),
         println!("[{label}] {}: {}", file_name(&pdf.face_pdf), pdf.face_pdf.display());
         println!("[{label}] {}: {}", file_name(&pdf.back_pdf), pdf.back_pdf.display());
         println!("[{label}] {}: {}", file_name(&pdf.duplex), pdf.duplex.display());
+    }
+    Ok(())
+}
+
+fn png_command(query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    let fs = Arc::new(OsFs);
+    let loaded = conf()?;
+    let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
+    let artifacts = pollster::block_on(crate::prepare_png_named(fs, &chrome, query))?;
+    for (label, png) in artifacts {
+        print_html_logs(
+            &label,
+            png.card_count,
+            &png.preview,
+            &png.face_html,
+            &png.back_html,
+        );
+        println!("[{label}] png dir: {}", png.png_dir.display());
+        for n in 1..=png.card_count {
+            let face = png.png_dir.join(format!("card-{n}-face.png"));
+            let back = png.png_dir.join(format!("card-{n}-back.png"));
+            println!("[{label}] {}: {}", file_name(&face), face.display());
+            println!("[{label}] {}: {}", file_name(&back), back.display());
+        }
     }
     Ok(())
 }

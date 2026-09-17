@@ -81,6 +81,82 @@ async function rasterElement(el, cssW, cssH, scale) {
   return { data: buf, width: w, height: h };
 }
 
+export async function htmlToPng(html, widthMm, heightMm) {
+  const cssPxPerMm = 96 / 25.4;
+  const cssW = Math.max(1, widthMm * cssPxPerMm);
+  const cssH = Math.max(1, heightMm * cssPxPerMm);
+  const scale = 2;
+
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+  iframe.setAttribute("style", [
+    "position:fixed",
+    "left:-12000px",
+    "top:0",
+    `width:${Math.ceil(cssW)}px`,
+    `height:${Math.ceil(cssH)}px`,
+    "border:0",
+    "margin:0",
+    "background:#fff",
+  ].join(";"));
+  document.body.appendChild(iframe);
+
+  try {
+    await new Promise((resolve, reject) => {
+      iframe.addEventListener("load", () => resolve(), { once: true });
+      iframe.addEventListener("error", () => reject(new Error("iframe failed to load")), { once: true });
+      iframe.srcdoc = html;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const doc = iframe.contentDocument;
+    const win = iframe.contentWindow;
+    if (!doc || !win) {
+      throw new Error("iframe has no document");
+    }
+    if (doc.fonts && doc.fonts.ready) {
+      await doc.fonts.ready;
+    }
+    if (win.__fitHeaderNames) {
+      try {
+        await win.__fitHeaderNames;
+      } catch (_err) {}
+    }
+
+    iframe.style.height = Math.max(cssH, doc.documentElement.scrollHeight) + "px";
+
+    const card = doc.querySelector("article.card, article.card-back") || doc.body;
+    return await rasterElementToPng(card, cssW, cssH, scale);
+  } finally {
+    iframe.remove();
+  }
+}
+
+async function rasterElementToPng(el, cssW, cssH, scale) {
+  const w = Math.max(1, Math.round(cssW * scale));
+  const h = Math.max(1, Math.round(cssH * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.beginPath();
+  ctx.rect(0, 0, cssW, cssH);
+  ctx.clip();
+  const origin = el.getBoundingClientRect();
+  paintNode(ctx, el, origin.left, origin.top);
+  ctx.restore();
+
+  const png = await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("PNG encode failed"))), "image/png");
+  });
+  const buf = new Uint8Array(await png.arrayBuffer());
+  return buf;
+}
+
 function paintNode(ctx, node, ox, oy) {
   if (node.nodeType === 3) {
     paintText(ctx, node, ox, oy);
