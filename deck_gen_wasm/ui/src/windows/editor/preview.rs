@@ -84,7 +84,9 @@ fn PdfPreview(workspace: Workspace, path: String) -> impl IntoView {
     view! {
         <div class="preview-host">
             <Show when=move || !src.get().is_empty()>
-                <iframe class="preview-frame" prop:src=move || src.get() />
+                <div class="preview-pdf-host">
+                    <iframe class="preview-frame" prop:src=move || src.get() />
+                </div>
             </Show>
         </div>
     }

@@ -1,10 +1,8 @@
-//! GamesPanel: the content for SidebarMode::Games.
+//! GamesPanel: SidebarMode::Games content (Local/Global sections like VSCode Extensions).
 //!
-//! Two collapsible sections (Local + Global) that can be height-resized relative to each other
-//! via a horizontal drag handle (similar to editor split).
-//! - Local: "Load Local Games" full-width button (re-uses the shared load confirm).
-//! - Global: fetches folder list via GitHub git-tree once; per-row Settings menu triggers add_game_from_github.
-//! Minimal styles; chevrons toggle collapsed state to header row only.
+//! Collapsible sections default to 50/50 height split of the sidebar. Vertical drag resizer
+//! between them adjusts proportions. Local has load button; Global lists GitHub games.
+
 
 use leptos::html;
 use leptos::prelude::*;
@@ -16,6 +14,17 @@ use web_sys::MouseEvent as WasmMouseEvent;
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_workspace::Workspace;
+
+/// Maps collapse state and ratio into (local, global) flex factors for the sections.
+fn section_flex(local_collapsed: bool, global_collapsed: bool, ratio: f32) -> (f64, f64) {
+    if local_collapsed {
+        (0.0, if global_collapsed { 0.0 } else { 1.0 })
+    } else if global_collapsed {
+        (1.0, 0.0)
+    } else {
+        (ratio as f64, (1.0 - ratio) as f64)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Default)]
 struct MenuState {
@@ -46,7 +55,7 @@ pub fn GamesPanel(
     // Per-game settings menu (simple, anchored).
     let game_menu = RwSignal::new(None::<MenuState>);
 
-    // Drag state for vertical split between Local/Global bodies.
+    // Drag state for vertical split between Local/Global sections.
     let is_dragging = RwSignal::new(false);
     let drag_start_y = RwSignal::new(0i32);
     let drag_start_ratio = RwSignal::new(0.5f32);
@@ -77,12 +86,13 @@ pub fn GamesPanel(
         }
     });
 
-    // Install global mouse handlers for vertical resizer (leaked for lifetime).
+    // Global listeners for vertical resizer (closures leaked).
     Effect::new({
         let ratio = split_ratio;
         let dragging = is_dragging;
         let sy = drag_start_y;
         let sr = drag_start_ratio;
+        let cref = container_ref;
         move |_| {
             let win = web_sys::window().expect("window");
             let mm = Closure::<dyn FnMut(WasmMouseEvent)>::new(move |ev: WasmMouseEvent| {
@@ -90,10 +100,8 @@ pub fn GamesPanel(
                     return;
                 }
                 let dy = ev.client_y() - sy.get_untracked();
-                // Rough: treat available body area ~ 300px min for ratio; simple linear map.
-                // In practice container height varies; we adjust ratio proportionally.
-                let delta_ratio = (dy as f32) / 300.0; // heuristic scale
-                let r = (sr.get_untracked() + delta_ratio).clamp(0.1, 0.9);
+                let h = cref.get().map(|c| c.offset_height() as f32).unwrap_or(300.0).max(50.0);
+                let r = (sr.get_untracked() + (dy as f32) / h).clamp(0.1, 0.9);
                 ratio.set(r);
             });
             let mu = Closure::<dyn FnMut(WasmMouseEvent)>::new(move |_ev: WasmMouseEvent| {
@@ -141,24 +149,14 @@ pub fn GamesPanel(
         workspace.add_game_from_github(&game, warning);
     };
 
-    // Compute effective flex weights for bodies.
+    // Section flex via pure helper. 0.5/0.5 => equal split of full height.
     let local_flex = move || {
-        if local_collapsed.get() {
-            0.0
-        } else if global_collapsed.get() {
-            1.0
-        } else {
-            split_ratio.get() as f64
-        }
+        let (l, _) = section_flex(local_collapsed.get(), global_collapsed.get(), split_ratio.get());
+        l
     };
     let global_flex = move || {
-        if global_collapsed.get() {
-            0.0
-        } else if local_collapsed.get() {
-            1.0
-        } else {
-            (1.0 - split_ratio.get()) as f64
-        }
+        let (_, g) = section_flex(local_collapsed.get(), global_collapsed.get(), split_ratio.get());
+        g
     };
 
     let chevron = |collapsed: bool| if collapsed { "▸" } else { "▾" };
@@ -167,13 +165,13 @@ pub fn GamesPanel(
         <aside class="explorer games">
             <div class="games-container" node_ref=container_ref>
                 // Local
-                <div class="games-section">
+                <div class="games-section" style=move || format!("flex: {};", local_flex())>
                     <div class="games-section-header" on:click=toggle_local>
                         <span class="chevron">{move || chevron(local_collapsed.get())}</span>
                         <span>{move || locale::localize(keys::GAMES_LOCAL)}</span>
                     </div>
                     <Show when=move || !local_collapsed.get()>
-                        <div class="games-section-body" style=move || format!("flex: {};", local_flex()) >
+                        <div class="games-section-body">
                             <button
                                 class="games-full-btn"
                                 disabled=move || workspace.loading.get()
@@ -191,13 +189,13 @@ pub fn GamesPanel(
                 </Show>
 
                 // Global
-                <div class="games-section">
+                <div class="games-section" style=move || format!("flex: {};", global_flex())>
                     <div class="games-section-header" on:click=toggle_global>
                         <span class="chevron">{move || chevron(global_collapsed.get())}</span>
                         <span>{move || locale::localize(keys::GAMES_GLOBAL)}</span>
                     </div>
                     <Show when=move || !global_collapsed.get()>
-                        <div class="games-section-body games-global-body" style=move || format!("flex: {};", global_flex()) >
+                        <div class="games-section-body games-global-body">
                             <Show when=move || loading.get()>
                                 <div class="games-status">...</div>
                             </Show>
@@ -260,5 +258,38 @@ pub fn GamesPanel(
                 }}
             </Show>
         </aside>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_ratio_gives_equal_flex() {
+        let (l, g) = section_flex(false, false, 0.5);
+        assert!((l - 0.5).abs() < 1e-6);
+        assert!((g - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn collapsed_local_gives_full_to_global() {
+        let (l, g) = section_flex(true, false, 0.3);
+        assert_eq!(l, 0.0);
+        assert_eq!(g, 1.0);
+    }
+
+    #[test]
+    fn both_collapsed_gives_zero() {
+        let (l, g) = section_flex(true, true, 0.7);
+        assert_eq!(l, 0.0);
+        assert_eq!(g, 0.0);
+    }
+
+    #[test]
+    fn ratio_30_70() {
+        let (l, g) = section_flex(false, false, 0.3);
+        assert!((l - 0.3).abs() < 1e-6);
+        assert!((g - 0.7).abs() < 1e-6);
     }
 }
