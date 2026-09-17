@@ -62,8 +62,9 @@
 2. ✅ [Улучшение графического интерфейса по образцу VSCode](./phase-III/stage-4/vscode_like_ui.md).
 
 Дополнительные Задачи №5:
-1. [Удалить параметр `default_game`](./phase-III/stage-5/remove_default_game.md).
-1. [Изменить алгоритм поиска игры](./phase-III/stage-5/rename_game_settings.md).
+1. ✅ [Удалить параметр `default_game`](./phase-III/stage-5/remove_default_game.md).
+2. ✅ [Изменить алгоритм поиска игры](./phase-III/stage-5/rename_game_settings.md).
+3. [Убрать требование префикса игры в имени колоды](./phase-III/stage-5/remove_game_prefix_from_deck.md)
 
 Дополнительные Задачи №6:
 1. Создать коллекцию шаблонов игры (2-3 штуки), с которых можно начать новую разработку.

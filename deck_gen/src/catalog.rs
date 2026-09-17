@@ -1,10 +1,10 @@
 //! Discover decks under each game's `decks/` folder.
 //!
-//! A deck is a directory that contains `data.json5`. The public name is
-//! `{game_id}.{relative.dotted.path}` and must match the `name` field inside
-//! the file. Queries use a full name (game.deck...) or a game. prefix (to select
-//! all decks of one game). Discovery is a walk + `BTreeMap` so output order is
-//! stable across filesystems.
+//! A deck is a directory that contains `data.json5`. The public (dotted) name is
+//! always `{game_id}.{relative.dotted.path}` (derived from location). The `name`
+//! field inside `data.json5` must match the relative path (the leading `game_id.`
+//! prefix is optional). Queries use a full name or a game prefix. Discovery uses
+//! a walk + `BTreeMap` for stable output order.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -33,7 +33,8 @@ where
         .collect())
 }
 
-/// Load every matching deck, checking that `data.json5` `name` equals the path.
+/// Load every matching deck, checking that `data.json5` `name` corresponds to its
+/// location-derived dotted path (game prefix in the `name` is optional).
 pub fn find_decks<F>(fs: &F, loaded: &Conf, query: Option<&str>) -> Result<Vec<Deck>>
 where
     F: FileSystem + ?Sized,
@@ -137,15 +138,19 @@ fn load_deck<F>(
 where
     F: FileSystem + ?Sized,
 {
-    let deck = Deck::from_manager(&DataManager::new(fs, data_file, vars_dir.to_path_buf())?)?;
+    let mut deck = Deck::from_manager(&DataManager::new(fs, data_file, vars_dir.to_path_buf())?)?;
     if deck.name != expected_name {
-        return Err(Error::file(
-            data_file,
-            format!(
-                "name {:?} must match relative path {expected_name:?}",
-                deck.name
-            ),
-        ));
+        let exp_rel = expected_name.split_once('.').map_or(expected_name, |(_, r)| r);
+        if deck.name != exp_rel {
+            return Err(Error::file(
+                data_file,
+                format!(
+                    "name {:?} must match relative path {expected_name:?}",
+                    deck.name
+                ),
+            ));
+        }
+        deck.name = expected_name.to_string();
     }
     Ok(deck)
 }
