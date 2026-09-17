@@ -1,6 +1,10 @@
 //! Settings activity button (bottom of bar).
-//! Opens a floating menu (reuses .context-menu styles + backdrop). Items delegate to feedback/theme/locale logic.
-//! Menu positioned with getBoundingClientRect; no permanent .active on button.
+//!
+//! Opens a floating menu using .context-menu + backdrop (reused from explorer context menus).
+//! - Feedback, locale, theme-cycle delegated to existing fns (no buttons on bar).
+//! - Theme label is dynamic: "Change theme (light|dark|system)" reflecting the active theme (localized).
+//! - Menu positioned via getBoundingClientRect so its bottom-left aligns to the button bottom
+//!   (prevents overflow below viewport when bar button is near screen bottom).
 
 use leptos::html;
 use leptos::prelude::*;
@@ -11,6 +15,8 @@ use crate::tooltips::DelayedTooltip;
 use deck_gen_wasm_feedback::send_feedback_via_email;
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
+
+use crate::theme::ColorTheme;
 
 /// Simple position for the popup menu.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -31,9 +37,9 @@ pub fn SettingsButton() -> impl IntoView {
     let open_menu = move |_| {
         if let Some(el) = host.get() {
             let rect = el.get_bounding_client_rect();
-            // Place to the right of button, vertically centered (like VSCode gear menu).
+            // bottom-left of menu at button's bottom; extends up (avoids bottom overflow)
             let left = rect.right() + 4.0;
-            let top = rect.top() + rect.height() / 2.0;
+            let top = rect.bottom();
             menu_pos.set(MenuPos { left, top });
         }
         menu_open.set(!menu_open.get_untracked());
@@ -85,7 +91,7 @@ pub fn SettingsButton() -> impl IntoView {
                         role="menu"
                         style=move || {
                             let p = menu_pos.get();
-                            format!("left:{}px;top:{}px; transform: translateY(-50%);", p.left, p.top)
+                            format!("left:{}px;top:{}px; transform: translateY(-100%);", p.left, p.top)
                         }
                         on:click=move |ev| ev.stop_propagation()
                     >
@@ -93,7 +99,7 @@ pub fn SettingsButton() -> impl IntoView {
                             {move || locale::localize(keys::MENU_SETTINGS_FEEDBACK)}
                         </button>
                         <button class="context-item" role="menuitem" on:click=do_theme>
-                            {move || locale::localize(keys::MENU_SETTINGS_THEME)}
+                            {move || theme_label_for_current()}
                         </button>
                         <button class="context-item" role="menuitem" on:click=do_locale>
                             {move || locale::localize(keys::MENU_SETTINGS_LOCALE)}
@@ -103,4 +109,16 @@ pub fn SettingsButton() -> impl IntoView {
             </Show>
         </div>
     }
+}
+
+/// Returns the localized "Change theme (current)" string based on the persisted current theme.
+/// The label reflects the *active* theme (not the next one after cycle).
+fn theme_label_for_current() -> String {
+    let current = crate::theme::load();
+    let key = match current {
+        ColorTheme::Light => keys::MENU_SETTINGS_THEME_LIGHT,
+        ColorTheme::Dark => keys::MENU_SETTINGS_THEME_DARK,
+        ColorTheme::System => keys::MENU_SETTINGS_THEME_SYSTEM,
+    };
+    locale::localize(key)
 }

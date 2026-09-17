@@ -76,7 +76,9 @@
 
   // settings menu (replaces removed top-level buttons)
   "menu-settings-feedback": { EN: "Send e-mail feedback", RU: "Отправить отзыв по e-mail" },
-  "menu-settings-theme": { EN: "Change theme", RU: "Сменить тему" },
+  "menu-settings-theme-light": { EN: "Change theme (light)", RU: "Сменить тему (светлая)" },
+  "menu-settings-theme-dark": { EN: "Change theme (dark)", RU: "Сменить тему (тёмная)" },
+  "menu-settings-theme-system": { EN: "Change theme (system)", RU: "Сменить тему (системная)" },
   "menu-settings-locale": { EN: "Localization", RU: "Локализация" },
 
   // games sidebar panel

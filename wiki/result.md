@@ -1,22 +1,43 @@
-было: фиксированный Explorer в левой панели + разрозненные кнопки New/Load/Feedback/Theme/Locale на activity bar; нет Games панели и меню Settings.
+# Результат доработки №1 по vscode_like_ui.md (2026-09-17)
 
-стало (этап-1 прямолинейно + этап-2 по правилам рефакторинга):
-- Введён SidebarMode {Hidden, Explorer, Games} + чистая toggle() (с unit-тестами).
-- Activity bar перестроен по плану: Explorer, Games (переключают панель + active), PrepareHtml/Pdf, Download, Split, spacer, Clear, Settings (открывает меню).
-- Удалены с бара (не из кода логики): NewGame/Load/Feedback/Theme/Locale.
-- Левая панель — универсальный контейнер: при Hidden width=0 + пусто; Explorer — прежний; Games — новый.
-- Games: две сворачиваемые секции Local/Global (дефолт развернуты), resizable по высоте перетаскиванием (как split editor), full-width Load Local (через общий confirm), Global — list_game_folders() + строки с Settings→Load (add_game_from_github).
-- Обобщён github/template/workspace: list_game_folders + install_game(source) + add_game_from_github; legacy new-game делегирует.
-- Settings меню: всплывающее (getBoundingClientRect + backdrop + context-menu css), пункты вызывают старые send/cycle/change+reload.
-- Иконки: placeholder копии (split для explorer/games, clear для settings); старые feed/new/load/locale удалены из icons/.
-- Локализация: добавлены ключи/строки EN+RU.
-- CSS: минимальные правила для .games-section, .game-row, .games-full-btn, hresizer, chevron.
-- Состояние стартует Hidden (ширина 0). Prepare/Split/Clear/Download не трогают sidebar. Split active по-прежнему работает.
-- Крейты прошли cargo check + unit-тесты (sidebar toggle + github filter + template unique/retarget + ui другие = все ок). trunk build ✅ success.
-- Рефакторинг (этап-2): добавлены/улучшены module docs, pub fn docs, #[allow(dead_code)] на legacy, почищены реэкспорты, комментарии в Cargo.toml; без изменения поведения/алгоритмов (KISS, один модуль — ответственность, идиоматичный Rust где просто).
+## Задача
+Выполнить 3 пункта доработки:
+1. Нижний левый край меню Settings должен выравниваться по нижней границе кнопки (чтобы меню не обрезалось снизу экрана).
+2. Пункт «Сменить тему» в меню Settings должен показывать текущую тему в скобках (светлая/тёмная/системная) + полная локализация EN/RU.
+3. Баг PDF preview: страницы сгенерированных PDF отображаются чёрными (ничего не видно) → исправить на белые (стандартные).
 
-(почему: реализовано строго по vscode_like_ui.md "Цели (делать только это)" + "Scope кода". Левая панель теперь контейнер, activity — переключатели вида + прежние действия + Settings меню. GitHub обобщён без дублирования. Не persist, не новая архитектура, не тронуты prepare/split/clear/zip/editor.)
+## Что было → стало (почему)
 
-Браузерная проверка: trunk build прошёл (wasm bundle ок). Полноценное E2E (клик по Explorer/Games, переключение Hidden/active, collapse секций, drag высоты, Load Local, Global fetch+load конкретной игры, меню Settings, drag ширины sidebar) — не автоматизировано в этом окружении (нет browser инструментов); ближайший заменитель — сборка + тесты + ручная проверка по http://127.0.0.1:8080 после serve.bat. Регрессий в остальном не обнаружено (scoped).
+**было (до доработки):**
+- Меню Settings позиционировалось по центру кнопки по вертикали: `top = rect.top + h/2; transform: translateY(-50%)` → при кнопке внизу меню уходило за нижнюю границу viewport.
+- Текст пункта меню темы был статическим: MENU_SETTINGS_THEME = "Change theme" / "Сменить тему" (не зависел от текущей темы).
+- В pdf_from_jpeg_pages (карточные PDF) и build_sheet (A4 duplex) контент страниц не содержал явного fill белого фона. В браузерном PDF viewer'е (особенно при data-theme dark) страницы рендерились чёрными.
 
-wiki/note.md обновлён (иконки).
+**стало (прямолинейная реализация + рефакторинг):**
+1. Позиционирование: `top = rect.bottom(); transform: translateY(-100%)` → нижний левый край меню теперь на уровне нижней границы кнопки Settings; меню тянется вверх (в видимую область). Комментарий добавлен.
+2. Динамическая тема:
+   - Добавлены три ключа: MENU_SETTINGS_THEME_{LIGHT,DARK,SYSTEM} и соответствующие строки в dict.json5 (EN: "Change theme (light)", RU: "Сменить тему (светлая)" и т.д. — точно по постановке).
+   - В SettingsButton рендер пункта теперь вызывает theme_label_for_current(), который читает crate::theme::load() и выбирает ключ.
+   - При cycle тема применяется, при следующем открытии меню — актуальная надпись (close после cycle).
+3. PDF fix:
+   - В deck_gen/src/pdf_engine/images.rs: в content каждой страницы перед Do Im0 добавлен q 1 1 1 rg 0 0 w h re f Q (белый fill).
+   - В deck_gen/src/pdf_engine/impose/sheet.rs: в operations каждой A4-страницы в начале — аналогичный белый fill + RG для обводки.
+   - Обновлены rustdoc на pdf_from_jpeg_pages.
+   - Результат: все генерируемые PDF (face/back + duplex) имеют явный белый фон страниц.
+
+**Проверка:**
+- Крейты: cargo test -p deck_gen (5/5 ок), -p deck_gen_wasm_locale (3/3 + all_keys_have_en_and_ru ок), -p deck_gen_wasm_ui (12/12 ок, включая sidebar + theme).
+- Полная сборка: cargo check -p deck_gen -p deck_gen_wasm_ui -p deck_gen_wasm; trunk build --release в deck_gen_wasm → ✅ success (wasm bundle).
+- Стиль: header модуля settings.rs расширен (средний комментарий), короткие комментарии в коде, публичные элементы задокументированы; правки минимальные, без оверинжиниринга (KISS), соответствуют стилю соседних кнопок и модулей (этап-2 рефакторинг после решения).
+- Браузерная верификация (по правилам): browser automation отсутствует в инструментах. Субститут: trunk build (компилирует Leptos UI + все changed компоненты), unit-тесты покрывают toggle/theme, cargo check всей цепочки. Полное E2E (открыть снизу Settings → проверить alignment меню, сменить тему → reopen меню → увидеть "(light)", prepare_pdf → открыть face.pdf / *.pdf в preview → убедиться что страницы белые, а не чёрные; проверить на light/dark/system) — требует ручного запуска serve.bat + браузера. Регрессий в prepare/split/editor не внесено (scoped edits).
+
+(почему именно так: правки строго по "Задача на доработку №1", минимальный прямой код на этапе-1, затем рефакторинг без изменения поведения; локализация добавлена полностью; PDF bg добавлен на уровне генерации PDF (а не только CSS превью), чтобы viewer всегда видел белые страницы.)
+
+## Затронутые файлы (минимально)
+- deck_gen_wasm/ui/src/buttons/settings.rs
+- deck_gen_wasm/locale/src/keys.rs
+- deck_gen_wasm/locale/dict.json5
+- deck_gen/src/pdf_engine/images.rs
+- deck_gen/src/pdf_engine/impose/sheet.rs
+
+Никаких изменений в note.md не требуется (иконки/новые ассеты не добавлялись, локаль и PDF — чисто код).

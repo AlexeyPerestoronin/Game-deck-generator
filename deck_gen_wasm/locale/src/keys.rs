@@ -69,7 +69,9 @@ pub const BUTTON_NEW_FILE: &str = "button-new-file";
 pub const BUTTON_NEW_FOLDER: &str = "button-new-folder";
 
 pub const MENU_SETTINGS_FEEDBACK: &str = "menu-settings-feedback";
-pub const MENU_SETTINGS_THEME: &str = "menu-settings-theme";
+pub const MENU_SETTINGS_THEME_LIGHT: &str = "menu-settings-theme-light";
+pub const MENU_SETTINGS_THEME_DARK: &str = "menu-settings-theme-dark";
+pub const MENU_SETTINGS_THEME_SYSTEM: &str = "menu-settings-theme-system";
 pub const MENU_SETTINGS_LOCALE: &str = "menu-settings-locale";
 
 pub const GAMES_LOCAL: &str = "games-local";
