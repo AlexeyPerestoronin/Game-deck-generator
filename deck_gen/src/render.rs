@@ -35,6 +35,10 @@ pub struct HtmlArtifacts {
 }
 
 /// Render face, back, and preview HTML for `deck` into its output directory.
+///
+/// Only the three main sheet files are written. Per-card HTML artifacts
+/// (used by PNG generation) are produced by a separate explicit call to
+/// [`prepare_per_card_htmls`].
 pub fn prepare_html<F>(
     fs: &Arc<F>,
     loaded: &Conf,
@@ -43,10 +47,43 @@ pub fn prepare_html<F>(
 where
     F: FileSystem + ?Sized + 'static,
 {
-    render_html(fs, loaded, deck, &deck.cards())
+    let cards = deck.cards();
+    render_sheets(fs, loaded, deck, &cards)
 }
 
-fn render_html<F>(
+/// Write the per-card HTML files under `cards/html/card-N-*.html`.
+///
+/// This is intentionally a separate step (called explicitly by prepare_png
+/// and similar) to avoid hidden side effects in the main sheet renderer.
+pub fn prepare_per_card_htmls<F>(
+    fs: &Arc<F>,
+    loaded: &Conf,
+    deck: &Deck,
+) -> Result<()>
+where
+    F: FileSystem + ?Sized + 'static,
+{
+    let cards = deck.cards();
+    let env = jinja_env(fs.clone(), loaded, deck)?;
+    let out = deck.output_dir(loaded)?;
+    let cards_html_dir = out.join("cards").join("html");
+    fs.create_dir_all(&cards_html_dir)?;
+
+    let face_template = deck.template_for("face")?;
+    let back_template = deck.template_for("back")?;
+
+    for (i, card) in cards.iter().enumerate() {
+        let n = i + 1;
+        let single: &[Value] = std::slice::from_ref(card);
+        let face = render_template(&env, &face_template, deck, single)?;
+        let back = render_template(&env, &back_template, deck, single)?;
+        fs.write(&cards_html_dir.join(format!("card-{}-face.html", n)), &face)?;
+        fs.write(&cards_html_dir.join(format!("card-{}-back.html", n)), &back)?;
+    }
+    Ok(())
+}
+
+fn render_sheets<F>(
     fs: &Arc<F>,
     loaded: &Conf,
     deck: &Deck,
@@ -73,24 +110,6 @@ where
     fs.write(&face_path, &face_content)?;
     fs.write(&back_path, &back_content)?;
     fs.write(&preview_path, &preview_content)?;
-
-    // Per-card HTML artifacts live under cards/html/card-N-(face|back).html.
-    let cards_html_dir = out.join("cards").join("html");
-    fs.create_dir_all(&cards_html_dir)?;
-    for (i, card) in cards.iter().enumerate() {
-        let n = i + 1;
-        let single: &[Value] = std::slice::from_ref(card);
-        let face = render_template(&env, &face_template, deck, single)?;
-        let back = render_template(&env, &back_template, deck, single)?;
-        fs.write(
-            &cards_html_dir.join(format!("card-{}-face.html", n)),
-            &face,
-        )?;
-        fs.write(
-            &cards_html_dir.join(format!("card-{}-back.html", n)),
-            &back,
-        )?;
-    }
 
     Ok(HtmlArtifacts {
         preview: preview_path,

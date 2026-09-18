@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use crate::conf::{Conf, GamePaths};
 use crate::error::{Error, Result};
 use crate::fs::FileSystem;
-use crate::load::DataManager;
+use crate::load::{peek_deck_name, DataManager};
 use crate::model::Deck;
 
 #[derive(Clone)]
@@ -102,7 +102,7 @@ where
     }
     let data = dir.join("data.json5");
     if fs.is_file(&data) {
-        let name = declared_name(fs, &data)?;
+        let name = peek_deck_name(fs, &data)?;
         by_dir.insert(
             dir.to_path_buf(),
             LocatedDeck {
@@ -114,24 +114,6 @@ where
         );
     }
     Ok(())
-}
-
-fn declared_name<F>(fs: &F, data_file: &Path) -> Result<String>
-where
-    F: FileSystem + ?Sized,
-{
-    let text = fs.read_to_string(data_file)?;
-    // The deck name is the value of the first top-level "name": "..." literal.
-    // (names inside "cards" come later; placeholders are not expanded here).
-    let re = regex::Regex::new(r#""name"\s*:\s*"([^"]*)""#)
-        .map_err(|e| Error::msg(format!("regex error: {e}")))?;
-    if let Some(caps) = re.captures(&text) {
-        let val = caps.get(1).map_or("", |m| m.as_str());
-        if !val.is_empty() {
-            return Ok(val.to_string());
-        }
-    }
-    Err(Error::file(data_file, "must contain a top-level 'name': \"...\" string"))
 }
 
 fn load_deck<F>(

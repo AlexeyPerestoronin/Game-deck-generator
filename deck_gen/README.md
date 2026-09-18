@@ -54,3 +54,5 @@ cargo build --release -p deck_gen --features cli
 ```
 
 Либо `start.bat`: поставит toolchain при необходимости, соберёт CLI и скопирует `deck_gen.exe` в корень. WASM-сборки этого крейта — с `--no-default-features`, без Chromium.
+
+CLI поддерживает опцию `--concurrency` для команд `html`/`pdf`/`png` (включает параллельную обработку колод через rayon на нативных сборках).

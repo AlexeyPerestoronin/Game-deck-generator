@@ -156,3 +156,23 @@ fn is_vars_stem(name: &str) -> bool {
 fn parse_json5(path: &Path, text: &str) -> Result<Value> {
     json5::from_str(text).map_err(|err| Error::file(path, format!("is not valid JSON5: {err}")))
 }
+
+/// Lightweight extraction of the top-level deck "name" without full placeholder
+/// expansion or JSON5 object construction. Used during catalog discovery
+/// because vars/placeholders are not yet resolved at that stage.
+pub fn peek_deck_name<F>(fs: &F, data_file: &Path) -> Result<String>
+where
+    F: FileSystem + ?Sized,
+{
+    let text = fs.read_to_string(data_file)?;
+    // The deck name is the value of the first top-level "name": "..." literal.
+    let re = regex::Regex::new(r#""name"\s*:\s*"([^"]*)""#)
+        .map_err(|e| Error::msg(format!("regex error: {e}")))?;
+    if let Some(caps) = re.captures(&text) {
+        let val = caps.get(1).map_or("", |m| m.as_str());
+        if !val.is_empty() {
+            return Ok(val.to_string());
+        }
+    }
+    Err(Error::file(data_file, "must contain a top-level 'name': \"...\" string"))
+}

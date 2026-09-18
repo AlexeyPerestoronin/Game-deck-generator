@@ -605,6 +605,7 @@ dependencies = [
  "pollster",
  "prepare_pdf_host",
  "progress_viewer",
+ "rayon",
  "regex",
  "serde",
  "serde_json",

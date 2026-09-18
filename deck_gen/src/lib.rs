@@ -39,11 +39,14 @@ pub use pdf_engine::{prepare_pdf, prepare_pdf_named, PdfEngineGenerator};
 ///
 /// Returns the number of decks written. `F` is dispatched statically; pass
 /// `Arc<dyn FileSystem>` only when the implementation is chosen at runtime.
-pub fn prepare_html<F>(fs: Arc<F>, progress: &impl ProgressHandler) -> Result<usize>
+///
+/// When `concurrency` is true (native CLI only), rayon is used to process
+/// decks in parallel.
+pub fn prepare_html<F>(fs: Arc<F>, concurrency: bool, progress: &(impl ProgressHandler + Sync)) -> Result<usize>
 where
     F: FileSystem + ?Sized + 'static,
 {
-    Ok(prepare_html_named(fs, None, progress)?.len())
+    Ok(prepare_html_named(fs, None, concurrency, progress)?.len())
 }
 
 /// Same as [`prepare_html`], but optionally restrict to a deck name or prefix.
@@ -53,7 +56,8 @@ where
 pub fn prepare_html_named<F>(
     fs: Arc<F>,
     name: Option<&str>,
-    progress: &impl ProgressHandler,
+    concurrency: bool,
+    progress: &(impl ProgressHandler + Sync),
 ) -> Result<Vec<(String, render::HtmlArtifacts)>>
 where
     F: FileSystem + ?Sized + 'static,
@@ -63,16 +67,46 @@ where
     progress.set(10.0);
     let decks = catalog::find_decks(fs.as_ref(), &loaded, name)?;
     progress.set(20.0);
-    let mut out = Vec::new();
-    let n = decks.len().max(1);
-    for (i, deck) in decks.into_iter().enumerate() {
-        let p = 20.0 + 70.0 * (i as f32) / (n as f32);
-        progress.set(p);
-        let artifacts = render::prepare_html(&fs, &loaded, &deck)?;
-        out.push((deck.name, artifacts));
-    }
+
+    // Parallel deck processing when requested (rayon). Only for native + cli feature.
+    let artifacts: Vec<(String, render::HtmlArtifacts)> = if concurrency && decks.len() > 1 {
+        #[cfg(all(feature = "cli", not(target_arch = "wasm32")))]
+        {
+            use rayon::prelude::*;
+            decks
+                .into_par_iter()
+                .map(|deck| {
+                    // Progress is best-effort / racy when parallel; acceptable for CLI observability.
+                    progress.set(50.0);
+                    let artifacts = render::prepare_html(&fs, &loaded, &deck)?;
+                    Ok((deck.name, artifacts))
+                })
+                .collect::<Result<_>>()?
+        }
+        #[cfg(not(all(feature = "cli", not(target_arch = "wasm32"))))]
+        {
+            // Should not happen: caller should not pass concurrency=true for wasm.
+            let mut tmp = Vec::new();
+            for deck in decks {
+                let artifacts = render::prepare_html(&fs, &loaded, &deck)?;
+                tmp.push((deck.name, artifacts));
+            }
+            tmp
+        }
+    } else {
+        let mut tmp = Vec::new();
+        let n = decks.len().max(1);
+        for (i, deck) in decks.into_iter().enumerate() {
+            let p = 20.0 + 70.0 * (i as f32) / (n as f32);
+            progress.set(p);
+            let artifacts = render::prepare_html(&fs, &loaded, &deck)?;
+            tmp.push((deck.name, artifacts));
+        }
+        tmp
+    };
+
     progress.set(100.0);
-    Ok(out)
+    Ok(artifacts)
 }
 
 /// Raster a self-contained single-card HTML document to PNG bytes.
@@ -99,23 +133,26 @@ pub struct PngArtifacts {
 
 /// Render per-card PNGs for every deck visible through `fs` (requires prior or
 /// internal HTML preparation for the per-card HTML files).
-pub async fn prepare_png<F, E>(fs: Arc<F>, engine: &E, progress: &impl ProgressHandler) -> Result<usize>
+pub async fn prepare_png<F, E>(fs: Arc<F>, engine: &E, concurrency: bool, progress: &(impl ProgressHandler + Sync)) -> Result<usize>
 where
     F: FileSystem + ?Sized + 'static,
     E: CardPngGenerator,
 {
-    Ok(prepare_png_named(fs, engine, None, progress).await?.len())
+    Ok(prepare_png_named(fs, engine, None, concurrency, progress).await?.len())
 }
 
 /// Same as [`prepare_png`], optionally restricted to deck name/prefix.
 ///
 /// Each returned item is `(deck_label, artifacts)`. PNGs are written under
 /// the deck's output dir / cards/png / using the per-card HTML files as input.
+///
+/// `concurrency` enables rayon parallel deck processing (CLI native only).
 pub async fn prepare_png_named<F, E>(
     fs: Arc<F>,
     engine: &E,
     name: Option<&str>,
-    progress: &impl ProgressHandler,
+    _concurrency: bool,
+    progress: &(impl ProgressHandler + Sync),
 ) -> Result<Vec<(String, PngArtifacts)>>
 where
     F: FileSystem + ?Sized + 'static,
@@ -126,12 +163,18 @@ where
     progress.set(10.0);
     let decks = crate::catalog::find_decks(fs.as_ref(), &loaded, name)?;
     progress.set(15.0);
+
+    // Ensure per-card HTML artifacts exist via explicit call (SRP fix).
+    for deck in &decks {
+        crate::render::prepare_per_card_htmls(&fs, &loaded, deck)?;
+    }
+
     let mut out = Vec::new();
     let n = decks.len().max(1);
     for (i, deck) in decks.into_iter().enumerate() {
         let base = 15.0 + 70.0 * (i as f32) / (n as f32);
         progress.set(base);
-        // Per-card HTMLs are created as side-effect of prepare_html (see render.rs).
+
         let html = crate::render::prepare_html(&fs, &loaded, &deck)?;
         let card = pdf_engine::CardSize {
             width_mm: deck.card_width_mm(),
@@ -141,7 +184,7 @@ where
         let png_dir = out_dir.join("cards").join("png");
         fs.create_dir_all(&png_dir)?;
         let cards_html_dir = out_dir.join("cards").join("html");
-        // inner per-card work; engine calls will be no-op for progress here (see generator impls)
+
         for j in 0..html.card_count {
             let p = base + 5.0 * (j as f32) / (html.card_count.max(1) as f32);
             progress.set(p);
@@ -155,6 +198,7 @@ where
             fs.write_bytes(&png_dir.join(format!("card-{n}-face.png")), &face_png)?;
             fs.write_bytes(&png_dir.join(format!("card-{n}-back.png")), &back_png)?;
         }
+
         out.push((
             deck.name,
             PngArtifacts {
@@ -180,3 +224,5 @@ impl CardPngGenerator for prepare_pdf_host::Chrome {
         std::future::ready(out)
     }
 }
+
+

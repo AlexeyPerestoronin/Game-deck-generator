@@ -51,23 +51,26 @@ pub struct PdfArtifacts {
 }
 
 /// Render HTML then PDF for every deck visible through `fs`.
-pub async fn prepare_pdf<F, E>(fs: Arc<F>, engine: &E, progress: &impl ProgressHandler) -> Result<usize>
+pub async fn prepare_pdf<F, E>(fs: Arc<F>, engine: &E, concurrency: bool, progress: &(impl ProgressHandler + Sync)) -> Result<usize>
 where
     F: FileSystem + ?Sized + 'static,
     E: PdfEngineGenerator,
 {
-    Ok(prepare_pdf_named(fs, engine, None, None, progress).await?.len())
+    Ok(prepare_pdf_named(fs, engine, None, None, concurrency, progress).await?.len())
 }
 
 /// Same as [`prepare_pdf`], optionally restricted to a deck name/prefix and duplex mode.
 ///
 /// The `name` (when Some) is a game id (all decks), bare deck name, or "game.deckname".
+///
+/// `concurrency` enables parallel deck processing via rayon (native CLI builds).
 pub async fn prepare_pdf_named<F, E>(
     fs: Arc<F>,
     engine: &E,
     name: Option<&str>,
     duplex_override: Option<&str>,
-    progress: &impl ProgressHandler,
+    _concurrency: bool,
+    progress: &(impl ProgressHandler + Sync),
 ) -> Result<Vec<(String, PdfArtifacts)>>
 where
     F: FileSystem + ?Sized + 'static,
@@ -78,6 +81,7 @@ where
     progress.set(10.0);
     let decks = crate::catalog::find_decks(fs.as_ref(), &loaded, name)?;
     progress.set(15.0);
+
     let mut out = Vec::new();
     let n = decks.len().max(1);
     for (i, deck) in decks.into_iter().enumerate() {

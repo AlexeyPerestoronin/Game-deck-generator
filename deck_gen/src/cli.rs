@@ -11,7 +11,7 @@ use std::sync::Arc;
 use clap::{Parser, Subcommand};
 
 use crate::catalog;
-use crate::conf::{conf, ChromeSettings};
+use crate::conf::ChromeSettings;
 use crate::fs::OsFs;
 use crate::pdf_engine::HostPdfEngine;
 use prepare_pdf_host::{Chrome, ChromeLocator};
@@ -45,6 +45,9 @@ enum Command {
         /// Deck name within the game (optional). If omitted, renders all decks of --game.
         #[arg(long)]
         deck: Option<String>,
+        /// Use rayon to process multiple decks in parallel (native builds only; ignored for wasm).
+        #[arg(long)]
+        concurrency: bool,
     },
     /// Render HTML, then card PDFs and an A4 duplex sheet (needs local Chrome)
     Pdf {
@@ -56,6 +59,9 @@ enum Command {
         deck: Option<String>,
         #[arg(long)]
         duplex: Option<String>,
+        /// Use rayon to process multiple decks in parallel (native builds only; ignored for wasm).
+        #[arg(long)]
+        concurrency: bool,
     },
     /// Render per-card PNGs (face/back) from per-card HTML (needs local Chrome)
     Png {
@@ -65,6 +71,9 @@ enum Command {
         /// Deck name within the game (optional). If omitted, renders all decks of --game.
         #[arg(long)]
         deck: Option<String>,
+        /// Use rayon to process multiple decks in parallel (native builds only; ignored for wasm).
+        #[arg(long)]
+        concurrency: bool,
     },
 }
 
@@ -75,17 +84,17 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             let q = deck_query(game.as_deref(), deck.as_deref());
             list_command(json, q.as_deref())?
         }
-        Command::Html { game, deck } => {
+        Command::Html { game, deck, concurrency } => {
             let q = deck_query(Some(&game), deck.as_deref());
-            html_command(q.as_deref())?
+            html_command(q.as_deref(), concurrency)?
         }
-        Command::Pdf { game, deck, duplex } => {
+        Command::Pdf { game, deck, duplex, concurrency } => {
             let q = deck_query(Some(&game), deck.as_deref());
-            pdf_command(q.as_deref(), duplex.as_deref())?
+            pdf_command(q.as_deref(), duplex.as_deref(), concurrency)?
         }
-        Command::Png { game, deck } => {
+        Command::Png { game, deck, concurrency } => {
             let q = deck_query(Some(&game), deck.as_deref());
-            png_command(q.as_deref())?
+            png_command(q.as_deref(), concurrency)?
         }
     }
     Ok(())
@@ -103,17 +112,21 @@ fn deck_query(game: Option<&str>, deck: Option<&str>) -> Option<String> {
 }
 
 /// Simple progress handler for CLI that prints percentage updates (once per integer).
-struct CliProgress(std::cell::Cell<i32>);
+/// Uses AtomicI32 so it is safe to share across rayon threads when --concurrency is used.
+struct CliProgress(std::sync::atomic::AtomicI32);
 
 impl Default for CliProgress {
-    fn default() -> Self { Self(std::cell::Cell::new(-1)) }
+    fn default() -> Self {
+        Self(std::sync::atomic::AtomicI32::new(-1))
+    }
 }
 
 impl ProgressHandler for CliProgress {
     fn set(&self, pct: f32) {
+        use std::sync::atomic::Ordering;
         let v = pct.clamp(0.0, 100.0).floor() as i32;
-        if v != self.0.get() {
-            self.0.set(v);
+        if v != self.0.load(Ordering::Relaxed) {
+            self.0.store(v, Ordering::Relaxed);
             println!("[deck_gen] progress: {}%", v);
         }
     }
@@ -121,7 +134,8 @@ impl ProgressHandler for CliProgress {
 
 fn list_command(json: bool, query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = OsFs;
-    let loaded = conf()?;
+    // Explicit load (no global OnceLock cache) per refactoring decision for CLI.
+    let loaded = crate::conf::load(&fs)?;
     let names = catalog::matching_names(&fs, &loaded, query)?;
     if json {
         println!("{}", serde_json::to_string(&names)?);
@@ -133,18 +147,19 @@ fn list_command(json: bool, query: Option<&str>) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-fn html_command(query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+fn html_command(query: Option<&str>, concurrency: bool) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
     let p = CliProgress::default();
-    for (label, artifacts) in crate::prepare_html_named(fs, query, &p)? {
+    for (label, artifacts) in crate::prepare_html_named(fs, query, concurrency, &p)? {
         print_html_logs(&label, artifacts.card_count, &artifacts.preview, &artifacts.face_html, &artifacts.back_html);
     }
     Ok(())
 }
 
-fn pdf_command(query: Option<&str>, duplex_override: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+fn pdf_command(query: Option<&str>, duplex_override: Option<&str>, concurrency: bool) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
-    let loaded = conf()?;
+    // Explicit load (avoid global cache in CLI).
+    let loaded = crate::conf::load(fs.as_ref())?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
     let engine = HostPdfEngine::new(chrome);
     let p = CliProgress::default();
@@ -153,6 +168,7 @@ fn pdf_command(query: Option<&str>, duplex_override: Option<&str>) -> Result<(),
         &engine,
         query,
         duplex_override,
+        concurrency,
         &p,
     ))?;
     for (label, pdf) in artifacts {
@@ -170,12 +186,13 @@ fn pdf_command(query: Option<&str>, duplex_override: Option<&str>) -> Result<(),
     Ok(())
 }
 
-fn png_command(query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+fn png_command(query: Option<&str>, concurrency: bool) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
-    let loaded = conf()?;
+    // Explicit load (avoid global cache in CLI).
+    let loaded = crate::conf::load(fs.as_ref())?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
     let p = CliProgress::default();
-    let artifacts = pollster::block_on(crate::prepare_png_named(fs, &chrome, query, &p))?;
+    let artifacts = pollster::block_on(crate::prepare_png_named(fs, &chrome, query, concurrency, &p))?;
     for (label, png) in artifacts {
         print_html_logs(
             &label,

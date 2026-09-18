@@ -16,33 +16,35 @@ required-features = ["cli"]
 [features]
 default = ["cli"]
 # Native CLI only. wasm builds must use --no-default-features so Chromium
-# PDF code is not compiled or linked.
-cli = ["dep:clap", "dep:prepare_pdf_host", "dep:pollster"]
+# PDF code is not compiled or linked. Parallelism (--concurrency) also disabled for wasm.
+cli = ["dep:clap", "dep:prepare_pdf_host", "dep:pollster", "dep:rayon"]
 
 [dependencies]
-# Subcommands (`list` / `html` / `pdf`) and flag parsing for the native binary.
+# Subcommands (list/html/pdf/png) and flag parsing for the native binary.
 clap = { version = "4", features = ["derive"], optional = true }
-# Block on `prepare_pdf` in the native `pdf` subcommand.
+# Block on async prepare_pdf/prepare_png in native CLI.
 pollster = { version = "0.4", optional = true }
-# A4 duplex imposition and JPEG-page PDFs (wasm + native).
+# Parallel deck processing for --concurrency in native CLI only.
+rayon = { version = "1", optional = true }
+# A4 duplex imposition and JPEG-page PDFs (used by both wasm + native).
 lopdf = "0.34"
-# ProgressHandler + macros for observability in prepare_* and engine paths.
+# ProgressHandler used by prepare_* commands and engine wrappers.
 progress_viewer = { path = "../progress_viewer" }
-# Compile `.scss` templates to CSS inside the Jinja loader.
+# SCSS -> CSS compilation inside the MiniJinja loader (for .scss templates).
 grass = "0.13"
-# Parse `conf.json5`, deck `data.json5`, and vars files (comments + trailing commas).
+# Parse conf.json5 + deck data.json5 + named vars files (supports comments and trailing commas).
 json5 = "0.4"
-# Face / back / preview HTML and Jinja-inside-SCSS rendering.
+# HTML templates (face/back/preview) + Jinja inside .scss rendering.
 minijinja = { version = "2", features = ["loader"] }
-# Split life-effects and slugify card names.
+# Split life-effects strings and generate slugs for cards.
 regex = "1"
-# Deserialize the three-level `conf.json5` schema.
+# Deserialize root conf.json5 and per-game game.json5 schemas.
 serde = { version = "1", features = ["derive"] }
-# Ordered JSON maps/values for deck fields, cards, and placeholder encoding.
+# Preserve order in JSON maps for deck fields/cards; used for placeholder resolution too.
 serde_json = { version = "1", features = ["preserve_order"] }
-# `Error` derives for I/O, JSON, JSON5, and template failures.
+# Error type with derives for IO/JSON/JSON5/Template/PDF failures.
 thiserror = "2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# Chromium (CDP) for PDF (print_to_pdf) and PNG (screenshot); native only.
+# Chromium (CDP) for PDF generation and PNG rasterization. Native CLI only.
 prepare_pdf_host = { path = "../prepare_pdf_host", optional = true }
