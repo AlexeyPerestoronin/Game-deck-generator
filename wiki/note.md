@@ -294,3 +294,179 @@
 
 Ошибок быть не должно!
 Все команды должны отрабатывать корректно!
+
+# Рефакторинг №2: «deck_gen_wasm — избыточность, модульность, мёртвый код, корректность использования deck_gen API»
+
+## Общие сведения об анализе
+- Проанализирован **только** код под `deck_gen_wasm/` (все `*.rs`, `Cargo.toml` в deck_gen_wasm и его поддиректориях с исходниками) + `deck_gen/src/lib.rs`.
+- Все остальные папки и крейты репозитория полностью проигнорированы (никаких чтений prepare_pdf_*, progress_viewer, корневого Cargo.toml, deck_gen/src кроме lib.rs и т.д.).
+- Код **не изменялся**. Только чтение + анализ + поиск дублирования/мёртвого/нарушений SRP.
+- Использованы только локальные инструменты (read_file, grep с path=deck_gen_wasm, list_dir только по deck_gen_wasm/*). Без X-Search/Web-Search.
+- Анализ проведён на соответствие `wiki/prompts/refactoring-rules.md` + специальным целям задачи (избыточность, модульность/SRP, мёртвый код, правильность deck_gen API).
+
+## 1. Некорректное использование API из deck_gen (цель №4)
+
+### Описание проблемы
+В `deck_gen/src/lib.rs` публичные функции имеют такую сигнатуру (с concurrency):
+
+```rust
+pub fn prepare_html<F>(fs: Arc<F>, concurrency: bool, progress: &(impl ProgressHandler + Sync)) -> Result<usize>
+pub async fn prepare_png<F, E>(fs: Arc<F>, engine: &E, concurrency: bool, progress: &(impl ProgressHandler + Sync)) -> Result<usize>
+// prepare_pdf / prepare_pdf_named реэкспортированы из pdf_engine и по аналогии ожидают похожий контракт
+```
+
+В коде deck_gen_wasm вызовы:
+
+- `deck_gen_wasm/workspace/src/actions.rs:205`: `deck_gen::prepare_html(fs.clone(), &sub);` (2 аргумента)
+- `deck_gen_wasm/workspace/src/actions.rs:242`: `deck_gen::prepare_pdf(fs.clone(), &engine, &sub).await;` (3 аргумента)
+- `deck_gen_wasm/workspace/src/vfs_fs.rs:132,142`: тесты `deck_gen::prepare_html(fs, &progress_viewer::NoopProgress);` (2 аргумента)
+
+Несоответствие. Код либо не скомпилируется, либо использует устаревшую перегрузку. WASM всегда должен передавать `false` (параллелизм только под `#[cfg(all(feature="cli", not(target_arch="wasm32")))]`).
+
+### Предлагаемые решения
+Решение №1 (прямое исправление):
+- Заменить все вызовы на `deck_gen::prepare_html(fs.clone(), false, &sub);`
+- Для prepare_pdf: добавить `false` в правильную позицию (fs, engine, false, &sub) или как требует актуальная сигнатура prepare_pdf.
+- Исправить 2 теста в vfs_fs.rs (и любые другие).
+- Добавить комментарий: "concurrency=false for WASM (rayon only in native cli)".
+
+Решение №2: Добавить тонкие обёртки `prepare_html_wasm` / `prepare_pdf_wasm` внутри workspace, которые жёстко передают false и прячут разницу. Но это маскировка, а не исправление использования.
+
+Сравнительная таблица:
+
+| Вариант          | Плюсы                              | Минусы                          | Соответствие цели |
+|------------------|------------------------------------|---------------------------------|-------------------|
+| №1 (править вызовы) | Честное использование API, минимум кода, сразу видно | Нужно править тесты + вызовы   | Полное           |
+| №2 (обёртки)     | Изоляция WASM-специфики            | Лишний слой, скрывает проблему | Частичное        |
+
+## 2. Мёртвый код (цель №3)
+
+### Описание проблемы
+Явно помеченный мёртвый код, оставленный "для совместимости":
+
+- `deck_gen_wasm/template/src/template.rs`:
+  - `#[allow(dead_code)] async fn load_template_files`
+  - `#[allow(dead_code)] fn has_both_components`
+  - `#[allow(dead_code)] fn finish_files`
+  - Комментарий: "Keep old list for compat (new-game specific filter used by legacy path if any)."
+- `deck_gen_wasm/template/src/github.rs`:
+  - `#[allow(dead_code)] pub async fn list_template_blob_paths` (теперь просто делегирует на обобщённый `list_game_blob_paths`)
+
+Эти пути больше не вызываются после обобщения `install_game(source_game, ...)` и `list_game_folders`.
+
+### Предлагаемые решения
+Единственное разумное решение: удалить 4 функции + allow + комментарий. Никаких "на будущее" по YAGNI/KISS.
+
+## 3. Избыточность (цель №1)
+
+### Конкретные места
+- **Дублирование решения "что persist-ить как binary"**:
+  - `persist/session.rs: is_persisted_as_binary`
+  - `persist/binaries.rs: is_persisted_binary`
+  - Буквально одинаковый `matches!(kind::kind_of(path), Image | Pdf)`
+
+- **Дублирование извлечения Vfs из Arc<VfsFs>**:
+  - `workspace/actions.rs: fn take_vfs`
+  - `workspace/vfs_fs.rs` (в тестах) — inline match Arc::try_unwrap
+
+- **Повторяющийся boilerplate кнопок** (12+ раз):
+  ```rust
+  let tip: &'static str = Box::leak(locale::localize(KEY).into_boxed_str());
+  <DelayedTooltip text=tip>
+    <button class="activity-btn" ... disabled=... on:click=...>
+      <XxxIcon/>
+  ```
+  (различаются только иконка, disabled, warning_title и обработчик).
+
+- **Дублирование drag-логики для resizer** (3 независимых места):
+  - `ui/src/app.rs` (ширина sidebar)
+  - `ui/src/windows/editor/mod.rs` (split preview panes)
+  - `ui/src/windows/games/mod.rs` (vertical split Local/Global)
+  - Почти идентичный паттерн: RwSignal is_dragging + start coords + Effect + Closure mousemove/mouseup + forget.
+
+- **Дублирование тестовых данных**:
+  - списки расширений и кейсы is_previewable / classify повторяются в `fs/file_kind.rs`, `workspace/split.rs`, `import/policy.rs`, тестах import.
+
+- **Дублирование структуры prepare_* в actions.rs**:
+  prepare_html и prepare_pdf имеют почти копипастный `spawn_local + progress_wrapper + flush_draft + Arc::new(VfsFs) + call deck_gen + take_vfs + set status/warning`.
+
+- **Иконки** (`ui/src/icons/activity.rs`): 13 почти идентичных компонентов, отличающихся только путями к PNG.
+
+### Предлагаемые решения (редукция избыточности)
+Решение №1 (рекомендуемое для ключевых дубликатов):
+- Перенести `is_persisted_as_binary` (или `is_binary_persist`) в `fs/kind.rs` как публичную fn и использовать в persist/*.
+- Вынести `take_vfs` логику в метод `VfsFs::try_into_vfs(self: Arc<Self>) -> Vfs` (или free fn в fs).
+- Для кнопок: ввести `ActivityButton` компонент (или leptos `#[component] fn ActivityButton(icon: ..., on_click, disabled, tip_key...)` ) — один раз. Box::leak остаётся только внутри.
+- Для drag: выделить общий `use_split_resizer` / `Resizer` или хотя бы хелпер-функцию, которая возвращает (signals, handlers).
+- Удалить дублирующиеся тесты (оставить в одном месте, параметризовать).
+
+Решение №2 (для иконок): data-driven рендер (массив путей + map), но только если не усложнит (KISS — возможно оставить, т.к. статично).
+
+Решение №3 (минимальное): только удалить мёртвое + починить API, остальное "оставить как есть" (YAGNI на рефакторинг boilerplate).
+
+Сравнительная таблица (основные избыточности):
+
+| Дубликат                    | Объём | Влияние на размер/поддержку | Рекомендация | Сложность |
+|-----------------------------|-------|-----------------------------|--------------|-----------|
+| binary predicate            | 2 fn  | низкое                      | №1 (в kind)  | низкая    |
+| take_vfs                    | 2 места | низкое                   | №1 (метод)   | низкая    |
+| кнопки + Box::leak          | 12+   | высокое (каждый новый action дублирует) | №1 (компонент) | средняя |
+| drag resizers               | 3     | среднее                     | №1 (хелпер)  | средняя   |
+| prepare_html/pdf в actions  | ~2x   | среднее                     | Выделить общий run_prepare | средняя |
+| тесты расширений            | много | низкое                      | Унифицировать | низкая  |
+| activity иконки             | 13    | низкое                      | №2 или оставить | низкая |
+
+(Если решение только одно — причина: остальные либо вводят ненужные абстракции, либо противоречат KISS.)
+
+## 4. Модульность и SRP (цель №2)
+
+### Описание проблем
+- **Workspace как god-object**: `state.rs` (signals + select/tabs/draft/rewrite/forget + async guards + progress_handle) + actions.rs + commands.rs + split.rs. Даже после разделения — слишком много ответственности на "Workspace handle".
+- **VfsFs в неправильном месте**: файл `workspace/src/vfs_fs.rs` реализует `deck_gen::fs::FileSystem`. Комментарий прямо говорит "This used to live in the fs crate". Нарушает SRP workspace (workspace должен знать только о своём Vfs, а не о том, как deck_gen его видит).
+- **file_kind.rs** — широкая ответственность (import policy + preview + highlight + icons + mime). Хотя централизация расширений — плюс, предикаты можно было бы декомпозировать.
+- **Дублирование решений** (см. redundancy) — прямое следствие отсутствия единого места (persist decision, resizer).
+- Мелкие: `split.rs` реэкспортирует `is_previewable` (обёртка над kind), `workspace/api.rs` снова реэкспортирует — цепочка.
+
+### Предлагаемые решения
+Решение №1:
+- Переместить `VfsFs` (и vfs_key) в `fs/` (как `fs/vfs_fs.rs` или `fs/adapters/deck_gen.rs`) или в отдельный мини-крейт-адаптер. workspace будет зависеть от него только когда нужно.
+- Выделить из Workspace более узкие типы/модули: `TabManager`, `SelectionModel` (если вырастет).
+- Добавить в `fs/kind` fn `is_persisted_as_binary` (см. выше).
+
+Решение №2: Оставить всё как есть — текущая декомпозиция (отдельные крейты browser/conf/fs/import/export/persist/template + workspace/ui) уже довольно хорошая для WASM-приложения. Дополнительное дробление нарушит KISS.
+
+Сравнительная таблица:
+
+| Проблема             | Текущее нарушение SRP                  | Решение №1                     | Решение №2 (статус-кво) |
+|----------------------|----------------------------------------|--------------------------------|-------------------------|
+| VfsFs                | в workspace                            | переместить в fs/              | терпимо (маленький файл) |
+| Workspace            | много сигналов + логики в одном        | выделить под-структуры         | ок для Leptos Copy handle |
+| kind.rs              | classification + UI decisions          | split kind + ui_icon_policy    | ок (централизация важнее) |
+| drag / boilerplate   | дублирование вместо общего helper      | общие утилиты                  | копипаста               |
+
+## 5. Анализ Cargo.toml (по правилам рефакторинга)
+- Большинство зависимостей имеют поясняющие комментарии (хорошо в workspace, ui, import, export, persist).
+- Обнаружена висячая зависимость:
+  - `deck_gen_wasm/locale/Cargo.toml`: `serde = { version = "1", features = ["derive"] }`
+  - В коде `locale/src/*.rs` — ни одного использования serde / Serialize / Deserialize. json5 используется напрямую. → можно удалить.
+- `prepare_pdf_web` правильно только в workspace (где используется WebPdfEngine).
+- `zip`, `syntect`, `pulldown-cmark`, `gloo-*`, `futures`, `js-sys` и т.д. — все используются.
+
+## 6. Другие замечания
+- Соответствие KISS/YAGNI/идиоматичности Rust: в целом хорошее. Много мелких модулей-крейтов, trait-based (FileSystem), signals вместо глобалов.
+- Комментарии модулей и pub API: в основном присутствуют и информативны.
+- README.md + arch.mermaid: актуальны, отражают текущую структуру (VFSFS → deck_gen).
+- Нет мутируемых статических (правильно, всё через сигналы/OnceLock).
+- WASM-ограничения (spawn_local, отсутствие rayon) учтены.
+
+## 7. Приоритет предложений (мой субъективный)
+1. Исправить использование deck_gen API (блокер для компиляции/корректности).
+2. Удалить мёртвый код в template/ (просто и чисто).
+3. Устранить дублирование binary-предиката + take_vfs (маленький выигрыш, высокая ясность).
+4. Ввести ActivityButton (или эквивалент) для кнопок — уменьшит boilerplate при добавлении новых действий.
+5. Переместить VfsFs в fs/ (модульность).
+6. Почистить дубли drag / тесты — по желанию (меньший приоритет).
+
+# Ваше заключение:
+(глава для вас — здесь вы напишете решения по каждому пункту)
+
