@@ -3,7 +3,14 @@ target = "deck_gen_wasm/index.html"
 dist = "deck_gen_wasm/dist"
 
 [watch]
-watch = ["deck_gen_wasm/src", "deck_gen_wasm/style.css", "deck_gen_wasm/index.html", "deck_gen_wasm/Cargo.toml", "deck_gen_wasm/icons"]
+watch = [
+  "deck_gen_wasm/src",
+  "deck_gen_wasm/style.css",
+  "deck_gen_wasm/index.html",
+  "deck_gen_wasm/Cargo.toml",
+  "deck_gen_wasm/modules",
+  "deck_gen_wasm/addons"
+]
 ignore = ["deck_gen_wasm/dist", "target"]
 
 [serve]

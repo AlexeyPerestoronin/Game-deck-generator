@@ -8,18 +8,8 @@ watch = [
     "style.css",
     "index.html",
     "Cargo.toml",
-    "conf",
-    "fs",
-    "browser",
-    "persist",
-    "export",
-    "import",
-    "template",
-    "workspace",
-    "progress",
-    "feedback",
-    "locale",
-    "ui",
+    "modules",
+    "addons",
 ]
 ignore = ["dist"]
 
