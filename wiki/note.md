@@ -1,11 +1,8 @@
-# Note — png per-card (stage-6) — 2026-09-17
+# Note — stage-8 progress observability correction — 2026-09-18
 
-Реализация задачи из wiki/plan/phase-III/stage-6/png_for_card.md завершена:
-- Минимальные изменения: prepare_png_* + CardPngGenerator в deck_gen/lib (без трогания pdf_engine); png_command в cli; растеризация в prepare_pdf_host (CDP element screenshot) и prepare_pdf_web (canvas png).
-- HTML per-card используется как вход (prepare_html вызывается внутри png).
-- Проверено: cargo test, все png-вариации команд на new-game (вкл. quoted и кириллицу в именах колод), структура cards/png/card-N-*.png создана.
-- Подготовка к wasm: WebPngEngine доступен.
-- Выполнен лёгкий рефакторинг (KISS, docs, Cargo/Readme комменты).
-- wiki/result.md обновлён (очищен перед записью).
+Анализ крейтов (deck_gen, deck_gen_wasm subcrates, prepare_pdf_host/web, текущий progress) выполнен.
+Скорректированы задачи Дополнительные Задачи №8 (part-1 и part-2) — заполнены блоки «Что необходимо сделать» и «Scope кода» точными целями и перечнем файлов на основе реальной структуры кода.
+Вне блоков исправлены орфографические ошибки (расшить→расширить, часть частью, по-умолчанию, part-1 заголовок, дубли № в плане).
+Результат записан в wiki/result.md (файл очищен).
 
-Действий от пользователя не требуется. Готово.
+Действий от пользователя не требуется. Готово. Реализация stage-8 (сначала part-1 по этапам 1→2 с рефакторингом) может быть начата отдельно.

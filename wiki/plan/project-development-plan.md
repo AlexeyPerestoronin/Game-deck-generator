@@ -76,7 +76,7 @@
 
 Дополнительные Задачи №8:
 1. [Наблюдаемость процесса №1](./phase-III/stage-8/progress_obserbability_part_1.md).
-2. [Наблюдаемость процесса №1](./phase-III/stage-8/progress_obserbability_part_2.md).
+2. [Наблюдаемость процесса №2](./phase-III/stage-8/progress_obserbability_part_2.md).
 
 Статус: в процессе...
 
