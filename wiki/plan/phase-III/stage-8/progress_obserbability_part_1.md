@@ -43,6 +43,31 @@
 
 - Убедиться в сборке: `cargo test -p deck_gen --features cli`, `cargo check -p progress_viewer`, wasm-check соответствующих крейтов, unit-тесты прогресса перенесены и работают.
 
+# Задача на доработку №1:
+Необходимо исправить логику поиска игр.
+Сейчас работает с ошибкой и, кажется, за игру принимается файл `data.json5`, который является целью для определения колод.
+Вот так это выглядит сейчас:
+```
+C:\MyLife\Game-deck-generator>deck_gen.exe html --game new-game
+[deck_gen] progress: 0%
+[deck_gen] progress: 10%
+Unknown deck "new-game". Known: blackjack.cards, durak.cards, poker.cards, preferans.cards, take-6.cards, phase-10.cards, svintus.cards, the-mind.cards, tysyacha.cards, uno.cards, monopoly.achievements, monopoly.events.negatives.financial_crisis, monopoly.events.negatives.pandemic, monopoly.events.negatives.prison, monopoly.events.negatives.real_estate_crisis, monopoly.events.positives.economic_prosperity, monopoly.events.positives.lucky_day, monopoly.professions.level_0, monopoly.professions.level_1, monopoly.professions.level_2, monopoly.professions.level_3, monopoly.professions.level_4, monopoly.professions.level_5, monopoly.professions.level_6, monopoly.professions.level_7, monopoly.professions.level_8, monopoly.professions.tracking.businessman, monopoly.professions.tracking.chemist, monopoly.professions.tracking.educator, monopoly.professions.tracking.fss_employee, monopoly.professions.tracking.geneticist, monopoly.professions.tracking.judge, monopoly.professions.tracking.mathematician, monopoly.professions.tracking.medicine, monopoly.professions.tracking.mvd_employee
+```
+
+Игра же определяется по наличию в папке файла `game.json5`!
+Необходимо исправить:
+1. должны выполняться все тесты описанные в `## Как правильно проверять работоспособность:`.
+2. так же необходимо исправить логику работы `list`, который сейчас требует наличие параметра `--game` (см. вывод), тогда как команда `list` не должна требовать никаких параметров:
+    ```
+    C:\MyLife\Game-deck-generator>deck_gen.exe list                
+    error: the following required arguments were not provided:
+    --game <GAME>
+
+    Usage: deck_gen.exe list --game <GAME>
+
+    For more information, try '--help'.
+    ```
+
 # Дополнительные указания
 1. Изменения в коде должны быть минимальными.
 2. Запрещено менять существующую архитектуру.
@@ -61,7 +86,7 @@
 ## Как правильно проверять работоспособность:
 Соседней папке рядом с папкой проекта находится папка Deck Games (`C:/MyLife/Deck Games`), где находятся игры на которых можно проверять работоспособность.
 Работоспособность проверяется на игре new-game (`C:/MyLife/Deck Games/Games/Templates/new-game`).
-Должны выполняться следующие уже работающие команды:
+Необходимо собрать крейт `deck_gen` через `start.bat` и из корня проекта выполнить следующие команды:
 1. `deck_gen.exe list`
 2. `deck_gen.exe html --game new-game`
 3. `deck_gen.exe pdf --game new-game`
@@ -78,6 +103,9 @@
 14. `deck_gen.exe png --game new-game --deck "колода №2"`
 15. `deck_gen.exe png --game new-game --deck "дополнительная колода"`
 16. `deck_gen.exe png --game "new-game" --deck "дополнительная колода"`
+
+Ошибок быть не должно!
+Все команды должны отрабатывать корректно!
 
 ## Бережливый подход
 1. Максимально береги баланс токенов:

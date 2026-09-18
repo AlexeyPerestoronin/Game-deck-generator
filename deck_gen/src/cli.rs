@@ -30,9 +30,9 @@ enum Command {
     List {
         #[arg(long)]
         json: bool,
-        /// Game id (required). All decks of the game are listed when --deck is omitted.
+        /// Game id (optional). If omitted, lists decks from all discovered games. All decks of the game are listed when --deck is omitted.
         #[arg(long)]
-        game: String,
+        game: Option<String>,
         /// Deck name within the game (optional). If omitted, selects all decks of --game.
         #[arg(long)]
         deck: Option<String>,
@@ -72,31 +72,33 @@ enum Command {
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     match Cli::parse().command {
         Command::List { json, game, deck } => {
-            let q = deck_query(&game, deck.as_deref());
-            list_command(json, Some(&q))?
+            let q = deck_query(game.as_deref(), deck.as_deref());
+            list_command(json, q.as_deref())?
         }
         Command::Html { game, deck } => {
-            let q = deck_query(&game, deck.as_deref());
-            html_command(Some(&q))?
+            let q = deck_query(Some(&game), deck.as_deref());
+            html_command(q.as_deref())?
         }
         Command::Pdf { game, deck, duplex } => {
-            let q = deck_query(&game, deck.as_deref());
-            pdf_command(Some(&q), duplex.as_deref())?
+            let q = deck_query(Some(&game), deck.as_deref());
+            pdf_command(q.as_deref(), duplex.as_deref())?
         }
         Command::Png { game, deck } => {
-            let q = deck_query(&game, deck.as_deref());
-            png_command(Some(&q))?
+            let q = deck_query(Some(&game), deck.as_deref());
+            png_command(q.as_deref())?
         }
     }
     Ok(())
 }
 
-/// Build the catalog query from CLI --game/--deck.
-/// Query is game id (all decks) or "game.deckname" (specific deck by its declared name).
-fn deck_query(game: &str, deck: Option<&str>) -> String {
-    match deck {
-        Some(d) => format!("{}.{}", game, d),
-        None => game.to_string(),
+/// Build the catalog query from CLI --game/--deck (game may be absent only for list).
+/// Query is game id (selects all its decks), bare deck name, or "game.deckname".
+fn deck_query(game: Option<&str>, deck: Option<&str>) -> Option<String> {
+    match (game, deck) {
+        (Some(g), Some(d)) => Some(format!("{}.{}", g, d)),
+        (Some(g), None) => Some(g.to_string()),
+        (None, Some(d)) => Some(d.to_string()),
+        (None, None) => None,
     }
 }
 
