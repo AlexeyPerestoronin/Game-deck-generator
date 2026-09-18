@@ -12,4 +12,4 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 # Leptos CSR mount in `main`.
 leptos = { version = "0.8", features = ["csr"] }
 # Shell layout: activity bar, explorer, editor, autosave.
-deck_gen_wasm_ui = { path = "ui" }
+deck_gen_wasm_ui = { path = "modules/ui" }

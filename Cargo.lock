@@ -665,7 +665,9 @@ dependencies = [
 name = "deck_gen_wasm_fs"
 version = "0.1.0"
 dependencies = [
+ "deck_gen",
  "deck_gen_wasm_conf",
+ "progress_viewer",
  "serde",
 ]
 
@@ -691,7 +693,6 @@ dependencies = [
  "js-sys",
  "json5",
  "leptos",
- "serde",
  "wasm-bindgen",
  "web-sys",
 ]

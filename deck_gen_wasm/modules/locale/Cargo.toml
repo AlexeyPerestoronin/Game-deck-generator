@@ -1,0 +1,20 @@
+[package]
+name = "deck_gen_wasm_locale"
+version.workspace = true
+edition.workspace = true
+description = "Reactive EN/RU localization for chrome UI strings"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# internal constants (STORAGE_KEY etc)
+deck_gen_wasm_conf = { path = "../conf" }
+# Leptos CSR for reactive locale signal
+leptos = { version = "0.8", features = ["csr"] }
+# parse the dict.json5 at compile time
+json5 = "0.4"
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+# localStorage + document.title / lang updates
+web-sys = { version = "0.3", features = ["Window", "Storage", "Document", "Element"] }
