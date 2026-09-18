@@ -8,6 +8,7 @@ use headless_chrome::types::PrintToPdfOptions;
 use headless_chrome::{Browser, LaunchOptions};
 
 use crate::error::{Error, Result};
+use progress_viewer::ProgressHandler;
 
 mod locate;
 
@@ -32,54 +33,66 @@ impl Chrome {
         })
     }
 
-    pub fn html_to_pdf_bytes(&self, html: &str, width_mm: f64, height_mm: f64) -> Result<Vec<u8>> {
+    pub fn html_to_pdf_bytes(&self, html: &str, width_mm: f64, height_mm: f64, progress: &impl ProgressHandler) -> Result<Vec<u8>> {
+        progress.set(0.0);
         let html_path = unique_temp("html");
         fs::write(&html_path, html)?;
         let _guard = DeleteOnDrop(html_path.clone());
-        self.html_file_to_pdf_bytes(&html_path, width_mm, height_mm)
+        self.html_file_to_pdf_bytes(&html_path, width_mm, height_mm, progress)
     }
 
-    pub fn html_file_to_pdf(&self, html: &Path, pdf: &Path, width_mm: f64, height_mm: f64) -> Result<()> {
-        let bytes = self.html_file_to_pdf_bytes(html, width_mm, height_mm)?;
+    pub fn html_file_to_pdf(&self, html: &Path, pdf: &Path, width_mm: f64, height_mm: f64, progress: &impl ProgressHandler) -> Result<()> {
+        progress.set(0.0);
+        let bytes = self.html_file_to_pdf_bytes(html, width_mm, height_mm, progress)?;
         if let Some(parent) = pdf.parent() {
             fs::create_dir_all(parent)?;
         }
         fs::write(pdf, bytes)?;
+        progress.set(100.0);
         Ok(())
     }
 
-    fn html_file_to_pdf_bytes(&self, html: &Path, width_mm: f64, height_mm: f64) -> Result<Vec<u8>> {
+    fn html_file_to_pdf_bytes(&self, html: &Path, width_mm: f64, height_mm: f64, progress: &impl ProgressHandler) -> Result<Vec<u8>> {
         if !html.is_file() {
             return Err(Error::file(html, "HTML file does not exist"));
         }
+        progress.set(10.0);
         let tab = self.browser.new_tab()?;
         tab.navigate_to(&path_to_file_url(html)?)?;
         tab.wait_until_navigated()?;
+        progress.set(50.0);
         let _ = tab.evaluate("window.__fitHeaderNames || document.fonts.ready", true);
-        Ok(tab.print_to_pdf(Some(pdf_options(width_mm, height_mm)))?)
+        let bytes = tab.print_to_pdf(Some(pdf_options(width_mm, height_mm)))?;
+        progress.set(100.0);
+        Ok(bytes)
     }
 
     /// Render a per-card HTML file (standalone, one card) to PNG bytes via CDP screenshot.
     /// Clips to the rendered card element for exact card-sized output.
-    pub fn html_to_png_bytes(&self, html: &str, width_mm: f64, height_mm: f64) -> Result<Vec<u8>> {
+    pub fn html_to_png_bytes(&self, html: &str, width_mm: f64, height_mm: f64, progress: &impl ProgressHandler) -> Result<Vec<u8>> {
+        progress.set(0.0);
         let html_path = unique_temp("html");
         fs::write(&html_path, html)?;
         let _guard = DeleteOnDrop(html_path.clone());
-        self.html_file_to_png_bytes(&html_path, width_mm, height_mm)
+        self.html_file_to_png_bytes(&html_path, width_mm, height_mm, progress)
     }
 
-    fn html_file_to_png_bytes(&self, html: &Path, _width_mm: f64, _height_mm: f64) -> Result<Vec<u8>> {
+    fn html_file_to_png_bytes(&self, html: &Path, _width_mm: f64, _height_mm: f64, progress: &impl ProgressHandler) -> Result<Vec<u8>> {
         if !html.is_file() {
             return Err(Error::file(html, "HTML file does not exist"));
         }
+        progress.set(20.0);
         let tab = self.browser.new_tab()?;
         tab.navigate_to(&path_to_file_url(html)?)?;
         tab.wait_until_navigated()?;
+        progress.set(50.0);
         let _ = tab.evaluate("window.__fitHeaderNames || document.fonts.ready", true);
         // tiny settle time for layout/scripts
         std::thread::sleep(std::time::Duration::from_millis(50));
         let el = tab.wait_for_element("article.card, article.card-back")?;
-        Ok(el.capture_screenshot(CaptureScreenshotFormatOption::Png)?)
+        let bytes = el.capture_screenshot(CaptureScreenshotFormatOption::Png)?;
+        progress.set(100.0);
+        Ok(bytes)
     }
 }
 

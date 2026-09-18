@@ -604,6 +604,7 @@ dependencies = [
  "minijinja",
  "pollster",
  "prepare_pdf_host",
+ "progress_viewer",
  "regex",
  "serde",
  "serde_json",
@@ -643,8 +644,8 @@ dependencies = [
  "deck_gen_wasm_browser",
  "deck_gen_wasm_conf",
  "deck_gen_wasm_fs",
- "deck_gen_wasm_progress",
  "js-sys",
+ "progress_viewer",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -674,8 +675,8 @@ dependencies = [
  "deck_gen_wasm_browser",
  "deck_gen_wasm_conf",
  "deck_gen_wasm_fs",
- "deck_gen_wasm_progress",
  "js-sys",
+ "progress_viewer",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -709,17 +710,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "deck_gen_wasm_progress"
-version = "0.1.0"
-
-[[package]]
 name = "deck_gen_wasm_template"
 version = "0.1.0"
 dependencies = [
  "deck_gen_wasm_browser",
  "deck_gen_wasm_conf",
  "deck_gen_wasm_fs",
- "deck_gen_wasm_progress",
+ "progress_viewer",
  "serde",
  "serde_json",
 ]
@@ -756,11 +753,11 @@ dependencies = [
  "deck_gen_wasm_import",
  "deck_gen_wasm_locale",
  "deck_gen_wasm_persist",
- "deck_gen_wasm_progress",
  "deck_gen_wasm_template",
  "gloo-timers",
  "leptos",
  "prepare_pdf_web",
+ "progress_viewer",
  "wasm-bindgen-futures",
  "web-sys",
 ]
@@ -2006,6 +2003,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "headless_chrome",
+ "progress_viewer",
  "thiserror 2.0.20",
 ]
 
@@ -2015,6 +2013,7 @@ version = "0.1.0"
 dependencies = [
  "deck_gen",
  "js-sys",
+ "progress_viewer",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
@@ -2083,6 +2082,10 @@ dependencies = [
  "version_check",
  "yansi",
 ]
+
+[[package]]
+name = "progress_viewer"
+version = "0.1.0"
 
 [[package]]
 name = "pulldown-cmark"

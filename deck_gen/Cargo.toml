@@ -26,6 +26,8 @@ clap = { version = "4", features = ["derive"], optional = true }
 pollster = { version = "0.4", optional = true }
 # A4 duplex imposition and JPEG-page PDFs (wasm + native).
 lopdf = "0.34"
+# ProgressHandler + macros for observability in prepare_* and engine paths.
+progress_viewer = { path = "../progress_viewer" }
 # Compile `.scss` templates to CSS inside the Jinja loader.
 grass = "0.13"
 # Parse `conf.json5`, deck `data.json5`, and vars files (comments + trailing commas).

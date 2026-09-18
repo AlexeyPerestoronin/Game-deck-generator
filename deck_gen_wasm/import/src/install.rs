@@ -2,7 +2,7 @@
 
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::{file_name, join_path, unique_name, Vfs};
-use deck_gen_wasm_progress::{progress_block, progress_loop, progress_wrapper, Progress};
+use progress_viewer::{progress_block, progress_loop, progress_wrapper, Progress};
 
 use super::FileBody;
 
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn install_folder_writes_text_and_image() {
         let mut vfs = Vfs::default();
-        let folder = deck_gen_wasm_progress::poll_now(install_folder(
+        let folder = progress_viewer::poll_now(install_folder(
             &mut vfs,
             "demo",
             &["art".into()],
@@ -110,7 +110,7 @@ mod tests {
     fn install_files_into_existing_folder() {
         let mut vfs = Vfs::default();
         vfs.mkdir("games/demo").unwrap();
-        let n = deck_gen_wasm_progress::poll_now(install_files(
+        let n = progress_viewer::poll_now(install_files(
             &mut vfs,
             "games/demo",
             &[("logo.png".into(), FileBody::Bytes(vec![1, 2, 3]))],

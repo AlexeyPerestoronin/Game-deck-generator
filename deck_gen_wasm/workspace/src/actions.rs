@@ -23,7 +23,7 @@ use deck_gen_wasm_import::{
     PickedFolder,
 };
 use deck_gen_wasm_persist::{save_binaries, save_session};
-use deck_gen_wasm_progress::{progress_block, progress_wrapper};
+use progress_viewer::{progress_block, progress_wrapper};
 use deck_gen_wasm_template as help;
 use deck_gen_wasm_template::{install_game, install_new_game};
 
@@ -201,7 +201,8 @@ impl Workspace {
                 let prepared = progress_block!(progress, 10.0, 90.0, {
                     workspace.flush_draft();
                     let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
-                    let result = deck_gen::prepare_html(fs.clone());
+                    let sub = progress.new_subprocess(10.0, 90.0);
+                    let result = deck_gen::prepare_html(fs.clone(), &sub);
                     (fs, result)
                 });
                 progress_block!(progress, 90.0, 100.0, {
@@ -237,7 +238,8 @@ impl Workspace {
                     workspace.flush_draft();
                     let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
                     let engine = prepare_pdf_web::WebPdfEngine;
-                    let result = deck_gen::prepare_pdf(fs.clone(), &engine).await;
+                    let sub = progress.new_subprocess(10.0, 90.0);
+                    let result = deck_gen::prepare_pdf(fs.clone(), &engine, &sub).await;
                     (fs, result)
                 });
                 progress_block!(progress, 90.0, 100.0, {

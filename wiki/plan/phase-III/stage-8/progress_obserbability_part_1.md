@@ -10,7 +10,7 @@
 # Что необходимо сделать
 Извлечь внутренний крейт `deck_gen_wasm/progress` (package name `deck_gen_wasm_progress`) в самостоятельный крейт репозитория `progress_viewer` (директория `progress_viewer/` в корне, package name `progress_viewer`), который экспортирует интерфейс `ProgressHandler` и макросы обёртки `progress_wrapper!`, `progress_block!`, `progress_loop!`.
 
-Крейт `deck_gen` (при сборке с feature cli) должен создавать собственную реализацию `ProgressHandler` и передавать её во все CLI-команды (`html`, `pdf`, `png`; `list` опционально) как последний параметр в вызовы `prepare_html_named` / `prepare_pdf_named` / `prepare_png_named` (и внутренние), чтобы прогресс выполнения команд стал наблюдаемым.
+Крейт `deck_gen` (при сборке с feature cli) должен создавать собственную реализацию `ProgressHandler` и передавать её в следующие CLI-команды (`html`, `pdf` и `png`) как последний параметр в вызовы `prepare_html_named` / `prepare_pdf_named` / `prepare_png_named` (и внутренние), чтобы прогресс выполнения команд стал наблюдаемым.
 
 Крейт `deck_gen_wasm` (и его sub-компоненты workspace/actions, export, import, template) должен использовать собственную реализацию `ProgressHandler` (текущий с paint-хук) и передавать её как последний параметр при вызовах api-команд из `deck_gen` (в actions.rs), а не только оборачивать свои внутренние операции.
 

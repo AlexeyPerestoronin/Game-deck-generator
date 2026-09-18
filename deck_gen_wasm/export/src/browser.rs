@@ -12,7 +12,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{HtmlAnchorElement, Url};
 
 use deck_gen_wasm_browser as js;
-use deck_gen_wasm_progress::{progress_wrapper, Progress};
+use progress_viewer::{progress_wrapper, Progress};
 
 /// Save `bytes` as `filename`, preferring the save picker over an anchor click.
 pub async fn save_zip_bytes(

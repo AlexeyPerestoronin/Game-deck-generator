@@ -7,7 +7,7 @@
 use crate::github;
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::{unique_name, Vfs};
-use deck_gen_wasm_progress::{progress_block, progress_loop, progress_wrapper, Progress};
+use progress_viewer::{progress_block, progress_loop, progress_wrapper, Progress};
 
 /// Result of copying the template into the workspace.
 pub struct InstalledGame {

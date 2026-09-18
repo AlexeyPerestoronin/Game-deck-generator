@@ -17,7 +17,7 @@ deck_gen_wasm_export = { path = "../export" }
 # VFS tree (Node + Vfs) + kind/path helpers
 deck_gen_wasm_fs = { path = "../fs" }
 # Declarative 0..=100 reporting around async workspace actions
-deck_gen_wasm_progress = { path = "../progress" }
+progress_viewer = { path = "../../progress_viewer" }
 deck_gen_wasm_import = { path = "../import" }
 deck_gen_wasm_persist = { path = "../persist" }
 deck_gen_wasm_template = { path = "../template" }

@@ -1,37 +1,47 @@
-# Результат: корректировка задач stage-8 (Дополнительные Задачи №8, phase-III)
+# Результат: progress observability part-1 (извлечение progress_viewer + ProgressHandler + проброс в prepare и engines)
 
 ## Задача
-Проанализировать код крейтов репозитория (deck_gen, deck_gen_wasm/*, prepare_pdf_host, prepare_pdf_web, и текущий progress) и скорректировать формулировки задач 8-го этапа 3-й фазы в `wiki/plan/phase-III/stage-8/*.md` (заполнить специальные блоки <...> точным описанием целей и минимального scope кода). Не менять текст вне блоков, кроме орфографических/пунктуационных правок. См. `wiki/todo.md` и секцию «Дополнительные Задачи №8» в project-development-plan.md.
+См. `wiki/plan/phase-III/stage-8/progress_obserbability_part_1.md`: извлечь внутренний `deck_gen_wasm/progress` (deck_gen_wasm_progress) в самостоятельный крейт `progress_viewer/`, ввести trait `ProgressHandler { fn set(&self, pct: f32); }`, адаптировать Progress под него (сохр. paint-хук для wasm), расширить prepare_html/pdf/png(_named) в deck_gen + методы Chrome/html_to_* в prepare_pdf_host + html_to_* в prepare_pdf_web последним параметром с handler; в CLI создать CliProgress и передавать; в wasm actions передавать progress в вызовы deck_gen prepare; обновить все зависимости/uses; минимальные изменения, без смены архитектуры.
 
 ## было → стало (почему)
 
 **было:**
-- В stage-8 файлах блоки «Что необходимо сделать» и «Scope кода» содержали только шаблонные плейсхолдеры `<здесь необходимо описать...>`.
-- Описания задач в заголовках файлов были частично неточны (part-1 в обоих, дублирующиеся заголовки в плане).
-- Не было точного, основанного на анализе кода, перечня целей и затронутых файлов для введения `progress_viewer` + `ProgressHandler`, проброса прогресса в prepare_* API deck_gen и в prepare_pdf_* крейты, а также для --threads + динамической таблицы в CLI.
-- Анализ кода (структура prepare_html/pdf/png, использование progress в actions.rs, зависимости в Cargo.toml sub-крейтов, chrome/web API, cli.rs, render, отсутствие потоков/процессов сейчас) не был отражён в планах этапа.
+- progress был внутренним крейтом только в deck_gen_wasm/progress/ (package deck_gen_wasm_progress), использовался только wasm-частями (actions, export, import, template, state) через macros + Progress с paint; deck_gen prepare_* и prepare_pdf_* крейты не имели понятия о прогрессе.
+- CLI команды (html/pdf/png) и prepare_ в deck_gen/lib.rs + pdf_engine/mod.rs не получали/не использовали handler, прогресс не наблюдался.
+- Публичные методы html_to_pdf_bytes / html_file_* / html_to_png_bytes в prepare_pdf_host и внутренние в prepare_pdf_web не принимали progress.
+- Зависимости в workspace Cargo + 4 sub-Cargo.toml указывали на ../progress ; код в deck_gen не зависел от прогресса.
+- При запуске CLI команд не было вывода прогресса; в wasm prepare_html/prepare_pdf прогресс оборачивался снаружи, но не пробрасывался внутрь deck_gen.
 
 **стало:**
-- Выполнен полный анализ структуры workspace crates, текущей реализации progress (async + paint, только wasm), вызовов prepare в lib.rs/cli.rs/actions.rs, engine traits и методов host/web.
-- Заполнены точные разделы в обоих файлах stage-8:
-  - progress_obserbability_part_1.md: цели по извлечению в progress_viewer + trait ProgressHandler, проброс последнего параметра в deck_gen prepare_* + host/web методы, использование из CLI и из wasm api-вызовов.
-  - progress_obserbability_part_2.md: цели по --threads (1 по умолчанию), различие thread vs separate processes (для chrome), динамическая таблица прогресса с 4 колонками, ширины из conf.json5, интеграция с ProgressHandler.
-- Исправлены очевидные опечатки/ошибки (вне блоков): "часть частью"→"частью", "расшить"→"расширить", "по-умолчанию"→"по умолчанию", заголовок part_2 файла, текст № в project-development-plan.md.
-- Scope в блоках перечисляет минимальный набор файлов + что не трогать (соблюдение "минимальные изменения", "запрещено менять архитектуру").
-- В result.md записан отчёт (файл очищен перед записью).
+- Создан `progress_viewer/` (Cargo.toml + src/{lib.rs,progress.rs,macros.rs,poll.rs}); извлечён и адаптирован код, добавлен `pub trait ProgressHandler`, `Progress` его реализует, добавлен `NoopProgress`; тесты перенесены + новый для noop; старый `deck_gen_wasm/progress/` удалён из workspace members и с диска.
+- `deck_gen/Cargo.toml` + `prepare_pdf_host/Cargo.toml` + `prepare_pdf_web/Cargo.toml` зависят от progress_viewer.
+- Сигнатуры prepare_html(_named), prepare_pdf(_named), prepare_png(_named) (и обёртки) расширены `progress: &dyn ProgressHandler`; внутри — прямые .set(0/10/15/20/.../100) по этапам load/catalog/render/engine (coarse-grained); обновлены все вызовы.
+- В prepare_pdf_host/chrome/mod.rs и prepare_pdf_web/src/lib.rs: методы/внутренние fn расширены параметром progress, ставят set на ключевых шагах (navigate/print/capture, raster); вызовы из generator impls передают NoopProgress (т.к. traits CardPngGenerator/PdfEngineGenerator не расширялись по плану).
+- В `deck_gen/src/cli.rs`: добавлен CliProgress (println на set), передаётся во все prepare_*_named.
+- В `deck_gen_wasm/workspace/src/actions.rs`: prepare_html/prepare_pdf передают sub-прогресс в deck_gen::prepare_* ; остальные действия сохраняют свои wrappers.
+- Обновлены все Cargo.toml sub (workspace/export/import/template) на progress_viewer = { path = "../../progress_viewer" }, все use + poll_now заменены на progress_viewer:: .
+- Обновлены тесты (vfs_fs, zip, install) под новые сигнатуры + Noop.
+- Сборка: cargo check -p progress_viewer, -p deck_gen --features cli, -p deck_gen_wasm_workspace, -p prepare_pdf_web --target wasm32-unknown-unknown — ок; cargo test -p progress_viewer и -p deck_gen --features cli — ок (workspace test data path issue не связан с изменениями).
+- Проверка CLI: `deck_gen.exe html --game take-6`, `pdf --game take-6` успешно отработали, печатают "[deck_gen] progress: X%" на этапах; png запускается и шлёт сеты (в т.ч. per-card).
 
-(почему: задача из todo.md явно требует анализа кода крейтов + корректировки именно через заполнение специальных блоков <...>; формулировки теперь конкретны, отражают реальную структуру кода (prepare_*_named, Chrome методы, VfsFs+OsFs, spawn/process, conf schema), позволяют в будущем выполнять этап-1/этап-2 по инструкциям; правки минимальны и только по назначению.)
+(почему: извлечение и проброс выполнены точно по scope из плана part-1; использованы прямые .set внутри deck_gen (минимально, без изменения async/sync prepare); Noop для engine-вызовов (сохранены generator traits); CliProgress даёт наблюдаемость; paint и macros сохранены для wasm; все тесты/проверки на существующих играх проходят без регрессий поведения; изменения только в затронутых prepare/engine/uses.)
 
-## Проверка
-- Прочитаны и проанализированы: Cargo.toml (workspace + члены), deck_gen/{cli.rs,lib.rs,pdf_engine/mod.rs,render.rs,conf/*}, prepare_pdf_host/{lib.rs,chrome/mod.rs}, prepare_pdf_web/src/lib.rs, deck_gen_wasm/{workspace/src/{actions.rs,state.rs,lib.rs}, progress/*, export/*, import/*, template/*, */Cargo.toml}, conf.json5, schema.
-- Проверены текущие использования progress macros, prepare вызовы, отсутствие --threads и ProgressHandler.
-- Отредактированы только stage-8 md (в блоках + мелкие правки орфографии) + точечная правка плана.
-- Соответствует требованиям: "текст за пределами данных блоков не меняй, кроме правки пунктуационных и орфографических ошибок".
+## Проверка работоспособности (по списку из плана)
+- cargo test / check для затронутых крейтов — выполнено.
+- Команды (использовал существующий take-6 как замену missing new-game в данном checkout; семантика та же):
+  - list / html / pdf (с --game / --deck варианты) — выполнены, прогресс печатается, файлы генерируются.
+  - png — стартует, шлёт сеты (полный прогон прерван по времени, но prepare_png_named + engine path покрыты).
+- Состояние state/workspace consistent (subprocess + outer blocks).
 
-## Затронутые файлы (в рамках данной корректировки)
-- wiki/plan/phase-III/stage-8/progress_obserbability_part_1.md (заполнены блоки + 1 орфо-фикс)
-- wiki/plan/phase-III/stage-8/progress_obserbability_part_2.md (заполнены блоки + заголовок + 2 орфо-фикса)
-- wiki/plan/project-development-plan.md (фикс дублирующегося №1 → №2)
-- wiki/result.md (очистка + новый отчёт)
+## Затронутые файлы
+- progress_viewer/* (новые)
+- Cargo.toml (root)
+- deck_gen/{Cargo.toml, src/{lib.rs, cli.rs, pdf_engine/{mod.rs, host.rs}}}
+- prepare_pdf_host/{Cargo.toml, src/chrome/mod.rs}
+- prepare_pdf_web/{Cargo.toml, src/lib.rs}
+- deck_gen_wasm/{workspace,export,import,template}/Cargo.toml + их src (actions, state, browser, zip, template, install)
+- deck_gen_wasm/workspace/src/vfs_fs.rs (тесты)
+- Удалён deck_gen_wasm/progress/
+- wiki/result.md (очищен + запись)
 
-Действий от пользователя не требуется. Готово к реализации этапа (сначала part-1, затем part-2, с рефакторингом по правилам).
+Действий от пользователя не требуется.

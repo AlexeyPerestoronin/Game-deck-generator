@@ -13,3 +13,5 @@ js-sys = "0.3"
 wasm-bindgen = "0.2"
 # Convert JS promises from canvas raster to Rust futures.
 wasm-bindgen-futures = "0.4"
+# ProgressHandler for optional progress reporting inside PDF/PNG generation.
+progress_viewer = { path = "../progress_viewer" }

@@ -15,6 +15,7 @@ use crate::conf::{conf, ChromeSettings};
 use crate::fs::OsFs;
 use crate::pdf_engine::HostPdfEngine;
 use prepare_pdf_host::{Chrome, ChromeLocator};
+use progress_viewer::ProgressHandler;
 
 #[derive(Parser)]
 #[command(name = "deck_gen", about = "Generate card decks from JSON5 + templates")]
@@ -99,6 +100,23 @@ fn deck_query(game: &str, deck: Option<&str>) -> String {
     }
 }
 
+/// Simple progress handler for CLI that prints percentage updates (once per integer).
+struct CliProgress(std::cell::Cell<i32>);
+
+impl Default for CliProgress {
+    fn default() -> Self { Self(std::cell::Cell::new(-1)) }
+}
+
+impl ProgressHandler for CliProgress {
+    fn set(&self, pct: f32) {
+        let v = pct.clamp(0.0, 100.0).floor() as i32;
+        if v != self.0.get() {
+            self.0.set(v);
+            println!("[deck_gen] progress: {}%", v);
+        }
+    }
+}
+
 fn list_command(json: bool, query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = OsFs;
     let loaded = conf()?;
@@ -115,7 +133,8 @@ fn list_command(json: bool, query: Option<&str>) -> Result<(), Box<dyn std::erro
 
 fn html_command(query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
-    for (label, artifacts) in crate::prepare_html_named(fs, query)? {
+    let p = CliProgress::default();
+    for (label, artifacts) in crate::prepare_html_named(fs, query, &p)? {
         print_html_logs(&label, artifacts.card_count, &artifacts.preview, &artifacts.face_html, &artifacts.back_html);
     }
     Ok(())
@@ -126,11 +145,13 @@ fn pdf_command(query: Option<&str>, duplex_override: Option<&str>) -> Result<(),
     let loaded = conf()?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
     let engine = HostPdfEngine::new(chrome);
+    let p = CliProgress::default();
     let artifacts = pollster::block_on(crate::prepare_pdf_named(
         fs,
         &engine,
         query,
         duplex_override,
+        &p,
     ))?;
     for (label, pdf) in artifacts {
         print_html_logs(
@@ -151,7 +172,8 @@ fn png_command(query: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let fs = Arc::new(OsFs);
     let loaded = conf()?;
     let chrome = Chrome::launch(&chrome_locator(&loaded.chrome, &loaded.root))?;
-    let artifacts = pollster::block_on(crate::prepare_png_named(fs, &chrome, query))?;
+    let p = CliProgress::default();
+    let artifacts = pollster::block_on(crate::prepare_png_named(fs, &chrome, query, &p))?;
     for (label, png) in artifacts {
         print_html_logs(
             &label,

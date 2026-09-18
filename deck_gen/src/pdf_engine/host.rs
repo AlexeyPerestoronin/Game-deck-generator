@@ -22,7 +22,7 @@ impl PdfEngineGenerator for HostPdfEngine {
     fn html_to_pdf(&self, html: &str, card: CardSize) -> impl Future<Output = Result<Vec<u8>>> {
         let out = self
             .chrome
-            .html_to_pdf_bytes(html, card.width_mm, card.height_mm)
+            .html_to_pdf_bytes(html, card.width_mm, card.height_mm, &progress_viewer::NoopProgress)
             .map_err(|err| Error::msg(err.to_string()));
         std::future::ready(out)
     }

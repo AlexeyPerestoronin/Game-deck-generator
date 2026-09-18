@@ -308,9 +308,9 @@ impl Workspace {
     }
 
     /// Callback that writes [`Self::progress`] and yields one frame so the ray redraws.
-    pub(crate) fn progress_handle(&self) -> deck_gen_wasm_progress::Progress {
+    pub(crate) fn progress_handle(&self) -> progress_viewer::Progress {
         let progress = self.progress;
-        deck_gen_wasm_progress::Progress::new(move |pct| progress.set(pct))
+        progress_viewer::Progress::new(move |pct| progress.set(pct))
             .with_paint(|| gloo_timers::future::TimeoutFuture::new(0))
     }
 

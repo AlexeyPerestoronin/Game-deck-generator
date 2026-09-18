@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn empty_workspace_errors() {
         let fs: Arc<dyn FileSystem> = Arc::new(VfsFs::new(Vfs::default()));
-        let err = deck_gen::prepare_html(fs).unwrap_err();
+        let err = deck_gen::prepare_html(fs, &progress_viewer::NoopProgress).unwrap_err();
         assert!(err.to_string().contains("No deck data files"), "{err}");
     }
 
@@ -139,7 +139,7 @@ mod tests {
         let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../games/new-game");
         load_tree(&mut vfs, &src, "games/new-game");
         let fs = Arc::new(VfsFs::new(vfs));
-        let n = deck_gen::prepare_html(fs.clone()).unwrap();
+        let n = deck_gen::prepare_html(fs.clone(), &progress_viewer::NoopProgress).unwrap();
         assert_eq!(n, 2);
         let vfs = match Arc::try_unwrap(fs) {
             Ok(inner) => inner.into_vfs(),

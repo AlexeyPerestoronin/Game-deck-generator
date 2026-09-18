@@ -10,7 +10,7 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
 use deck_gen_wasm_fs::Vfs;
-use deck_gen_wasm_progress::{progress_loop, progress_wrapper, Progress};
+use progress_viewer::{progress_loop, progress_wrapper, Progress};
 
 /// Build a ZIP of every directory and file in `vfs`.
 pub async fn vfs_to_zip(vfs: &Vfs, progress: Progress) -> Result<Vec<u8>, String> {
@@ -71,7 +71,7 @@ mod tests {
         vfs.put_file("a.txt", "A".into()).unwrap();
         vfs.put_file("b.txt", "B".into()).unwrap();
         let (progress, log) = recorder();
-        let bytes = deck_gen_wasm_progress::poll_now(vfs_to_zip(&vfs, progress)).unwrap();
+        let bytes = progress_viewer::poll_now(vfs_to_zip(&vfs, progress)).unwrap();
         assert!(!bytes.is_empty());
         // wrapper 0, loop i=0 → 0, i=1 → 50, loop end 100, wrapper 100
         assert_eq!(*log.borrow(), vec![0.0, 0.0, 50.0, 100.0, 100.0]);
@@ -81,7 +81,7 @@ mod tests {
     fn empty_vfs_only_bookends() {
         let vfs = Vfs::default();
         let (progress, log) = recorder();
-        let _ = deck_gen_wasm_progress::poll_now(vfs_to_zip(&vfs, progress)).unwrap();
+        let _ = progress_viewer::poll_now(vfs_to_zip(&vfs, progress)).unwrap();
         assert_eq!(*log.borrow(), vec![0.0, 100.0, 100.0]);
     }
 }

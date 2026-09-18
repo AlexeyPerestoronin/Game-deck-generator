@@ -28,6 +28,8 @@ use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use progress_viewer::ProgressHandler;
+
 pub use error::{Error, Result};
 pub use fs::FileSystem;
 pub use model::Deck;
@@ -37,11 +39,11 @@ pub use pdf_engine::{prepare_pdf, prepare_pdf_named, PdfEngineGenerator};
 ///
 /// Returns the number of decks written. `F` is dispatched statically; pass
 /// `Arc<dyn FileSystem>` only when the implementation is chosen at runtime.
-pub fn prepare_html<F>(fs: Arc<F>) -> Result<usize>
+pub fn prepare_html<F>(fs: Arc<F>, progress: &impl ProgressHandler) -> Result<usize>
 where
     F: FileSystem + ?Sized + 'static,
 {
-    Ok(prepare_html_named(fs, None)?.len())
+    Ok(prepare_html_named(fs, None, progress)?.len())
 }
 
 /// Same as [`prepare_html`], but optionally restrict to a deck name or prefix.
@@ -51,17 +53,25 @@ where
 pub fn prepare_html_named<F>(
     fs: Arc<F>,
     name: Option<&str>,
+    progress: &impl ProgressHandler,
 ) -> Result<Vec<(String, render::HtmlArtifacts)>>
 where
     F: FileSystem + ?Sized + 'static,
 {
+    progress.set(0.0);
     let loaded = conf::load(fs.as_ref())?;
+    progress.set(10.0);
     let decks = catalog::find_decks(fs.as_ref(), &loaded, name)?;
+    progress.set(20.0);
     let mut out = Vec::new();
-    for deck in decks {
+    let n = decks.len().max(1);
+    for (i, deck) in decks.into_iter().enumerate() {
+        let p = 20.0 + 70.0 * (i as f32) / (n as f32);
+        progress.set(p);
         let artifacts = render::prepare_html(&fs, &loaded, &deck)?;
         out.push((deck.name, artifacts));
     }
+    progress.set(100.0);
     Ok(out)
 }
 
@@ -89,12 +99,12 @@ pub struct PngArtifacts {
 
 /// Render per-card PNGs for every deck visible through `fs` (requires prior or
 /// internal HTML preparation for the per-card HTML files).
-pub async fn prepare_png<F, E>(fs: Arc<F>, engine: &E) -> Result<usize>
+pub async fn prepare_png<F, E>(fs: Arc<F>, engine: &E, progress: &impl ProgressHandler) -> Result<usize>
 where
     F: FileSystem + ?Sized + 'static,
     E: CardPngGenerator,
 {
-    Ok(prepare_png_named(fs, engine, None).await?.len())
+    Ok(prepare_png_named(fs, engine, None, progress).await?.len())
 }
 
 /// Same as [`prepare_png`], optionally restricted to deck name/prefix.
@@ -105,15 +115,22 @@ pub async fn prepare_png_named<F, E>(
     fs: Arc<F>,
     engine: &E,
     name: Option<&str>,
+    progress: &impl ProgressHandler,
 ) -> Result<Vec<(String, PngArtifacts)>>
 where
     F: FileSystem + ?Sized + 'static,
     E: CardPngGenerator,
 {
+    progress.set(0.0);
     let loaded = crate::conf::load(fs.as_ref())?;
+    progress.set(10.0);
     let decks = crate::catalog::find_decks(fs.as_ref(), &loaded, name)?;
+    progress.set(15.0);
     let mut out = Vec::new();
-    for deck in decks {
+    let n = decks.len().max(1);
+    for (i, deck) in decks.into_iter().enumerate() {
+        let base = 15.0 + 70.0 * (i as f32) / (n as f32);
+        progress.set(base);
         // Per-card HTMLs are created as side-effect of prepare_html (see render.rs).
         let html = crate::render::prepare_html(&fs, &loaded, &deck)?;
         let card = pdf_engine::CardSize {
@@ -124,8 +141,11 @@ where
         let png_dir = out_dir.join("cards").join("png");
         fs.create_dir_all(&png_dir)?;
         let cards_html_dir = out_dir.join("cards").join("html");
-        for i in 0..html.card_count {
-            let n = i + 1;
+        // inner per-card work; engine calls will be no-op for progress here (see generator impls)
+        for j in 0..html.card_count {
+            let p = base + 5.0 * (j as f32) / (html.card_count.max(1) as f32);
+            progress.set(p);
+            let n = j + 1;
             let face_html_path = cards_html_dir.join(format!("card-{n}-face.html"));
             let back_html_path = cards_html_dir.join(format!("card-{n}-back.html"));
             let face_html = fs.read_to_string(&face_html_path)?;
@@ -145,7 +165,9 @@ where
                 png_dir,
             },
         ));
+        progress.set(base + 5.0);
     }
+    progress.set(100.0);
     Ok(out)
 }
 
@@ -153,7 +175,7 @@ where
 impl CardPngGenerator for prepare_pdf_host::Chrome {
     fn html_to_png(&self, html: &str, card: pdf_engine::CardSize) -> impl Future<Output = Result<Vec<u8>>> {
         let out = self
-            .html_to_png_bytes(html, card.width_mm, card.height_mm)
+            .html_to_png_bytes(html, card.width_mm, card.height_mm, &progress_viewer::NoopProgress)
             .map_err(|err| Error::msg(err.to_string()));
         std::future::ready(out)
     }
