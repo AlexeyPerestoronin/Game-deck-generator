@@ -13,7 +13,7 @@
             "module": "invoke",
             "cwd": "${workspaceFolder}",
             "args": [
-                "export.professions.prepare-html",
+                "agent-loop",
             ],
         },
         // "projects.casket.prepare-metal-manufacturing-doc"

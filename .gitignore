@@ -4,3 +4,6 @@ dist/
 
 #Python
 .venv
+
+#API_KEYs
+API_KEY*
