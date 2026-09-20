@@ -6,6 +6,7 @@ __all__ = [
     'DoubleLogger',
 ]
 
+
 class ILogger(typing.Protocol):
     """Logging interface for agent harness (stdout + file)."""
 

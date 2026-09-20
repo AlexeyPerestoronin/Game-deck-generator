@@ -6,6 +6,7 @@ __all__ = [
     'AgentLoop',
 ]
 
+
 class AgentLoop:
     """Drives the agent through iterations, enforcing token and iteration limits."""
 

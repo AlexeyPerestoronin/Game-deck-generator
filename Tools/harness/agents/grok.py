@@ -37,6 +37,9 @@ class Grok(i_agent.IAgent):
             metadata=(("x-grok-conv-id", self.__conv_id), ),
         )
         self.__chat_id = str(uuid.uuid4())
+
+        # ВАЖНО: Для работы Prompt Caching модель "grok-4.6" требует стабильной истории.
+        # Этот объект класса должен жить внутри всего цикла AgentLoop (не пересоздаваться!).
         self.__chat = self.__client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__tools.list)
         self.__usage_stats = UsageStats()
 
@@ -65,21 +68,6 @@ class Grok(i_agent.IAgent):
         return float(self.__usage_stats.total_cost_usd)
 
     def iteration(self) -> bool:
-        """
-        Выполняет один шаг агента: отправляет накопленный контекст (или первый промпт),
-        получает ответ модели и обрабатывает tool calls при их наличии.
-
-        Логика завершения цикла:
-        - Возвращает False, если модель запросила инструменты (tool_calls).
-          После выполнения инструментов и append tool_result внешний цикл
-          вызовет iteration() ещё раз, чтобы модель могла продолжить.
-        - Возвращает True, если модель дала обычный текстовый ответ без tool_calls.
-          Это сигнал, что агент считает задачу выполненной → AgentLoop завершает работу.
-
-        Важно: сразу после sample() мы append'им ответ ассистента в историю чата.
-        Без этого история диалога (user → assistant(tool request) → tool) будет неполной,
-        и модель может не суметь корректно завершить цикл или потеряет контекст.
-        """
         if self.__prompt:
             self.__logger\
                 .log_line("user prompt:")\
@@ -91,8 +79,7 @@ class Grok(i_agent.IAgent):
 
         response = self.__request()
 
-        # КРИТИЧЕСКИ ВАЖНО для корректной истории и логики завершения:
-        # Сохраняем ответ модели (assistant turn) до обработки tool results.
+        # Сохраняем ответ ассистента (содержит tool_calls с их уникальными ID)
         self.__chat.append(response)
 
         if getattr(response, 'content', None):
@@ -104,8 +91,12 @@ class Grok(i_agent.IAgent):
 
         if response.tool_calls:
             self.__logger.log_line("agent request tools:")
+
+            # Собираем все результаты инструментов параллельно, чтобы отправить их корректно
             for i, tool_call in enumerate(response.tool_calls, 1):
                 raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
+                tool_call_id = tool_call.id  # ФИКС: Обязательно вытаскиваем ID вызова инструмента
+
                 try:
                     args = json.loads(raw_args)
                     result = self.__tools.call(tool_call.function.name, **args)
@@ -114,12 +105,16 @@ class Grok(i_agent.IAgent):
                     result = f"execution error: {e}"
                     status = f"fail: {e}"
                     args = raw_args
-                self.__chat.append(xai_sdk.chat.tool_result(result))
+
+                # ФИКС: Передаем tool_call_id, чтобы xAI API понимал, к какому вызову относится этот результат
+                self.__chat.append(xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id))
+
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
                 self.__logger.log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")
+
+            # Возвращаем False: цикл должен продолжиться, так как мы только что дали модели данные из файлов/git
             return False
 
-        # Модель ответила без вызовов инструментов → считаем это финальным ответом.
         return True
 
     def finish(self):
@@ -127,7 +122,7 @@ class Grok(i_agent.IAgent):
             .log_line("Sessions statistic")\
             .log_line(f"- total requests: {self.__usage_stats.requests}")\
             .log_line(f"- total tokens: {self.consumed_tokens}")\
-            .log_line(f"    - input tokens: {self.__usage_stats.cached_tokens + self.__usage_stats.input_tokens}")\
+            .log_line(f"    - input tokens: {self.__usage_stats.input_tokens} (from stats)")\
             .log_line(f"        - cached tokens: {self.__usage_stats.cached_tokens}")\
             .log_line(f"    - output tokens: {self.__usage_stats.output_tokens}")\
             .log_line(f"- total cost: {self.__usage_stats.total_cost_usd}$")
@@ -136,11 +131,15 @@ class Grok(i_agent.IAgent):
         response = self.__chat.sample()
         self.__usage_stats.requests += 1
         if response.usage:
+            # Исправлен подсчет токенов: prompt_tokens в API обычно включает в себя cached_tokens.
+            # Мы сохраняем "чистые" значения, предоставляемые API.
             self.__usage_stats.input_tokens += response.usage.prompt_tokens or 0
             self.__usage_stats.output_tokens += response.usage.completion_tokens or 0
+
             details = getattr(response.usage, "prompt_tokens_details", None)
             if details:
                 self.__usage_stats.cached_tokens += getattr(details, "cached_tokens", 0) or 0
+
         if hasattr(response, "cost_usd") and response.cost_usd is not None:
             self.__usage_stats.total_cost_usd += response.cost_usd
         return response
