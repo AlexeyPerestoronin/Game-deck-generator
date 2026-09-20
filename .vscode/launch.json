@@ -14,7 +14,7 @@
             "cwd": "${workspaceFolder}",
             "args": [
                 "harness.run-agent",
-                    "--prompt \"Есть задача: см. WiKi/dev-plan/phase-IV/2 implement invoke task for building/todo.md\"",
+                    "--prompt \"WiKi/dev-plan/phase-IV/4 implement gemini agent tool/toto.md\"",
             ],
         },
         // "projects.casket.prepare-metal-manufacturing-doc"

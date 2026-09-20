@@ -14,9 +14,22 @@ def run_agent(ctx, prompt: str, iteration_limit: int = 25, safe_mode: bool = Tru
     log = logger.DoubleLogger(pathlib.Path(log_file))
     tools = agents.tools.FSTools(allowed_dirs=["Tools", "WiKi/dev-plan/phase-IV/4 implement gemini agent tool"])
     ai_agent = agents.Grok(prompt, tools, log)
+    loop = agent_loop.AgentLoop(False, iteration_limit, ai_agent, log)
+    loop.start()
+
+
+@invoke.task()
+def run_gemini_agent(ctx, prompt: str, iteration_limit: int = 25, safe_mode: bool = True):
+    """Run Gemini-3.8-Flash AI agent loop via invoke."""
+    log_file = pathlib.Path(os.getcwd()) / ".log" / f"log-{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}.md"
+
+    log = logger.DoubleLogger(pathlib.Path(log_file))
+    tools = agents.tools.FSTools(allowed_dirs=["Tools", "WiKi/dev-plan/phase-IV/4 implement gemini agent tool"])
+    ai_agent = agents.Gemini(prompt, tools, log)
     loop = agent_loop.AgentLoop(safe_mode, iteration_limit, ai_agent, log)
     loop.start()
 
 
 collection = invoke.Collection("harness")
 collection.add_task(run_agent)
+collection.add_task(run_gemini_agent)

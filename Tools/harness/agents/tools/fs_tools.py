@@ -5,6 +5,8 @@ import subprocess
 import fnmatch
 import shutil
 
+from typing import List
+
 from . import i_tools
 
 __all__ = [
@@ -14,7 +16,7 @@ __all__ = [
 class FSTools(i_tools.ITools):
     """Complex file system, git, and search tool set for AI agent"""
 
-    def __init__(self, *, cwd: str | None = None, allowed_dirs: list[str]):
+    def __init__(self, *, cwd: str | None = None, allowed_dirs: List[str]):
         self.__cwd = pathlib.Path(os.getcwd() if not cwd else cwd).absolute()
         self.__allowed_dirs = [pathlib.Path(dir).absolute() for dir in allowed_dirs]
         self.__read_dirs = list(self.__allowed_dirs)
@@ -160,14 +162,14 @@ class FSTools(i_tools.ITools):
             return (self.__cwd / p).resolve()
         return p.resolve()
 
-    def _is_path_safe(self, path: pathlib.Path, allowed_dirs: list[pathlib.Path]) -> bool:
+    def _is_path_safe(self, path: pathlib.Path, allowed_dirs: List[pathlib.Path]) -> bool:
         try:
             resolved_path = path.resolve()
             return any(resolved_path.is_relative_to(allowed) for allowed in allowed_dirs)
         except Exception:
             return False
 
-    def _run_git_cmd(self, args: list[str]) -> str:
+    def _run_git_cmd(self, args: List[str]) -> str:
         """Безопасный запуск git-команд в контексте CWD"""
         # git always runs from harness CWD (project root). read-only git ops (status/diff) are allowed
         # even if project root is not listed in allowed_dirs; path args are validated by callers.
