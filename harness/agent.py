@@ -101,6 +101,21 @@ class Grok(Agent):
         return float(self.__usage_stats.total_cost_usd)
 
     def iteration(self) -> bool:
+        """
+        Выполняет один шаг агента: отправляет накопленный контекст (или первый промпт),
+        получает ответ модели и обрабатывает tool calls при их наличии.
+
+        Логика завершения цикла:
+        - Возвращает False, если модель запросила инструменты (tool_calls).
+          После выполнения инструментов и append tool_result внешний цикл
+          вызовет iteration() ещё раз, чтобы модель могла продолжить.
+        - Возвращает True, если модель дала обычный текстовый ответ без tool_calls.
+          Это сигнал, что агент считает задачу выполненной → AgentLoop завершает работу.
+
+        Важно: сразу после sample() мы append'им ответ ассистента в историю чата.
+        Без этого история диалога (user → assistant(tool request) → tool) будет неполной,
+        и модель может не суметь корректно завершить цикл или потеряет контекст.
+        """
         if self.__prompt:
             self.__logger\
                 .log_line("user prompt:")\
@@ -111,7 +126,12 @@ class Grok(Agent):
             self.__prompt = None
 
         response = self.__request()
-        if response.content != '':
+
+        # КРИТИЧЕСКИ ВАЖНО для корректной истории и логики завершения:
+        # Сохраняем ответ модели (assistant turn) до обработки tool results.
+        self.__chat.append(response)
+
+        if getattr(response, 'content', None):
             self.__logger\
                 .log_line("agent content:")\
                 .log_line('```')\
@@ -134,6 +154,8 @@ class Grok(Agent):
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
                 self.__logger.log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")
             return False
+
+        # Модель ответила без вызовов инструментов → считаем это финальным ответом.
         return True
 
     def finish(self):
