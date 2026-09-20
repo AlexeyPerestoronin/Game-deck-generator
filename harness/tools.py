@@ -8,6 +8,7 @@ __all__ = ['Tools', 'DefaultToolsSet',]
 
 
 class Tools(Protocol):
+    """Protocol for tool sets exposed to the AI agent."""
 
     @property
     def list(self) -> list:
@@ -18,7 +19,7 @@ class Tools(Protocol):
 
 
 class DefaultToolsSet(Tools):
-    """TODO: need to provide some comment"""
+    """Default tool set: shell execution (with confirm), read/write file (sandboxed to cwd)."""
 
     def __init__(self):
         self.__tools = {
@@ -77,9 +78,15 @@ class DefaultToolsSet(Tools):
         tool = getattr(self, tool_name, None)
         if tool and callable(tool):
             return tool(**args)
-        raise Exception(f"calling tool is'not available (list of available tools is [{self.__tools.keys()}])")
+        raise Exception(f"calling tool is not available (list of available tools is {list(self.__tools.keys())})")
 
     # tools
+
+    def _is_path_safe(self, path: str) -> bool:
+        abs_path = os.path.abspath(path)
+        cwd = os.path.abspath(os.getcwd())
+        prefix = cwd if cwd.endswith(os.sep) else cwd + os.sep
+        return abs_path.startswith(prefix)
 
     def run_shell(self, command: str) -> str:
         confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()
@@ -97,14 +104,16 @@ class DefaultToolsSet(Tools):
             raise Exception("command execution time limit exceed (available limit is 30s)")
 
     def read_file(self, path: str) -> str:
+        if not self._is_path_safe(path):
+            raise Exception("access outside the working directory is prohibited")
         if not os.path.exists(path):
             raise Exception(f"file '{path}' is not found")
-        if not os.path.abspath(path).startswith(os.getcwd()):
-            raise Exception("access outside the working directory is prohibited")
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
     def write_file(self, path: str, content: str) -> str:
+        if not self._is_path_safe(path):
+            raise Exception("access outside the working directory is prohibited")
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
         return f"Файл {path} успешно сохранён."

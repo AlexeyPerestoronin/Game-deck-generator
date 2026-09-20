@@ -1,6 +1,6 @@
 import invoke
 
-from . import (harness)
+import harness
 
 namespace = invoke.Collection()
 namespace.add_collection(harness.collection)

@@ -2,21 +2,22 @@ import typing
 import pathlib
 
 class Logger(typing.Protocol):
-    """TODO: need to provide some comment"""
+    """Logging interface for agent harness (stdout + file)."""
 
     def log_line(self, message: str = "") -> 'Logger':
         ...
 
 class DoubleLogger(Logger):
+    """Logger implementation that duplicates output to console and log file."""
+
     def __init__(self, log_file: pathlib.Path):
         self.__log_file = log_file
-        if not self.__log_file.exists():
-            open(self.__log_file, 'x')
+        self.__log_file.touch(exist_ok=True)
 
     def log_line(self, message: str = "") -> 'Logger':
-        if message[-1] != '\n':
-            message += '\n'
-        print(message)
-        with open(self.__log_file, 'a') as file:
+        if not message.endswith("\n"):
+            message += "\n"
+        print(message, end="")
+        with open(self.__log_file, "a", encoding="utf-8") as file:
             file.write(message)
         return self

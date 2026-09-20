@@ -4,11 +4,11 @@ import xai_sdk
 import datetime
 
 from typing import Protocol
-from . import (tools, logger)
+from . import tools, logger
 
 
 class UsageStats:
-    """TODO: need to provide some comment"""
+    """Accumulates token usage and cost across agent requests."""
 
     def __init__(self):
         self.requests = 0
@@ -18,7 +18,7 @@ class UsageStats:
         self.total_cost_usd = 0.0
 
 class Agent(Protocol):
-    """TODO: need to provide some comment"""
+    """Protocol for pluggable AI agents in the harness."""
 
     @property
     def name(self) -> str:
@@ -52,7 +52,7 @@ class Agent(Protocol):
 
 
 class Grok(Agent):
-    """TODO: need to provide some comment"""
+    """Grok agent implementation using xAI SDK with tool calling support."""
 
     def __init__(self,
                  prompt: str,
@@ -64,8 +64,10 @@ class Grok(Agent):
         self.__conv_id = str(uuid.uuid4())
         self.__logger = logger
         self.__tools = tools
+        with open('API_KEY_XAI', encoding='utf-8') as f:
+            api_key = f.read().strip()
         self.__client = xai_sdk.Client(
-            api_key=open('API_KEY_XAI').read(),
+            api_key=api_key,
             metadata=(("x-grok-conv-id", self.__conv_id), ),
         )
         self.__chat_id = str(uuid.uuid4())
@@ -118,18 +120,20 @@ class Grok(Agent):
 
         if response.tool_calls:
             self.__logger.log_line("agent request tools:")
-            for (i, tool_call) in self.iteration(response.tool_calls, 1):
+            for i, tool_call in enumerate(response.tool_calls, 1):
+                raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
                 try:
-                    args = json.loads(tool_call.function.arguments)
+                    args = json.loads(raw_args)
                     result = self.__tools.call(tool_call.function.name, **args)
                     status = 'success'
                 except Exception as e:
                     result = f"execution error: {e}"
                     status = 'fail'
+                    args = raw_args
                 self.__chat.append(xai_sdk.chat.tool_result(result))
-                args = "".join(args)
-                self.__logger.log_line(f"{i}. {tool_call.function.name}({args}) → {status}")
-                return False
+                arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
+                self.__logger.log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")
+            return False
         return True
 
     def finish(self):
@@ -140,7 +144,7 @@ class Grok(Agent):
             .log_line(f"    - input tokens: {self.__usage_stats.cached_tokens + self.__usage_stats.input_tokens}")\
             .log_line(f"        - cached tokens: {self.__usage_stats.cached_tokens}")\
             .log_line(f"    - output tokens: {self.__usage_stats.output_tokens}")\
-            .log_line(f"- total const: {self.__usage_stats.total_cost_usd}$")
+            .log_line(f"- total cost: {self.__usage_stats.total_cost_usd}$")
 
     def __request(self):
         response = self.__chat.sample()
@@ -156,8 +160,8 @@ class Grok(Agent):
             self.__usage_stats.total_cost_usd += response.cost_usd
         return response
 
-class AgentLoop(Protocol):
-    """TODO: need to provide some comment"""
+class AgentLoop:
+    """Drives the agent through iterations, enforcing token and iteration limits."""
 
     def __init__(self, iteration_limit: int, agent: Agent, logger: logger.Logger):
         self.__iteration_limit = iteration_limit
@@ -166,18 +170,22 @@ class AgentLoop(Protocol):
         self.__logger = logger
 
     def check_session_token_limit(self) -> bool:
+        """Return True if within limit (or user approved over limit)."""
         limit = self.__agent.tokens_limit
         consumed = self.__agent.consumed_tokens
         if consumed > limit:
-            user_decision = input(f"consumed token is exceeded the limit ({consumed} > {limit}) → resume execution`? [y/N]: ").strip().lower()
+            user_decision = input(f"consumed tokens have exceeded the limit ({consumed} > {limit}) → resume execution? [y/N]: ").strip().lower()
             return user_decision in ("y", "yes")
+        return True
 
     def check_session_iteration_limit(self) -> bool:
+        """Return True if within limit (or user approved over limit)."""
         limit = self.__iteration_limit
         consumed = self.__iteration
         if consumed > limit:
-            user_decision = input(f"loop-iteration quantity is exceeded the limit ({consumed} > {limit}) → resume execution`? [y/N]: ").strip().lower()
+            user_decision = input(f"loop iteration quantity has exceeded the limit ({consumed} > {limit}) → resume execution? [y/N]: ").strip().lower()
             return user_decision in ("y", "yes")
+        return True
 
     def start_loop(self):
         agent_name = f"{self.__agent.name}-AI-agent"
@@ -192,7 +200,8 @@ class AgentLoop(Protocol):
             .log_line()
 
         while True:
-            self.__logger(f"## Iteration №{self.__iteration}:")
+            self.__iteration += 1
+            self.__logger.log_line(f"## Iteration №{self.__iteration}:")
 
             if not self.check_session_token_limit():
                 message = "tokens limit exceed"
@@ -200,10 +209,11 @@ class AgentLoop(Protocol):
                 raise Exception(message)
 
             if not self.check_session_iteration_limit():
-                message = f"iteration limit exceed"
+                message = "iteration limit exceed"
                 self.__logger.log_line(f"⚠️: {message}")
                 raise Exception(message)
 
             if self.__agent.iteration():
+                self.__logger.log_line(f"# Session results:")
                 self.__agent.finish()
                 break
