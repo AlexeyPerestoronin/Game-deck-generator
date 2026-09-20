@@ -109,10 +109,10 @@ class Grok(i_agent.IAgent):
                 try:
                     args = json.loads(raw_args)
                     result = self.__tools.call(tool_call.function.name, **args)
-                    status = 'success'
+                    status = "success"
                 except Exception as e:
                     result = f"execution error: {e}"
-                    status = 'fail'
+                    status = f"fail: {e}"
                     args = raw_args
                 self.__chat.append(xai_sdk.chat.tool_result(result))
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
