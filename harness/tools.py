@@ -4,7 +4,7 @@ import subprocess
 
 from typing import Protocol
 
-__all__ = ['TOOL_LIST', 'TOOL_HANDLER']
+__all__ = ['Tools', 'DefaultToolsSet',]
 
 
 class Tools(Protocol):
@@ -78,6 +78,8 @@ class DefaultToolsSet(Tools):
         if tool and callable(tool):
             return tool(**args)
         raise Exception(f"calling tool is'not available (list of available tools is [{self.__tools.keys()}])")
+
+    # tools
 
     def run_shell(self, command: str) -> str:
         confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()

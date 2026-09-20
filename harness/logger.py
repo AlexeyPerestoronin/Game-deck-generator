@@ -12,7 +12,7 @@ class DoubleLogger(Logger):
         self.__log_file = log_file
         if not self.__log_file.exists():
             open(self.__log_file, 'x')
-        
+
     def log_line(self, message: str = "") -> 'Logger':
         if message[-1] != '\n':
             message += '\n'
