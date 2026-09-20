@@ -17,6 +17,8 @@ class FSTools(i_tools.ITools):
     def __init__(self, *, cwd: str | None = None, allowed_dirs: list[str]):
         self.__cwd = pathlib.Path(os.getcwd() if not cwd else cwd).absolute()
         self.__allowed_dirs = [pathlib.Path(dir).absolute() for dir in allowed_dirs]
+        self.__read_dirs = list(self.__allowed_dirs)
+        self.__write_dirs = list(self.__allowed_dirs)
 
         # TODO: проверить и добавить в правильном порядке
         self.__tools = {
@@ -167,8 +169,8 @@ class FSTools(i_tools.ITools):
 
     def _run_git_cmd(self, args: list[str]) -> str:
         """Безопасный запуск git-команд в контексте CWD"""
-        if not self._is_path_safe(self.__cwd, self.__read_dirs):
-            return "error: current working directory is not within allowed read directories"
+        # git always runs from harness CWD (project root). read-only git ops (status/diff) are allowed
+        # even if project root is not listed in allowed_dirs; path args are validated by callers.
         try:
             result = subprocess.run(["git"] + args, cwd=self.__cwd, capture_output=True, text=True, encoding="utf-8", timeout=10)
             if result.returncode != 0:
@@ -180,28 +182,93 @@ class FSTools(i_tools.ITools):
     # --- 1. базовая работа с файловой системой ---
 
     def create_file(self, path: str) -> str:
-        # TODO: need to implement
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__write_dirs):
+            raise Exception("write-access outside the allowed directories is prohibited")
+        if abs_path.exists():
+            return f"error: '{path}' already exists"
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        abs_path.touch()
+        return f"success: created empty file '{path}'"
     
     def remove_file(self, path: str) -> str:
-        # TODO: need to implement
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__write_dirs):
+            raise Exception("write-access outside the allowed directories is prohibited")
+        if not abs_path.exists() or not abs_path.is_file():
+            return f"error: '{path}' is not a file or does not exist"
+        abs_path.unlink()
+        return f"success: removed '{path}'"
     
     def read_file(self, path: str) -> str:
-        # TODO: need to implement
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__read_dirs):
+            raise Exception("read-access outside the allowed directories is prohibited")
+        if not abs_path.exists() or not abs_path.is_file():
+            return f"error: '{path}' is not a file or does not exist"
+        try:
+            return abs_path.read_text(encoding="utf-8")
+        except Exception as e:
+            return f"error reading '{path}': {e}"
 
-    def write_file(self, path: str) -> str:
-        # TODO: need to implement
+    def write_file(self, path: str, content: str) -> str:
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__write_dirs):
+            raise Exception("write-access outside the allowed directories is prohibited")
+        if abs_path.exists():
+            return f"error: '{path}' already exists"
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        abs_path.write_text(content, encoding="utf-8")
+        return f"success: wrote '{path}'"
         
-    def overwrite_file(self, path: str) -> str:
-        # TODO: need to implement
+    def overwrite_file(self, path: str, content: str) -> str:
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__write_dirs):
+            raise Exception("write-access outside the allowed directories is prohibited")
+        abs_path.parent.mkdir(parents=True, exist_ok=True)
+        abs_path.write_text(content, encoding="utf-8")
+        return f"success: overwrote '{path}'"
 
     def create_dir(self, path: str) -> str:
-        # TODO: need to implement
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__write_dirs):
+            raise Exception("write-access outside the allowed directories is prohibited")
+        try:
+            abs_path.mkdir(parents=True, exist_ok=True)
+            return f"success: created directory '{path}'"
+        except Exception as e:
+            return f"error: {e}"
     
     def remove_dir(self, path: str) -> str:
-        # TODO: need to implement
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__write_dirs):
+            raise Exception("write-access outside the allowed directories is prohibited")
+        if not abs_path.exists() or not abs_path.is_dir():
+            return f"error: '{path}' is not a directory or does not exist"
+        try:
+            shutil.rmtree(abs_path)
+            return f"success: removed directory '{path}'"
+        except Exception as e:
+            return f"error: {e}"
     
     def list_dir(self, path: str) -> str:
-        # TODO: need to implement
+        abs_path = self._resolve_path(path)
+        if not self._is_path_safe(abs_path, self.__read_dirs):
+            raise Exception("read-access outside the allowed directories is prohibited")
+        if not abs_path.exists() or not abs_path.is_dir():
+            return f"error: '{path}' is not a directory or does not exist"
+        try:
+            entries = []
+            for entry in sorted(abs_path.iterdir()):
+                if entry.is_dir():
+                    entries.append(f"[dir] {entry.name}")
+                else:
+                    entries.append(f"[file] {entry.name}")
+            if not entries:
+                return f"directory '{path}' is empty"
+            return "\n".join(entries)
+        except Exception as e:
+            return f"error: {e}"
 
     # --- 2. Поиск по коду ---
 
