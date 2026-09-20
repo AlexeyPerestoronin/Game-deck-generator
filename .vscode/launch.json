@@ -13,7 +13,8 @@
             "module": "invoke",
             "cwd": "${workspaceFolder}",
             "args": [
-                "agent-loop",
+                "harness.run-agent",
+                    "--prompt \"Есть задача: см. WiKi/dev-plan/phase-IV/2 implement invoke task for building/todo.md\"",
             ],
         },
         // "projects.casket.prepare-metal-manufacturing-doc"

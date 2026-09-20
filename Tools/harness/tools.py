@@ -4,7 +4,10 @@ import subprocess
 
 from typing import Protocol
 
-__all__ = ['Tools', 'DefaultToolsSet',]
+__all__ = [
+    'Tools',
+    'DefaultToolsSet',
+]
 
 
 class Tools(Protocol):
@@ -21,7 +24,8 @@ class Tools(Protocol):
 class DefaultToolsSet(Tools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed to cwd)."""
 
-    def __init__(self):
+    def __init__(self, safe_mode):
+        self.__safe_mode = safe_mode
         self.__tools = {
             DefaultToolsSet.run_shell.__name__:
             xai_sdk.chat.tool(
@@ -89,15 +93,12 @@ class DefaultToolsSet(Tools):
         return abs_path.startswith(prefix)
 
     def run_shell(self, command: str) -> str:
-        confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()
-        if confirm not in ("y", "yes"):
-            raise Exception("the user has prohibited the execution of the command")
+        if self.__safe_mode:
+            confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()
+            if confirm not in ("y", "yes"):
+                raise Exception("the user has prohibited the execution of the command")
         try:
-            result = subprocess.run(command,
-                                    shell=True,
-                                    capture_output=True,
-                                    text=True,
-                                    timeout=30)
+            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
             output = result.stdout or result.stderr
             return output if output else "(command finished without output)"
         except subprocess.TimeoutExpired:

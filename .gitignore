@@ -7,3 +7,6 @@ dist/
 
 #API_KEYs
 API_KEY*
+
+# Logs
+.log

@@ -17,6 +17,7 @@ class UsageStats:
         self.cached_tokens = 0
         self.total_cost_usd = 0.0
 
+
 class Agent(Protocol):
     """Protocol for pluggable AI agents in the harness."""
 
@@ -54,11 +55,7 @@ class Agent(Protocol):
 class Grok(Agent):
     """Grok agent implementation using xAI SDK with tool calling support."""
 
-    def __init__(self,
-                 prompt: str,
-                 tools: tools.DefaultToolsSet,
-                 logger: logger.Logger,
-                 token_limit: int = 128000):
+    def __init__(self, prompt: str, tools: tools.DefaultToolsSet, logger: logger.Logger, token_limit: int = 128000):
         self.__prompt = prompt
         self.__token_limit = token_limit
         self.__conv_id = str(uuid.uuid4())
@@ -71,9 +68,7 @@ class Grok(Agent):
             metadata=(("x-grok-conv-id", self.__conv_id), ),
         )
         self.__chat_id = str(uuid.uuid4())
-        self.__chat = self.__client.chat.create(model="grok-4.6",
-                                                conversation_id=self.__chat_id,
-                                                tools=self.__tools.list)
+        self.__chat = self.__client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__tools.list)
         self.__usage_stats = UsageStats()
 
     @property
@@ -94,7 +89,7 @@ class Grok(Agent):
 
     @property
     def consumed_tokens(self) -> int:
-        return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.cached_tokens) + int(self.__usage_stats.output_tokens)
+        return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens)
 
     @property
     def consumed_usd(self) -> float:
@@ -176,11 +171,11 @@ class Grok(Agent):
             self.__usage_stats.output_tokens += response.usage.completion_tokens or 0
             details = getattr(response.usage, "prompt_tokens_details", None)
             if details:
-                self.__usage_stats.cached_tokens += getattr(
-                    details, "cached_tokens", 0) or 0
+                self.__usage_stats.cached_tokens += getattr(details, "cached_tokens", 0) or 0
         if hasattr(response, "cost_usd") and response.cost_usd is not None:
             self.__usage_stats.total_cost_usd += response.cost_usd
         return response
+
 
 class AgentLoop:
     """Drives the agent through iterations, enforcing token and iteration limits."""

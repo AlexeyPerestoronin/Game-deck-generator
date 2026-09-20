@@ -1,11 +1,13 @@
 import typing
 import pathlib
 
+
 class Logger(typing.Protocol):
     """Logging interface for agent harness (stdout + file)."""
 
     def log_line(self, message: str = "") -> 'Logger':
         ...
+
 
 class DoubleLogger(Logger):
     """Logger implementation that duplicates output to console and log file."""
