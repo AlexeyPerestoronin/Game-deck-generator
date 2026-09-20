@@ -2,34 +2,21 @@ import os
 import xai_sdk
 import subprocess
 
-from typing import Protocol
+from . import i_tools
 
 __all__ = [
-    'Tools',
-    'DefaultToolsSet',
+    'DefaultTools',
 ]
 
-
-class Tools(Protocol):
-    """Protocol for tool sets exposed to the AI agent."""
-
-    @property
-    def list(self) -> list:
-        ...
-
-    def call(self, tool_name: str, **args) -> str:
-        ...
-
-
-class DefaultToolsSet(Tools):
+class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed to cwd)."""
 
     def __init__(self, safe_mode):
         self.__safe_mode = safe_mode
         self.__tools = {
-            DefaultToolsSet.run_shell.__name__:
+            DefaultTools.run_shell.__name__:
             xai_sdk.chat.tool(
-                name=DefaultToolsSet.run_shell.__name__,
+                name=DefaultTools.run_shell.__name__,
                 description="Выполнить shell-команду.",
                 parameters={
                     "type": "object",
@@ -41,9 +28,9 @@ class DefaultToolsSet(Tools):
                     "required": ["command"],
                 },
             ),
-            DefaultToolsSet.read_file.__name__:
+            DefaultTools.read_file.__name__:
             xai_sdk.chat.tool(
-                name=DefaultToolsSet.read_file.__name__,
+                name=DefaultTools.read_file.__name__,
                 description="Прочитать содержимое текстового файла.",
                 parameters={
                     "type": "object",
@@ -55,9 +42,9 @@ class DefaultToolsSet(Tools):
                     "required": ["path"],
                 },
             ),
-            DefaultToolsSet.write_file.__name__:
+            DefaultTools.write_file.__name__:
             xai_sdk.chat.tool(
-                name=DefaultToolsSet.write_file.__name__,
+                name=DefaultTools.write_file.__name__,
                 description="Записать или перезаписать файл.",
                 parameters={
                     "type": "object",
