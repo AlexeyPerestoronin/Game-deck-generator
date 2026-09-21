@@ -1,5 +1,7 @@
 import uuid
 import json
+import random
+import time
 
 from classproperties import classproperty
 from google import genai
@@ -138,7 +140,23 @@ class Gemini(i_agent.IAgent):
             .log_line(f"- total cost: {self.__usage_stats.total_cost_usd}$")
 
     def __request(self, message):
-        response = self.__chat.send_message(message)
+        for attempt in range(1, 24):
+            try:
+                self.__logger.log_line(f"request ademption №{attempt} → ")
+                response = self.__chat.send_message(message)
+                self.__logger.log_str("success!")
+                break
+            except Exception as e:
+                code = e.details["error"]["code"]
+                if code == 429:
+                    self.__logger.log_str(f"fail 429: model limit exceeded!")
+                elif code == 503:
+                    delay = random.randint(5, 20)
+                    self.__logger.log_str(f"fail 503: RPM exceeded → waiting {delay}s ... {e}")
+                    time.sleep(delay)
+                else:
+                    self.__logger.log_str(f"❗unexpected exception: {e}")
+
         self.__usage_stats.requests += 1
         usage = getattr(response, "usage_metadata", None)
         if usage:

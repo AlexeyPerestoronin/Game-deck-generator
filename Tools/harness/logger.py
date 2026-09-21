@@ -21,9 +21,15 @@ class DoubleLogger(ILogger):
         self.__log_file = log_file
         self.__log_file.touch(exist_ok=True)
 
+    def log_str(self, message: str = "") -> 'ILogger':
+        print(message, end="")
+        with open(self.__log_file, "a", encoding="utf-8") as file:
+            file.write(message)
+        return self
+
     def log_line(self, message: str = "") -> 'ILogger':
-        if not message.endswith("\n"):
-            message += "\n"
+        if not message.startswith("\n"):
+            message = "\n" + message
         print(message, end="")
         with open(self.__log_file, "a", encoding="utf-8") as file:
             file.write(message)
