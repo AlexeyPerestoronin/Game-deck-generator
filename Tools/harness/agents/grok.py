@@ -27,22 +27,21 @@ class Grok(i_agent.IAgent):
     """Grok agent implementation using xAI SDK with tool calling support."""
 
     def __init__(self, prompt: str, tools: tools.ITools, logger: logger.ILogger, token_limit: int = 128000):
-        self.__prompt = prompt
-        self.__token_limit = token_limit
-        self.__conv_id = str(uuid.uuid4())
-        self.__logger = logger
-        self.__tools = tools
+        self._prompt = prompt
+        self._token_limit = token_limit
+        self._conv_id = str(uuid.uuid4())
+        self._logger = logger
+        self._tools = tools
+        # ---
         with open('API_KEY_XAI', encoding='utf-8') as f:
             api_key = f.read().strip()
-        self.__client = xai_sdk.Client(
+        # ---
+        self._client = xai_sdk.Client(
             api_key=api_key,
-            metadata=(("x-grok-conv-id", self.__conv_id), ),
+            metadata=(("x-grok-conv-id", self._conv_id), ),
         )
         self.__chat_id = str(uuid.uuid4())
-
-        # ВАЖНО: Для работы Prompt Caching модель "grok-4.6" требует стабильной истории.
-        # Этот объект класса должен жить внутри всего цикла AgentLoop (не пересоздаваться!).
-        self.__chat = self.__client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__tools.list)
+        self.__chat = self._client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__grok_tools(self._tools.list))
         self.__usage_stats = UsageStats()
 
     @classproperty
@@ -51,11 +50,11 @@ class Grok(i_agent.IAgent):
 
     @property
     def tokens_limit(self) -> int:
-        return self.__token_limit
+        return self._token_limit
 
     @property
     def conversation_id(self) -> str:
-        return self.__conv_id
+        return self._conv_id
 
     @property
     def chat_id(self) -> str:
@@ -70,14 +69,16 @@ class Grok(i_agent.IAgent):
         return float(self.__usage_stats.total_cost_usd)
 
     def iteration(self) -> bool:
-        if self.__prompt:
-            self.__logger\
+        # TODO: необходимо проверить корректность работы кэширования (это которое позволяет экономить USD)
+        # возможно это нужно реализовать аналогично как для класса GoogleAI
+        if self._prompt:
+            self._logger\
                 .log_line("user prompt:")\
                 .log_line('```')\
-                .log_line(f'{self.__prompt}')\
+                .log_line(f'{self._prompt}')\
                 .log_line('```')
-            self.__chat.append(xai_sdk.chat.user(self.__prompt))
-            self.__prompt = None
+            self.__chat.append(xai_sdk.chat.user(self._prompt))
+            self._prompt = None
 
         response = self.__request()
 
@@ -85,14 +86,14 @@ class Grok(i_agent.IAgent):
         self.__chat.append(response)
 
         if getattr(response, 'content', None):
-            self.__logger\
+            self._logger\
                 .log_line("agent content:")\
                 .log_line('```')\
                 .log_line(f'{response.content}')\
                 .log_line('```')
 
         if response.tool_calls:
-            self.__logger.log_line("agent request tools:")
+            self._logger.log_line("agent request tools:")
 
             # Собираем все результаты инструментов параллельно, чтобы отправить их корректно
             for i, tool_call in enumerate(response.tool_calls, 1):
@@ -101,7 +102,7 @@ class Grok(i_agent.IAgent):
 
                 try:
                     args = json.loads(raw_args)
-                    result = self.__tools.call(tool_call.function.name, **args)
+                    result = self._tools.call(tool_call.function.name, **args)
                     status = "success"
                 except Exception as e:
                     result = f"execution error: {e}"
@@ -112,7 +113,7 @@ class Grok(i_agent.IAgent):
                 self.__chat.append(xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id))
 
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
-                self.__logger.log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")
+                self._logger.log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")
 
             # Возвращаем False: цикл должен продолжиться, так как мы только что дали модели данные из файлов/git
             return False
@@ -120,7 +121,7 @@ class Grok(i_agent.IAgent):
         return True
 
     def finish(self):
-        self.__logger\
+        self._logger\
             .log_line("Sessions statistic")\
             .log_line(f"- total requests: {self.__usage_stats.requests}")\
             .log_line(f"- total tokens: {self.consumed_tokens}")\
@@ -145,3 +146,7 @@ class Grok(i_agent.IAgent):
         if hasattr(response, "cost_usd") and response.cost_usd is not None:
             self.__usage_stats.total_cost_usd += response.cost_usd
         return response
+
+    def __grok_tools(self, xai_tools) -> list:
+        # TODO: надо реализовать с учётом класса Tool
+        pass

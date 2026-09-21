@@ -19,7 +19,11 @@
                 "--parallel",
                 "${workspaceFolder}",
                 "--exclude",
-                "${workspaceFolder}/.venv/**"
+                "${workspaceFolder}/.venv/**",
+                "--exclude",
+                "${workspaceFolder}/Projects/**",
+                "--exclude",
+                "${workspaceFolder}/WiKi/**"
             ],
         }
     ]

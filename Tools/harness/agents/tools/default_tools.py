@@ -1,5 +1,4 @@
 import os
-import xai_sdk
 import subprocess
 
 from classproperties import classproperty
@@ -10,29 +9,18 @@ __all__ = [
     'DefaultTools',
 ]
 
-
 class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed to cwd)."""
 
-    def __init__(self, safe_mode):
-        self.__safe_mode = safe_mode
-        self.__tools = {
-            DefaultTools.run_shell.__name__:
-            xai_sdk.chat.tool(
-                name=DefaultTools.run_shell.__name__,
-                description="Выполнить shell-команду.",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "command": {
-                            "type": "string"
-                        }
-                    },
-                    "required": ["command"],
-                },
-            ),
-            DefaultTools.read_file.__name__:
-            xai_sdk.chat.tool(
+    def __init__(self, safe_mode: bool, available_shell: list, available_read_dirs: list, available_write_dirs: list):
+        self._safe_mode = safe_mode
+        self._available_shell = available_shell
+        self._available_read_dirs = available_read_dirs
+        self._available_write_dirs = available_write_dirs
+
+        #yapf: disable
+        self._tools = [
+            i_tools.Tool(
                 name=DefaultTools.read_file.__name__,
                 description="Прочитать содержимое текстового файла.",
                 parameters={
@@ -45,8 +33,8 @@ class DefaultTools(i_tools.ITools):
                     "required": ["path"],
                 },
             ),
-            DefaultTools.write_file.__name__:
-            xai_sdk.chat.tool(
+
+            i_tools.Tool(
                 name=DefaultTools.write_file.__name__,
                 description="Записать или перезаписать файл.",
                 parameters={
@@ -62,7 +50,28 @@ class DefaultTools(i_tools.ITools):
                     "required": ["path", "content"],
                 },
             ),
-        }
+
+            i_tools.Tool(
+                name=DefaultTools.list_available_shell_commands.__name__,
+                description="Узнать список доступных shell команд",
+                parameters={},
+            ),
+
+            i_tools.Tool(
+                name=DefaultTools.run_shell.__name__,
+                description="Выполнить shell-команду.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["command"],
+                },
+            ),
+        ]
+        #yapf: enable
 
     # i_tools.ITools
     @classproperty
@@ -72,25 +81,31 @@ class DefaultTools(i_tools.ITools):
     # i_tools.ITools
     @property
     def list(self) -> list:
-        return self.__tools.values()
+        return self._tools
 
     # i_tools.ITools
     def call(self, tool_name: str, **args) -> str:
-        tool = getattr(self, tool_name, None)
-        if tool and callable(tool):
-            return tool(**args)
-        raise Exception(f"calling tool is not available (list of available tools is {list(self.__tools.keys())})")
+        for tool in self._tools:
+            if tool.name == tool_name:
+                return getattr(self, tool_name, None)(**args)
+        raise Exception(f"calling tool is not available (list of available tools is {[tool.name for tool in self._tools]})")
 
     # tools
 
-    def _is_path_safe(self, path: str) -> bool:
-        abs_path = os.path.abspath(path)
-        cwd = os.path.abspath(os.getcwd())
-        prefix = cwd if cwd.endswith(os.sep) else cwd + os.sep
-        return abs_path.startswith(prefix)
+    def read_file(self, path: str) -> str:
+        # TODO: надо реализовать чтение в файл с проверкой нахождения файла в разрешённой директории
+        pass
+
+    def write_file(self, path: str, content: str) -> str:
+        # TODO: надо реализовать запись в файл с проверкой нахождения файла в разрешённой директории
+        pass
+
+    def list_available_shell_commands(self) -> str:
+        return f"available commands list {self._available_shell}"
 
     def run_shell(self, command: str) -> str:
-        if self.__safe_mode:
+        # TODO: надо реализовать проверку, что вызываемая shell команда в списке доступных
+        if self._safe_mode:
             confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()
             if confirm not in ("y", "yes"):
                 raise Exception("the user has prohibited the execution of the command")
@@ -100,18 +115,3 @@ class DefaultTools(i_tools.ITools):
             return output if output else "(command finished without output)"
         except subprocess.TimeoutExpired:
             raise Exception("command execution time limit exceed (available limit is 30s)")
-
-    def read_file(self, path: str) -> str:
-        if not self._is_path_safe(path):
-            raise Exception("access outside the working directory is prohibited")
-        if not os.path.exists(path):
-            raise Exception(f"file '{path}' is not found")
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-
-    def write_file(self, path: str, content: str) -> str:
-        if not self._is_path_safe(path):
-            raise Exception("access outside the working directory is prohibited")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
-        return f"Файл {path} успешно сохранён."

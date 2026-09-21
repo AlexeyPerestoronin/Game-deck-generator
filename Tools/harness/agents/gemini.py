@@ -54,8 +54,6 @@ class GoogleAIStudioModelsSpecifications:
         else:
             raise Exception("unexpected model google ai model specification")
 
-    """TODO: need to provide some comment"""
-
     def __init__(self, model: str, rpm: int, tpm: int, rpd: int, tls: int):
         self.__model = model  # google ai studio model name
         self.__rpm = rpm  # request per minute
@@ -215,6 +213,7 @@ class GoogleAI(i_agent.IAgent):
         return response
 
     def __gemini_tools(self, xai_tools) -> list:
+        # TODO: надо исправить реализацию с учётом класса Tool
         declarations = []
         empty_schema = {"type": "object", "properties": {}}
         for tool_obj in xai_tools:
