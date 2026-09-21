@@ -5,6 +5,8 @@ import subprocess
 import fnmatch
 import shutil
 
+from classproperties import classproperty
+
 from typing import List
 
 from . import i_tools
@@ -145,7 +147,7 @@ class FSTools(i_tools.ITools):
         }
 
     # i_tools.ITools
-    @property
+    @classproperty
     def name(cls) -> str:
         return "FSTools"
 

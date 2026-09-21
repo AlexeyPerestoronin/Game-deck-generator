@@ -1,5 +1,7 @@
 import typing
 
+from classproperties import classproperty
+
 __all__ = [
     'ITools',
 ]
@@ -8,7 +10,7 @@ __all__ = [
 class ITools(typing.Protocol):
     """Protocol for tool sets exposed to the AI agent."""
 
-    @property
+    @classproperty
     def name(cls) -> str:
         ...
 

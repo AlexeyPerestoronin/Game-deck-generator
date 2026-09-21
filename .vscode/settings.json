@@ -1,9 +1,12 @@
 {
     "rust-analyzer.cargo.allTargets": false,
     "cSpell.words": [
+        "classproperties",
+        "genai",
         "Leptos",
         "sandboxed",
         "setlocal",
+        "yapf",
         "автогенерации",
         "агентную",
         "виджетами",

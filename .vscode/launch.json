@@ -13,8 +13,7 @@
             "module": "invoke",
             "cwd": "${workspaceFolder}",
             "args": [
-                "harness.run-agent",
-                    "--prompt \"WiKi/dev-plan/phase-IV/4 implement gemini agent tool/toto.md\"",
+                "harness.run-loop"
             ],
         },
         // "projects.casket.prepare-metal-manufacturing-doc"

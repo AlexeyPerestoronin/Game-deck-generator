@@ -8,7 +8,7 @@ from . import logger, agent_loop
 
 
 @invoke.task()
-def run_loop(ctx, safe_mode: bool = True):
+def run_loop(ctx, safe_mode: bool = False):
     """Run Gemini-3.8-Flash AI agent loop via invoke."""
     cwd = pathlib.Path(os.getcwd())
 

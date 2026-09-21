@@ -22,7 +22,7 @@ class AgentLoop:
         requested_tools = self.__settings["tools"]
         if requested_tools == agents.tools.DefaultTools.name:
             self.__tools = agents.tools.DefaultTools(self.__safe_mode)
-        elif requested_tools == agents.tools.DefaultTools.name:
+        elif requested_tools == agents.tools.FSTools.name:
             self.__tools = agents.tools.FSTools(cwd=os.getcwd(), allowed_dirs=self.__settings["allowed-dirs"])
         else:
             raise Exception("unexpected type of agent tools")

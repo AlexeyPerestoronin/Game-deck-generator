@@ -3,3 +3,4 @@ yapf>=0.43.0
 xai-sdk>=1.19.0
 google-genai>=2.24.0
 json5>=0.15.0
+classproperties>=0.2.0

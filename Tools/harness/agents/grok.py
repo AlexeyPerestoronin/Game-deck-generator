@@ -2,6 +2,8 @@ import uuid
 import json
 import xai_sdk
 
+from classproperties import classproperty
+
 from . import tools, i_agent
 from .. import logger
 
@@ -43,7 +45,7 @@ class Grok(i_agent.IAgent):
         self.__chat = self.__client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__tools.list)
         self.__usage_stats = UsageStats()
 
-    @property
+    @classproperty
     def name(cls) -> str:
         return 'Grok-4.6'
 

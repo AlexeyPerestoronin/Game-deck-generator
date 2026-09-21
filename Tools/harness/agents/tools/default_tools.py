@@ -2,6 +2,8 @@ import os
 import xai_sdk
 import subprocess
 
+from classproperties import classproperty
+
 from . import i_tools
 
 __all__ = [
@@ -63,7 +65,7 @@ class DefaultTools(i_tools.ITools):
         }
     
     # i_tools.ITools
-    @property
+    @classproperty
     def name(cls) -> str:
         return "DefaultTools"
 

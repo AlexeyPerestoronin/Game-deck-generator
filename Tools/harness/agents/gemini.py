@@ -1,5 +1,7 @@
 import uuid
 import json
+
+from classproperties import classproperty
 from google import genai
 from google.genai import types
 
@@ -48,7 +50,7 @@ class Gemini(i_agent.IAgent):
         )
         self.__usage_stats = UsageStats()
 
-    @property
+    @classproperty
     def name(cls) -> str:
         return 'Gemini-3.8-Flash'
 

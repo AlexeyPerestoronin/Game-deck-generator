@@ -1,14 +1,14 @@
 import typing
+from classproperties import classproperty
 
 __all__ = [
     'IAgent',
 ]
 
-
 class IAgent(typing.Protocol):
     """Protocol for pluggable AI agents in the harness."""
 
-    @property
+    @classproperty
     def name(cls) -> str:
         ...
 
