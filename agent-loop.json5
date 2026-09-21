@@ -1,6 +1,6 @@
 {
     "mode": "auto accept",
-    "task": "WiKi/dev-plan/phase-IV/5 implement loop via settings",
+    "task": "WiKi/dev-plan/phase-IV/6 refactoring python code",
     "paths": {
         "log": ".log"
     }

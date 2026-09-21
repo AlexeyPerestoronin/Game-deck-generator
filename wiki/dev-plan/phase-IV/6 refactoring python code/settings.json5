@@ -1,0 +1,13 @@
+{
+    "vendor": "GoogleAI",
+    "model": "Gemini-3.1-Flash-Lite",
+    "tools": "FSTools",
+    "iteration-limit": 25,
+    "token-limit": 128000,
+    "prompt": "Есть задача: см. WiKi/dev-plan/phase-IV/5 implement loop via settings/todo.md",
+    "allowed-dirs": [
+        "WiKi/dev-plan/phase-IV/5 implement loop via settings",
+        "WiKi/rules",
+        "Tools",
+    ]
+}
