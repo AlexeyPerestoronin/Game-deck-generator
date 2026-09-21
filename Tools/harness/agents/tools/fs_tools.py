@@ -328,7 +328,9 @@ class FSTools(i_tools.ITools):
     def list_dir(self, path: str) -> str:
         abs_path = self._resolve_path(path)
         if not self._is_path_safe(abs_path, self.__read_dirs):
-            raise Exception("read-access outside the allowed directories is prohibited")
+            allowed_dir = [str(dir.relative_to(self.__cwd)) for dir in self.__read_dirs]
+            raise Exception(f"listing directory '{path}' is prohibited (directories are allowed for listing is {allowed_dir})")
+
         if not abs_path.exists() or not abs_path.is_dir():
             return f"error: '{path}' is not a directory or does not exist"
         try:
