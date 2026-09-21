@@ -14,10 +14,9 @@ class DefaultTools(i_tools.ITools):
 
     def __init__(self, safe_mode: bool, available_shell: list = None, available_read_dirs: list = None, available_write_dirs: list = None):
         self._safe_mode = safe_mode
-        cwd = os.getcwd()
         self._available_shell = available_shell or []
-        self._available_read_dirs = available_read_dirs or [cwd]
-        self._available_write_dirs = available_write_dirs or [cwd]
+        self._available_read_dirs = available_read_dirs or []
+        self._available_write_dirs = available_write_dirs or []
 
         #yapf: disable
         self._tools = [
@@ -104,7 +103,7 @@ class DefaultTools(i_tools.ITools):
     def read_file(self, path: str) -> str:
         abs_path = os.path.abspath(path)
         if not self._is_path_allowed(abs_path, self._available_read_dirs):
-            raise Exception("read-access outside the allowed directories is prohibited")
+            raise Exception(f"read-access outside the allowed directories is prohibited (read allowed directories is {self._available_read_dirs})")
         if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
             return f"error: '{path}' is not a file or does not exist"
         try:
@@ -116,7 +115,7 @@ class DefaultTools(i_tools.ITools):
     def write_file(self, path: str, content: str) -> str:
         abs_path = os.path.abspath(path)
         if not self._is_path_allowed(abs_path, self._available_write_dirs):
-            raise Exception("write-access outside the allowed directories is prohibited")
+            raise Exception(f"write-access outside the allowed directories is prohibited (write allowed directories is {self._available_write_dirs})")
         if os.path.exists(abs_path):
             return f"error: '{path}' already exists"
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)

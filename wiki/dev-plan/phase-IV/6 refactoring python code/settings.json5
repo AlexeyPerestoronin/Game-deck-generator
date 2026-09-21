@@ -1,9 +1,22 @@
 {
     "vendor": "GoogleAI",
     "model": "Gemini-3.1-Flash-Lite",
-    "tools": "FSTools",
-    "iteration-limit": 25,
-    "token-limit": 128000,
+    "tools": {
+        "available_shell": [
+            "pwd",
+            "ls",
+            "find",
+            "grep",
+        ],
+        "available-read-dirs": [
+            "WiKi/dev-plan/phase-IV",
+            "WiKi/rules",
+            "Tools",
+        ],
+        "available-write-dirs": [],
+    },
+    "iteration-limit": 50,
+    "token-limit": 0,
     "prompt": "Есть задача: см. WiKi/dev-plan/phase-IV/6 refactoring python code/todo.md",
     "allowed-dirs": [
         "WiKi/dev-plan/phase-IV",
