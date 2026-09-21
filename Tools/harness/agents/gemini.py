@@ -167,7 +167,11 @@ class GoogleAI(i_agent.IAgent):
                 ))
 
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
-                self.__logger.log_line(f"{i}. {fc.name}({arg_str}) → {status}")
+                self.__logger\
+                    .log_line(f"{i}. {fc.name}({arg_str}) → {status}")\
+                    .log_line("```")\
+                    .log_line(f"{result}")\
+                    .log_line("```")
 
             self.__pending_tool_parts = fc_results
             return False

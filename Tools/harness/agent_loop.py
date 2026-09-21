@@ -18,13 +18,13 @@ class AgentLoop:
 
         self._iteration = 0
         self._iteration_limit = self._settings["iteration-limit"]
-        token_limit = self._settings.get["token-limit"]
 
         self.__tools = agents.tools.DefaultTools(
             self._safe_mode,
-            self._settings.get["tools"]["available-shell"],
-            self._settings.get["tools"]["available-read-dirs"],
-            self._settings.get["tools"]["available-write-dirs"])
+            self._settings["tools"]["available-shell"],
+            self._settings["tools"]["available-read-dirs"],
+            self._settings["tools"]["available-write-dirs"],
+        )
 
         prompt = self._settings["prompt"]
         requested_vendor = self._settings["vendor"]

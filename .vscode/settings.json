@@ -2,6 +2,7 @@
     "rust-analyzer.cargo.allTargets": false,
     "cSpell.words": [
         "classproperties",
+        "findstr",
         "genai",
         "Leptos",
         "sandboxed",

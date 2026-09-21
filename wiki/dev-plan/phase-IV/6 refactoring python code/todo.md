@@ -1,6 +1,6 @@
 # Задача: «implement invoke task for building»
 Необходимо произвести рефакторинг python кода в Tools.
-Правила рефакторинга смотри в `WiKi\rules\refactoring.md`.
+Правила рефакторинга смотри в `WiKi\rules\refactoring-base.md`.
 
 Код менять нельзя!
 О результатах отпишись в чате по формуле: `проблема` → `решение`

@@ -9,14 +9,15 @@ __all__ = [
     'DefaultTools',
 ]
 
+
 class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed to cwd)."""
 
-    def __init__(self, safe_mode: bool, available_shell: list = None, available_read_dirs: list = None, available_write_dirs: list = None):
+    def __init__(self, safe_mode: bool, available_shell: list, available_read_dirs: list, available_write_dirs: list):
         self._safe_mode = safe_mode
-        self._available_shell = available_shell or []
-        self._available_read_dirs = available_read_dirs or []
-        self._available_write_dirs = available_write_dirs or []
+        self._available_shell = available_shell
+        self._available_read_dirs = available_read_dirs
+        self._available_write_dirs = available_write_dirs
 
         #yapf: disable
         self._tools = [

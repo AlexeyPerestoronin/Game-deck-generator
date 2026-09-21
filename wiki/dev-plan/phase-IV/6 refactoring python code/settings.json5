@@ -2,11 +2,10 @@
     "vendor": "GoogleAI",
     "model": "Gemini-3.1-Flash-Lite",
     "tools": {
-        "available_shell": [
-            "pwd",
-            "ls",
-            "find",
-            "grep",
+        "available-shell": [
+            "cd",
+            "dir",
+            "findstr",
         ],
         "available-read-dirs": [
             "WiKi/dev-plan/phase-IV",

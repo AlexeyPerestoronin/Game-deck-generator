@@ -113,7 +113,11 @@ class Grok(i_agent.IAgent):
                 self.__chat.append(xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id))
 
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
-                self._logger.log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")
+                self._logger\
+                    .log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")\
+                    .log_line("```")\
+                    .log_line(f"{result}")\
+                    .log_line("```")
 
             # Возвращаем False: цикл должен продолжиться, так как мы только что дали модели данные из файлов/git
             return False
