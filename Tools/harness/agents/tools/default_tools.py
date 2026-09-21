@@ -61,11 +61,18 @@ class DefaultTools(i_tools.ITools):
                 },
             ),
         }
+    
+    # i_tools.ITools
+    @property
+    def name(cls) -> str:
+        return "DefaultTools"
 
+    # i_tools.ITools
     @property
     def list(self) -> list:
         return self.__tools.values()
 
+    # i_tools.ITools
     def call(self, tool_name: str, **args) -> str:
         tool = getattr(self, tool_name, None)
         if tool and callable(tool):

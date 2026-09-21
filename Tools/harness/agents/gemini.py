@@ -1,5 +1,7 @@
 import uuid
 import json
+from google import genai
+from google.genai import types
 
 from . import tools, i_agent
 from .. import logger
@@ -24,9 +26,6 @@ class Gemini(i_agent.IAgent):
     """Gemini agent implementation using Google GenAI SDK with tool calling support."""
 
     def __init__(self, prompt: str, tools: tools.ITools, logger: logger.ILogger, token_limit: int = 128000):
-        from google import genai
-        from google.genai import types
-
         self.__prompt = prompt
         self.__token_limit = token_limit
         self.__conv_id = str(uuid.uuid4())
@@ -50,7 +49,7 @@ class Gemini(i_agent.IAgent):
         self.__usage_stats = UsageStats()
 
     @property
-    def name(self) -> str:
+    def name(cls) -> str:
         return 'Gemini-3.8-Flash'
 
     @property

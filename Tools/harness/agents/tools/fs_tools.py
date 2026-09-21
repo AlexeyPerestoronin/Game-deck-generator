@@ -17,7 +17,7 @@ class FSTools(i_tools.ITools):
     """Complex file system, git, and search tool set for AI agent"""
 
     def __init__(self, *, cwd: str | None = None, allowed_dirs: List[str]):
-        self.__cwd = pathlib.Path(os.getcwd() if not cwd else cwd).absolute()
+        self.__cwd = pathlib.Path(cwd).absolute()
         self.__allowed_dirs = [pathlib.Path(dir).absolute() for dir in allowed_dirs]
         self.__read_dirs = list(self.__allowed_dirs)
         self.__write_dirs = list(self.__allowed_dirs)
@@ -143,6 +143,11 @@ class FSTools(i_tools.ITools):
                 },
             ),
         }
+
+    # i_tools.ITools
+    @property
+    def name(cls) -> str:
+        return "FSTools"
 
     # i_tools.ITools
     @property

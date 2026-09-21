@@ -9,7 +9,7 @@ class IAgent(typing.Protocol):
     """Protocol for pluggable AI agents in the harness."""
 
     @property
-    def name(self) -> str:
+    def name(cls) -> str:
         ...
 
     @property

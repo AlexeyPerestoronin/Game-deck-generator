@@ -1,35 +1,27 @@
 import os
+import json5
 import invoke
 import pathlib
 import datetime
 
-from . import agents, logger, agent_loop
+from . import logger, agent_loop
 
 
 @invoke.task()
-def run_agent(ctx, prompt: str, iteration_limit: int = 25, safe_mode: bool = True):
-    """Run Grok AI agent loop via invoke."""
-    log_file = pathlib.Path(os.getcwd()) / ".log" / f"log-{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}.md"
-
-    log = logger.DoubleLogger(pathlib.Path(log_file))
-    tools = agents.tools.FSTools(allowed_dirs=["Tools", "WiKi/dev-plan/phase-IV/4 implement gemini agent tool"])
-    ai_agent = agents.Grok(prompt, tools, log)
-    loop = agent_loop.AgentLoop(False, iteration_limit, ai_agent, log)
-    loop.start()
-
-
-@invoke.task()
-def run_gemini_agent(ctx, prompt: str, iteration_limit: int = 25, safe_mode: bool = True):
+def run_loop(ctx, safe_mode: bool = True):
     """Run Gemini-3.8-Flash AI agent loop via invoke."""
-    log_file = pathlib.Path(os.getcwd()) / ".log" / f"log-{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}.md"
+    cwd = pathlib.Path(os.getcwd())
 
-    log = logger.DoubleLogger(pathlib.Path(log_file))
-    tools = agents.tools.FSTools(allowed_dirs=["Tools", "WiKi/dev-plan/phase-IV/4 implement gemini agent tool"])
-    ai_agent = agents.Gemini(prompt, tools, log)
-    loop = agent_loop.AgentLoop(safe_mode, iteration_limit, ai_agent, log)
+    with open(cwd / "agent-loop.json5", "r", encoding="utf-8") as file:
+        loop_settings = json5.load(file)
+    
+    with open(cwd / loop_settings["task"] / "settings.json5", "r", encoding="utf-8") as file:
+        agent_settings = json5.load(file)
+
+    log = logger.DoubleLogger(cwd / loop_settings["paths"]["log"] / f"log-{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}.md")
+    loop = agent_loop.AgentLoop(safe_mode, log, agent_settings)
     loop.start()
 
 
 collection = invoke.Collection("harness")
-collection.add_task(run_agent)
-collection.add_task(run_gemini_agent)
+collection.add_task(run_loop)

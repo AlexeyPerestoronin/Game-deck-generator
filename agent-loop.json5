@@ -1,0 +1,7 @@
+{
+    "mode": "auto accept",
+    "task": "WiKi/dev-plan/phase-IV/5 implement loop via settings",
+    "paths": {
+        "log": ".log"
+    }
+}

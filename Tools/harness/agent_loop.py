@@ -1,3 +1,4 @@
+import os
 import datetime
 
 from . import agents, logger
@@ -6,16 +7,34 @@ __all__ = [
     'AgentLoop',
 ]
 
-
 class AgentLoop:
     """Drives the agent through iterations, enforcing token and iteration limits."""
 
-    def __init__(self, safe_mode: bool, iteration_limit: int, agent: agents.IAgent, logger: logger.ILogger):
+    def __init__(self, safe_mode: bool, logger: logger.ILogger, settings):
         self.__safe_mode = safe_mode
-        self.__iteration_limit = iteration_limit
-        self.__iteration = 0
-        self.__agent = agent
         self.__logger = logger
+        self.__settings = settings
+
+        self.__iteration = 0
+        self.__iteration_limit = self.__settings["iteration-limit"]
+        token_limit = self.__settings["token-limit"]
+
+        requested_tools = self.__settings["tools"]
+        if requested_tools == agents.tools.DefaultTools.name:
+            self.__tools = agents.tools.DefaultTools(self.__safe_mode)
+        elif requested_tools == agents.tools.DefaultTools.name:
+            self.__tools = agents.tools.FSTools(cwd=os.getcwd(), allowed_dirs=self.__settings["allowed-dirs"])
+        else:
+            raise Exception("unexpected type of agent tools")
+
+        prompt = self.__settings["prompt"]
+        requested_model = self.__settings["model"]
+        if requested_model == agents.Grok.name:
+            self.__agent = agents.Grok(prompt, self.__tools, self.__logger, token_limit)
+        elif requested_model == agents.Gemini.name:
+            self.__agent = agents.Gemini(prompt, self.__tools, self.__logger, token_limit)
+        else:
+            raise Exception("unexpected model of agent")
 
     def check_session_token_limit(self) -> bool:
         """Return True if within limit (or user approved over limit)."""

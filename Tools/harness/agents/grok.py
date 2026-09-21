@@ -44,7 +44,7 @@ class Grok(i_agent.IAgent):
         self.__usage_stats = UsageStats()
 
     @property
-    def name(self) -> str:
+    def name(cls) -> str:
         return 'Grok-4.6'
 
     @property
