@@ -1,18 +1,33 @@
-import uuid
 import json
 import random
 import time
+import google
 
 from classproperties import classproperty
-from google import genai
-from google.genai import types
 
 from . import tools, i_agent
 from .. import logger
 
 __all__ = [
-    'Gemini',
+    'GoogleAIStudioModelsSpecifications',
+    'GoogleAI',
 ]
+
+
+class RateLimiter:
+    """TODO: need to provide some comment"""
+
+    def __init__(self, max_calls_per_min: int):
+        self.__min_interval = 60 / max_calls_per_min
+        self.__last_call_time = 0.0
+
+    def wait_if_needed(self):
+        current_time = time.perf_counter()
+        time_since_last_call = current_time - self.__last_call_time
+        if time_since_last_call < self.__min_interval:
+            sleep_time = self.__min_interval - time_since_last_call
+            time.sleep(sleep_time + 1)
+        self.__last_call_time = time.perf_counter()
 
 
 class UsageStats:
@@ -26,56 +41,89 @@ class UsageStats:
         self.total_cost_usd = 0.0
 
 
-class Gemini(i_agent.IAgent):
+class GoogleAIStudioModelsSpecifications:
+    """TODO: need to provide some comment"""
+
+    @classmethod
+    def from_str(cls, model: str) -> 'GoogleAIStudioModelsSpecifications':
+        if model == "Gemini-3.8-Flash":
+            return GoogleAIStudioModelsSpecifications("gemini-3.8-flash", 5, 250000, 20, 500000)
+        elif model == "Gemini-3.1-Flash-Light":
+            return GoogleAIStudioModelsSpecifications("gemini-3.1-flash-light", 15, 250000, 500, 500000)
+        else:
+            raise Exception("unexpected model google ai model specification")
+
+    """TODO: need to provide some comment"""
+
+    def __init__(self, model: str, rpm: int, tpm: int, rpd: int, tls: int):
+        self.__model = model  # google ai studio model name
+        self.__rpm = rpm  # request per minute
+        self.__tpm = tpm  # tokens per minute
+        self.__rpd = rpd  # request per day
+        self.__tls = tls  # tokens limit per session
+
+    @property
+    def model(self) -> str:
+        return self.__model
+
+    @property
+    def rpm(self) -> int:
+        return self.__rpm
+
+    @property
+    def tpm(self) -> int:
+        return self.__tpm
+
+    @property
+    def rpd(self) -> int:
+        return self.__rpd
+
+    @property
+    def tls(self) -> int:
+        return self.__tls
+
+
+class GoogleAI(i_agent.IAgent):
     """Gemini agent implementation using Google GenAI SDK with tool calling support."""
 
-    def __init__(self, prompt: str, tools: tools.ITools, logger: logger.ILogger, token_limit: int = 128000):
+    def __init__(self, prompt: str, tools: tools.ITools, logger: logger.ILogger, model_specification: GoogleAIStudioModelsSpecifications):
         self.__prompt = prompt
-        self.__token_limit = token_limit
-        self.__conv_id = str(uuid.uuid4())
-        self.__logger = logger
         self.__tools = tools
-        self.__types = types
+        self.__logger = logger
+        self.__model_specification = model_specification
+        self.__rate_limiter = RateLimiter(self.__model_specification.rpm)
+
         self.__pending_tool_parts = None
         with open('API_KEY_GEMINI', encoding='utf-8') as f:
             api_key = f.read().strip()
-        self.__client = genai.Client(api_key=api_key)
-        self.__chat_id = str(uuid.uuid4())
+        self.__client = google.genai.Client(api_key=api_key)
 
         # Чат должен жить весь цикл AgentLoop (история + implicit caching).
         self.__chat = self.__client.chats.create(
-            model="gemini-3.8-flash",
-            config=types.GenerateContentConfig(
+            model=self.__model_specification.model,
+            config=google.genai.types.GenerateContentConfig(
                 tools=self.__gemini_tools(self.__tools.list),
-                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                automatic_function_calling=google.genai.types.AutomaticFunctionCallingConfig(disable=True),
             ),
         )
         self.__usage_stats = UsageStats()
 
+    # i_agent.IAgent
     @classproperty
     def name(cls) -> str:
-        return 'Gemini-3.8-Flash'
+        return 'GoogleAI'
 
+    # i_agent.IAgent
     @property
     def tokens_limit(self) -> int:
-        return self.__token_limit
+        return self.__model_specification.tls
 
-    @property
-    def conversation_id(self) -> str:
-        return self.__conv_id
-
-    @property
-    def chat_id(self) -> str:
-        return self.__chat_id
-
+    # i_agent.IAgent
     @property
     def consumed_tokens(self) -> int:
         return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens)
 
-    @property
-    def consumed_usd(self) -> float:
-        return float(self.__usage_stats.total_cost_usd)
-
+    # i_agent.IAgent
     def iteration(self) -> bool:
         if self.__prompt:
             self.__logger\
@@ -102,7 +150,7 @@ class Gemini(i_agent.IAgent):
         function_calls = self.__response_function_calls(response)
         if function_calls:
             self.__logger.log_line("agent request tools:")
-            pending = []
+            fc_results = []
             for i, fc in enumerate(function_calls, 1):
                 raw_args = getattr(fc, "args", None)
                 try:
@@ -114,21 +162,20 @@ class Gemini(i_agent.IAgent):
                     status = f"fail: {e}"
                     args = raw_args
 
-                pending.append(
-                    self.__types.Part.from_function_response(
-                        name=fc.name,
-                        response={"result": result},
-                    )
-                )
+                fc_results.append(google.genai.types.Part.from_function_response(
+                    name=fc.name,
+                    response={"result": result},
+                ))
 
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
                 self.__logger.log_line(f"{i}. {fc.name}({arg_str}) → {status}")
 
-            self.__pending_tool_parts = pending
+            self.__pending_tool_parts = fc_results
             return False
 
         return True
 
+    # i_agent.IAgent
     def finish(self):
         self.__logger\
             .log_line("Sessions statistic")\
@@ -142,6 +189,7 @@ class Gemini(i_agent.IAgent):
     def __request(self, message):
         for attempt in range(1, 24):
             try:
+                self.__rate_limiter.wait_if_needed()
                 self.__logger.log_line(f"request ademption №{attempt} → ")
                 response = self.__chat.send_message(message)
                 self.__logger.log_str("success!")
@@ -166,7 +214,6 @@ class Gemini(i_agent.IAgent):
         return response
 
     def __gemini_tools(self, xai_tools) -> list:
-        types = self.__types
         declarations = []
         empty_schema = {"type": "object", "properties": {}}
         for tool_obj in xai_tools:
@@ -179,19 +226,19 @@ class Gemini(i_agent.IAgent):
             if not isinstance(parameters, dict):
                 parameters = empty_schema
             try:
-                decl = types.FunctionDeclaration(
+                decl = google.genai.types.FunctionDeclaration(
                     name=name,
                     description=description,
                     parameters_json_schema=parameters,
                 )
             except TypeError:
-                decl = types.FunctionDeclaration(
+                decl = google.genai.types.FunctionDeclaration(
                     name=name,
                     description=description,
                     parameters=parameters,
                 )
             declarations.append(decl)
-        return [types.Tool(function_declarations=declarations)]
+        return [google.genai.types.Tool(function_declarations=declarations)]
 
     def __response_text(self, response) -> str | None:
         try:

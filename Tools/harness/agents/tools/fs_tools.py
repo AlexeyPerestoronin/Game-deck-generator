@@ -15,6 +15,7 @@ __all__ = [
     'FSTools',
 ]
 
+
 class FSTools(i_tools.ITools):
     """Complex file system, git, and search tool set for AI agent"""
 
@@ -26,122 +27,186 @@ class FSTools(i_tools.ITools):
 
         # TODO: проверить и добавить в правильном порядке
         self.__tools = {
-            FSTools.create_file.__name__: xai_sdk.chat.tool(
+            FSTools.create_file.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.create_file.__name__,
                 description="Create a new empty file at the specified path.",
                 parameters={
                     "type": "object",
-                    "properties": {"path": {"type": "string"}},
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
                     "required": ["path"],
                 },
             ),
-            
-            FSTools.remove_file.__name__: xai_sdk.chat.tool(
+            FSTools.remove_file.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.remove_file.__name__,
                 description="Remove a file from the file system.",
                 parameters={
                     "type": "object",
-                    "properties": {"path": {"type": "string"}},
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
                     "required": ["path"],
                 },
             ),
-            FSTools.read_file.__name__: xai_sdk.chat.tool(
+            FSTools.read_file.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.read_file.__name__,
                 description="Read the entire text contents of a file.",
                 parameters={
                     "type": "object",
-                    "properties": {"path": {"type": "string"}},
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
                     "required": ["path"],
                 },
             ),
-            FSTools.write_file.__name__: xai_sdk.chat.tool(
+            FSTools.write_file.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.write_file.__name__,
                 description="Write content to a file. Fails if the file already exists.",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "path": {"type": "string"},
-                        "content": {"type": "string"}
+                        "path": {
+                            "type": "string"
+                        },
+                        "content": {
+                            "type": "string"
+                        }
                     },
                     "required": ["path", "content"],
                 },
             ),
-            FSTools.overwrite_file.__name__: xai_sdk.chat.tool(
+            FSTools.overwrite_file.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.overwrite_file.__name__,
                 description="Completely overwrite the existing file contents or create a new file if it does not exist.",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "path": {"type": "string"},
-                        "content": {"type": "string"}
+                        "path": {
+                            "type": "string"
+                        },
+                        "content": {
+                            "type": "string"
+                        }
                     },
                     "required": ["path", "content"],
                 },
             ),
-
-            FSTools.create_dir.__name__: xai_sdk.chat.tool(
+            FSTools.create_dir.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.create_dir.__name__,
                 description="Create a directory path including missing parent directories.",
                 parameters={
                     "type": "object",
-                    "properties": {"path": {"type": "string"}},
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
                     "required": ["path"],
                 },
             ),
-            FSTools.remove_dir.__name__: xai_sdk.chat.tool(
+            FSTools.remove_dir.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.remove_dir.__name__,
                 description="Recursively remove a directory and all of its contents.",
                 parameters={
                     "type": "object",
-                    "properties": {"path": {"type": "string"}},
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
                     "required": ["path"],
                 },
             ),
-            FSTools.list_dir.__name__: xai_sdk.chat.tool(
+            FSTools.list_dir.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.list_dir.__name__,
                 description="List all child files and directories inside the specified directory.",
                 parameters={
                     "type": "object",
-                    "properties": {"path": {"type": "string"}},
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
                     "required": ["path"],
                 },
             ),
-            FSTools.search_text.__name__: xai_sdk.chat.tool(
+            FSTools.search_text.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.search_text.__name__,
                 description="Search for a specific substring within text files across allowed directories (like grep).",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "Substring to search for"},
-                        "file_pattern": {"type": "string", "description": "Optional glob pattern like '*.py'"}
+                        "query": {
+                            "type": "string",
+                            "description": "Substring to search for"
+                        },
+                        "file_pattern": {
+                            "type": "string",
+                            "description": "Optional glob pattern like '*.py'"
+                        }
                     },
                     "required": ["query"],
                 },
             ),
-            FSTools.search_and_replace.__name__: xai_sdk.chat.tool(
+            FSTools.search_and_replace.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.search_and_replace.__name__,
                 description="Find an exact unique code/text block and replace it with a new block.",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "path": {"type": "string"},
-                        "old_content": {"type": "string", "description": "The exact code block to find"},
-                        "new_content": {"type": "string", "description": "The replacement block"}
+                        "path": {
+                            "type": "string"
+                        },
+                        "old_content": {
+                            "type": "string",
+                            "description": "The exact code block to find"
+                        },
+                        "new_content": {
+                            "type": "string",
+                            "description": "The replacement block"
+                        }
                     },
                     "required": ["path", "old_content", "new_content"],
                 },
             ),
-            FSTools.git_status.__name__: xai_sdk.chat.tool(
+            FSTools.git_status.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.git_status.__name__,
                 description="Get short status of modified and untracked repository files.",
-                parameters={"type": "object", "properties": {}},
+                parameters={
+                    "type": "object",
+                    "properties": {}
+                },
             ),
-            FSTools.git_diff.__name__: xai_sdk.chat.tool(
+            FSTools.git_diff.__name__:
+            xai_sdk.chat.tool(
                 name=FSTools.git_diff.__name__,
                 description="Show changes in the working directory compared to the index.",
                 parameters={
                     "type": "object",
-                    "properties": {"path": {"type": "string", "description": "Optional file path to filter diff"}}
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Optional file path to filter diff"
+                        }
+                    }
                 },
             ),
         }
@@ -199,7 +264,7 @@ class FSTools(i_tools.ITools):
         abs_path.parent.mkdir(parents=True, exist_ok=True)
         abs_path.touch()
         return f"success: created empty file '{path}'"
-    
+
     def remove_file(self, path: str) -> str:
         abs_path = self._resolve_path(path)
         if not self._is_path_safe(abs_path, self.__write_dirs):
@@ -208,7 +273,7 @@ class FSTools(i_tools.ITools):
             return f"error: '{path}' is not a file or does not exist"
         abs_path.unlink()
         return f"success: removed '{path}'"
-    
+
     def read_file(self, path: str) -> str:
         abs_path = self._resolve_path(path)
         if not self._is_path_safe(abs_path, self.__read_dirs):
@@ -229,7 +294,7 @@ class FSTools(i_tools.ITools):
         abs_path.parent.mkdir(parents=True, exist_ok=True)
         abs_path.write_text(content, encoding="utf-8")
         return f"success: wrote '{path}'"
-        
+
     def overwrite_file(self, path: str, content: str) -> str:
         abs_path = self._resolve_path(path)
         if not self._is_path_safe(abs_path, self.__write_dirs):
@@ -247,7 +312,7 @@ class FSTools(i_tools.ITools):
             return f"success: created directory '{path}'"
         except Exception as e:
             return f"error: {e}"
-    
+
     def remove_dir(self, path: str) -> str:
         abs_path = self._resolve_path(path)
         if not self._is_path_safe(abs_path, self.__write_dirs):
@@ -259,7 +324,7 @@ class FSTools(i_tools.ITools):
             return f"success: removed directory '{path}'"
         except Exception as e:
             return f"error: {e}"
-    
+
     def list_dir(self, path: str) -> str:
         abs_path = self._resolve_path(path)
         if not self._is_path_safe(abs_path, self.__read_dirs):

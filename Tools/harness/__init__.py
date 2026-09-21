@@ -14,7 +14,7 @@ def run_loop(ctx, safe_mode: bool = False):
 
     with open(cwd / "agent-loop.json5", "r", encoding="utf-8") as file:
         loop_settings = json5.load(file)
-    
+
     with open(cwd / loop_settings["task"] / "settings.json5", "r", encoding="utf-8") as file:
         agent_settings = json5.load(file)
 

@@ -7,6 +7,7 @@ __all__ = [
     'AgentLoop',
 ]
 
+
 class AgentLoop:
     """Drives the agent through iterations, enforcing token and iteration limits."""
 
@@ -16,8 +17,8 @@ class AgentLoop:
         self.__settings = settings
 
         self.__iteration = 0
-        self.__iteration_limit = self.__settings["iteration-limit"]
-        token_limit = self.__settings["token-limit"]
+        self.__iteration_limit = self.__settings.get("iteration-limit", 10)
+        token_limit = self.__settings.get("token-limit", 128000)
 
         requested_tools = self.__settings["tools"]
         if requested_tools == agents.tools.DefaultTools.name:
@@ -28,11 +29,13 @@ class AgentLoop:
             raise Exception("unexpected type of agent tools")
 
         prompt = self.__settings["prompt"]
+        requested_vendor = self.__settings["vendor"]
         requested_model = self.__settings["model"]
-        if requested_model == agents.Grok.name:
+        if requested_vendor == agents.Grok.name:
             self.__agent = agents.Grok(prompt, self.__tools, self.__logger, token_limit)
-        elif requested_model == agents.Gemini.name:
-            self.__agent = agents.Gemini(prompt, self.__tools, self.__logger, token_limit)
+        elif requested_vendor == agents.GoogleAI.name:
+            model_specification = agents.GoogleAIStudioModelsSpecifications.from_str(requested_model)
+            self.__agent = agents.GoogleAI(prompt, self.__tools, self.__logger, model_specification)
         else:
             raise Exception("unexpected model of agent")
 

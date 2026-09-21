@@ -5,6 +5,7 @@ __all__ = [
     'IAgent',
 ]
 
+
 class IAgent(typing.Protocol):
     """Protocol for pluggable AI agents in the harness."""
 
@@ -17,19 +18,7 @@ class IAgent(typing.Protocol):
         ...
 
     @property
-    def conversation_id(self) -> str:
-        ...
-
-    @property
-    def chat_id(self) -> str:
-        ...
-
-    @property
     def consumed_tokens(self) -> int:
-        ...
-
-    @property
-    def consumed_usd(self) -> float:
         ...
 
     def iteration(self) -> bool:

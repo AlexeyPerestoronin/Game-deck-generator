@@ -63,7 +63,7 @@ class DefaultTools(i_tools.ITools):
                 },
             ),
         }
-    
+
     # i_tools.ITools
     @classproperty
     def name(cls) -> str:
