@@ -1,0 +1,27 @@
+--- a/Tools/harness/agent_loop.py
++++ b/Tools/harness/agent_loop.py
+@@ -37,7 +37,7 @@
+             self.__agent = agents.GoogleAI(prompt, self.__tools, self.__logger, model_specification)
+         else:
+             raise Exception("unexpected model of agent")
+ 
+     def check_session_token_limit(self) -> bool:
+         """Return True if within limit (or user approved over limit)."""
+         limit = self.__agent.tokens_limit
+         consumed = self.__agent.consumed_tokens
+-        if consumed > limit:
++        if limit > 0 and consumed > limit:
+             message = f"⚠️ tokens limit exceed ({consumed} > {limit})"
+             self.__logger.log_line(message)
+             if self.__safe_mode:
+@@ -47,7 +47,7 @@
+ 
+     def check_session_iteration_limit(self) -> bool:
+         """Return True if within limit (or user approved over limit)."""
+         limit = self.__iteration_limit
+         consumed = self.__iteration
+-        if consumed > limit:
++        if limit > 0 and consumed > limit:
+             message = f"⚠️ iteration limit exceed ({consumed} > {limit})"
+             self.__logger.log_line(message)
+             if self.__safe_mode:

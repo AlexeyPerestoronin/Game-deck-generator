@@ -2,6 +2,7 @@ import json
 import random
 import time
 import google
+import google.genai
 
 from classproperties import classproperty
 
@@ -48,8 +49,8 @@ class GoogleAIStudioModelsSpecifications:
     def from_str(cls, model: str) -> 'GoogleAIStudioModelsSpecifications':
         if model == "Gemini-3.8-Flash":
             return GoogleAIStudioModelsSpecifications("gemini-3.8-flash", 5, 250000, 20, 500000)
-        elif model == "Gemini-3.1-Flash-Light":
-            return GoogleAIStudioModelsSpecifications("gemini-3.1-flash-light", 15, 250000, 500, 500000)
+        elif model == "Gemini-3.1-Flash-Lite":
+            return GoogleAIStudioModelsSpecifications("gemini-3.1-flash-lite", 15, 250000, 500, 500000)
         else:
             raise Exception("unexpected model google ai model specification")
 

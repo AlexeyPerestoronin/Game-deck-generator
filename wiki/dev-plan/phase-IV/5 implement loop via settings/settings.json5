@@ -1,6 +1,6 @@
 {
     "vendor": "GoogleAI",
-    "model": "Gemini-3.1-Flash-Light",
+    "model": "Gemini-3.1-Flash-Lite",
     "tools": "FSTools",
     "iteration-limit": 25,
     "token-limit": 128000,
