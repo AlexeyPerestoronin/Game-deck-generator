@@ -12,11 +12,12 @@ __all__ = [
 class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed to cwd)."""
 
-    def __init__(self, safe_mode: bool, available_shell: list, available_read_dirs: list, available_write_dirs: list):
+    def __init__(self, safe_mode: bool, available_shell: list = None, available_read_dirs: list = None, available_write_dirs: list = None):
         self._safe_mode = safe_mode
-        self._available_shell = available_shell
-        self._available_read_dirs = available_read_dirs
-        self._available_write_dirs = available_write_dirs
+        cwd = os.getcwd()
+        self._available_shell = available_shell or []
+        self._available_read_dirs = available_read_dirs or [cwd]
+        self._available_write_dirs = available_write_dirs or [cwd]
 
         #yapf: disable
         self._tools = [
@@ -92,19 +93,45 @@ class DefaultTools(i_tools.ITools):
 
     # tools
 
+    def _is_path_allowed(self, abs_path: str, dirs: list) -> bool:
+        """Return True if abs_path is inside one of the allowed dirs (simple sandbox check)."""
+        for d in dirs:
+            d_abs = os.path.abspath(d)
+            if os.path.commonpath([abs_path, d_abs]) == d_abs:
+                return True
+        return False
+
     def read_file(self, path: str) -> str:
-        # TODO: надо реализовать чтение в файл с проверкой нахождения файла в разрешённой директории
-        pass
+        abs_path = os.path.abspath(path)
+        if not self._is_path_allowed(abs_path, self._available_read_dirs):
+            raise Exception("read-access outside the allowed directories is prohibited")
+        if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
+            return f"error: '{path}' is not a file or does not exist"
+        try:
+            with open(abs_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            return f"error reading '{path}': {e}"
 
     def write_file(self, path: str, content: str) -> str:
-        # TODO: надо реализовать запись в файл с проверкой нахождения файла в разрешённой директории
-        pass
+        abs_path = os.path.abspath(path)
+        if not self._is_path_allowed(abs_path, self._available_write_dirs):
+            raise Exception("write-access outside the allowed directories is prohibited")
+        if os.path.exists(abs_path):
+            return f"error: '{path}' already exists"
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        with open(abs_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return f"success: wrote '{path}'"
 
     def list_available_shell_commands(self) -> str:
         return f"available commands list {self._available_shell}"
 
     def run_shell(self, command: str) -> str:
-        # TODO: надо реализовать проверку, что вызываемая shell команда в списке доступных
+        if self._available_shell:
+            cmd = command.strip().split(maxsplit=1)[0] if command and command.strip() else ""
+            if cmd not in self._available_shell:
+                raise Exception(f"shell command '{cmd}' is not in the list of available commands {self._available_shell}")
         if self._safe_mode:
             confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()
             if confirm not in ("y", "yes"):

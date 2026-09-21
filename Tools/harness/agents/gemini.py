@@ -16,7 +16,7 @@ __all__ = [
 
 
 class RateLimiter:
-    """TODO: need to provide some comment"""
+    """Simple rate limiter to respect per-minute request limits of the model."""
 
     def __init__(self, max_calls_per_min: int):
         self.__min_interval = 60 / max_calls_per_min
@@ -43,7 +43,7 @@ class UsageStats:
 
 
 class GoogleAIStudioModelsSpecifications:
-    """TODO: need to provide some comment"""
+    """Holds model name and rate/token limits for a specific Gemini model from Google AI Studio."""
 
     @classmethod
     def from_str(cls, model: str) -> 'GoogleAIStudioModelsSpecifications':
@@ -213,14 +213,20 @@ class GoogleAI(i_agent.IAgent):
         return response
 
     def __gemini_tools(self, xai_tools) -> list:
-        # TODO: надо исправить реализацию с учётом класса Tool
+        # Convert Tool descriptors (or wrapped xai tools) to Gemini FunctionDeclarations.
         declarations = []
         empty_schema = {"type": "object", "properties": {}}
         for tool_obj in xai_tools:
-            fn = getattr(tool_obj, "function", tool_obj)
-            name = getattr(fn, "name", None)
-            description = getattr(fn, "description", "") or ""
-            parameters = getattr(fn, "parameters", None)
+            if hasattr(tool_obj, "name") and hasattr(tool_obj, "description") and hasattr(tool_obj, "parameters"):
+                # direct Tool (from DefaultTools)
+                name = tool_obj.name
+                description = tool_obj.description or ""
+                parameters = tool_obj.parameters
+            else:
+                fn = getattr(tool_obj, "function", tool_obj)
+                name = getattr(fn, "name", None)
+                description = getattr(fn, "description", "") or ""
+                parameters = getattr(fn, "parameters", None)
             if isinstance(parameters, str):
                 parameters = json.loads(parameters) if parameters else empty_schema
             if not isinstance(parameters, dict):

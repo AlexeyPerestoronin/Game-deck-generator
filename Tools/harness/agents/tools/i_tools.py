@@ -8,13 +8,13 @@ __all__ = [
 ]
 
 
-class Tool(Protocol):
-    """Protocol for the tool exposed to AI agent."""
-    
-    def __new__(self, name: str, description: str, parameters: dict):
+class Tool:
+    """Concrete descriptor for a tool exposed to AI agent (provides .name, .description, .parameters)."""
+
+    def __init__(self, name: str, description: str, parameters: dict):
         self._name = name
         self._description = description
-        self._parameters = parameters
+        self._parameters = parameters or {}
 
     @property
     def name(self) -> str:

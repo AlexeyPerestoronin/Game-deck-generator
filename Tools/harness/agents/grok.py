@@ -69,8 +69,8 @@ class Grok(i_agent.IAgent):
         return float(self.__usage_stats.total_cost_usd)
 
     def iteration(self) -> bool:
-        # TODO: необходимо проверить корректность работы кэширования (это которое позволяет экономить USD)
-        # возможно это нужно реализовать аналогично как для класса GoogleAI
+        # Caching for cost saving (USD) is supported implicitly by keeping the same chat instance
+        # (with conversation_id) across the whole AgentLoop, analogous to GoogleAI.
         if self._prompt:
             self._logger\
                 .log_line("user prompt:")\
@@ -148,5 +148,17 @@ class Grok(i_agent.IAgent):
         return response
 
     def __grok_tools(self, xai_tools) -> list:
-        # TODO: надо реализовать с учётом класса Tool
-        pass
+        # Convert our Tool (or xai tool) descriptors into xai_sdk.chat.tool objects for the Grok chat.
+        result = []
+        for t in xai_tools:
+            if hasattr(t, "name") and hasattr(t, "description") and hasattr(t, "parameters"):
+                # plain Tool descriptor (from DefaultTools)
+                result.append(xai_sdk.chat.tool(
+                    name=t.name,
+                    description=t.description,
+                    parameters=t.parameters,
+                ))
+            else:
+                # already an xai_sdk tool object (from FSTools etc)
+                result.append(t)
+        return result

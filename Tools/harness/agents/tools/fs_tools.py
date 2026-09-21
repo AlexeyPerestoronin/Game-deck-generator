@@ -25,7 +25,7 @@ class FSTools(i_tools.ITools):
         self.__read_dirs = list(self.__allowed_dirs)
         self.__write_dirs = list(self.__allowed_dirs)
 
-        # TODO: проверить и добавить в правильном порядке
+        # Tools registered in logical groups: basic file ops, dir ops, search/edit, git (order preserved for model).
         self.__tools = {
             FSTools.create_file.__name__:
             xai_sdk.chat.tool(

@@ -179,7 +179,7 @@ class FileTools(i_tools.ITools):
     # ---
 
     def _check_path(self, path: str, allowed_dirs: List[pathlib.Path]) -> Tuple[pathlib.Path | None, Exception | None]:
-        """TODO: need to provide some comment"""
+        """Return (abs_path, None) if path is inside one of allowed_dirs, else (None, error_message)."""
         try:
             abs_path = pathlib.Path(path).absolute()
             resolved_path = abs_path.resolve()
