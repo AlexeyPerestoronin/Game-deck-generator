@@ -220,7 +220,8 @@ class SpaceXAI(i_agent.IAgent):
             raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
             args = json.loads(raw_args)
 
-            self.__logger.log_line(f"{i}. {tool_call.function.name}({args})")
+            log_arg = "..." if tool_call.function.name == 'write_file' else args
+            self.__logger.log_line(f"{i}. {tool_call.function.name}({log_arg})")
             try:
                 result = self.__tools.call(tool_call.function.name, **args)
                 self.__logger.log_str(" → success")

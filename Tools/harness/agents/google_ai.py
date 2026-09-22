@@ -145,10 +145,7 @@ class GoogleAI(i_agent.IAgent):
             data = json.load(file)
 
         self.__usage_stats_from_dict(data.get("usage_stats", {}))
-        history = [
-            google.genai.types.Content.model_validate(item)
-            for item in data.get("history", [])
-        ]
+        history = [google.genai.types.Content.model_validate(item) for item in data.get("history", [])]
         self.__chat = self.__client.chats.create(
             model=self.__spec.model,
             history=history,
@@ -193,10 +190,7 @@ class GoogleAI(i_agent.IAgent):
             return None
         if pending_message.get("type") == "str":
             return pending_message.get("value")
-        return [
-            google.genai.types.Part.model_validate(part)
-            for part in pending_message.get("value", [])
-        ]
+        return [google.genai.types.Part.model_validate(part) for part in pending_message.get("value", [])]
 
     def __log_prompt(self, prompt: str):
         self.__logger.log_line("user prompt:").log_line('```').log_line(prompt).log_line('```')
@@ -264,7 +258,9 @@ class GoogleAI(i_agent.IAgent):
         results = []
         for i, fc in enumerate(fcs, 1):
             args = dict(fc.args) if fc.args else {}
-            self.__logger.log_line(f"{i}. {fc.name}({args})")
+
+            log_arg = "..." if fc.name == 'write_file' else args
+            self.__logger.log_line(f"{i}. {fc.name}({log_arg})")
             try:
                 result = self.__tools.call(fc.name, **args)
                 self.__logger.log_str(" → success")
