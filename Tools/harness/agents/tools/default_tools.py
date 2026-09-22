@@ -15,7 +15,8 @@ class DefaultTools(i_tools.ITools):
 
     def __init__(self, safe_mode: bool, settings: dir):
         self._safe_mode = safe_mode
-        
+
+        self._command_execution_limit = settings.get("command-execution-limit", 30)
         self._w_shell = [command[2:] for command in settings["shell"] if command[:2] == "w:"]
         self._r_shell = [command[2:] for command in settings["shell"] if command[:2] == "r:"]
         self._r_shell.extend(self._w_shell)
@@ -172,22 +173,37 @@ class DefaultTools(i_tools.ITools):
                 raise Exception(f"shell command '{cmd}' is not in the list of available commands {self._r_shell}")
 
         abs_cwd = os.path.abspath(cwd)
-        available_dirs = self._r_dirs
-        if not self._is_path_allowed(abs_cwd, available_dirs):
-            raise Exception(f"shell execution outside the allowed directories is prohibited (allowed directories is {available_dirs})")
 
         if command in self._w_shell:
-            available_dirs = self._w_dirs
-            if not self._is_path_allowed(abs_cwd, available_dirs):
-                raise Exception(f"writable shell-command could not be executed outside the allowed directories with write access (allowed directories is {available_dirs})")
+            if not self._is_path_allowed(abs_cwd, self._w_dirs):
+                raise Exception(f"'cwd'-parameter for '{command}'-command should be one of {self._w_dirs}")
+
+        if not self._is_path_allowed(abs_cwd, self._r_dirs):
+            raise Exception(f"'cwd'-parameter for '{command}'-command should be one of {self._r_dirs}")
 
         if self._safe_mode:
             confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()
             if confirm not in ("y", "yes"):
-                raise Exception("the user has prohibited the execution of the command")
+                raise Exception(f"the user has prohibited the execution of the '{command}'-command")
         try:
-            result = subprocess.run(command, cwd=cwd, shell=True, capture_output=True, text=True, timeout=30)
-            output = result.stdout or result.stderr
-            return output if output else "(command finished without output)"
+            result = subprocess.run(
+                command,
+                cwd=cwd,
+                shell=True,
+                capture_output=True,
+                text=False,  # returning raw bites
+                timeout=self._command_execution_limit,
+            )
+            raw_output = result.stdout or result.stderr
+            if raw_output:
+                    encodings_to_try = ['utf-8', 'oem', 'cp1251']
+                    for encoding in encodings_to_try:
+                        try:
+                            return raw_output.decode(encoding)
+                        except UnicodeDecodeError:
+                            continue
+                    return raw_output.decode('utf-8', errors='replace')
+
+            return "(command finished without output)"
         except subprocess.TimeoutExpired:
-            raise Exception("command execution time limit exceed (available limit is 30s)")
+            raise Exception(f"execution of the '{command}'-command exceed the limit (available limit is {self._command_execution_limit}s)")
