@@ -154,7 +154,7 @@ class GoogleAI(i_agent.IAgent):
                     result = self.__tools.call(fc.name, **args)
                     self.__logger.log_str(f" → success")\
                         .log_line("```")\
-                        .log_line(result if fc.name not in ("read_file", "write_file") else f"read/write {len(result)} symbols")\
+                        .log_line(f"read/write {len(result)} symbols" if fc.name in ("read_file", "write_file") else result)\
                         .log_line("```")
                 except Exception as e:
                     result = f"execution error: {e}"

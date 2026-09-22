@@ -1,5 +1,5 @@
 # Задача: «test task»
-Необходимо реализовать нереализованные методы в классе `DefaultTools` (см. `Tools\harness\agents\tools\default_tools.py`).
+Необходимо произвести рефакторинг кода в файле `Tools\harness\agents\gemini.py`
 
 ***
 

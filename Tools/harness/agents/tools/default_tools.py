@@ -22,7 +22,7 @@ class DefaultTools(i_tools.ITools):
 
         self._tools = [
             i_tools.Tool(n, d, p) for n, d, p in [
-                ("read_file", "Прочитать содержимое файла.", {
+                (DefaultTools.read_file.__name__, "Прочитать содержимое файла.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -31,7 +31,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path"]
                 }),
-                ("write_file", "Записать файл.", {
+                (DefaultTools.write_file.__name__, "Записать файл.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -43,7 +43,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path", "content"]
                 }),
-                ("create_file", "Создать файл.", {
+                (DefaultTools.create_file.__name__, "Создать файл.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -52,7 +52,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path"]
                 }),
-                ("remove_file", "Удалить файл.", {
+                (DefaultTools.remove_file.__name__, "Удалить файл.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -61,7 +61,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path"]
                 }),
-                ("move_file", "Переместить файл.", {
+                (DefaultTools.move_file.__name__, "Переместить файл.", {
                     "type": "object",
                     "properties": {
                         "src": {
@@ -73,7 +73,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["src", "dst"]
                 }),
-                ("create_folder", "Создать папку.", {
+                (DefaultTools.create_folder.__name__, "Создать папку.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -82,7 +82,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path"]
                 }),
-                ("remove_folder", "Удалить папку.", {
+                (DefaultTools.remove_folder.__name__, "Удалить папку.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -91,7 +91,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path"]
                 }),
-                ("move_folder", "Переместить папку.", {
+                (DefaultTools.move_folder.__name__, "Переместить папку.", {
                     "type": "object",
                     "properties": {
                         "src": {
@@ -103,8 +103,8 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["src", "dst"]
                 }),
-                ("list_available_shell_commands", "Список доступных shell команд.", {}),
-                ("run_shell", "Запуск команды.", {
+                (DefaultTools.list_available_shell_commands.__name__, "Список доступных shell команд.", {}),
+                (DefaultTools.run_shell.__name__, "Запуск команды.", {
                     "type": "object",
                     "properties": {
                         "cwd": {
@@ -135,10 +135,10 @@ class DefaultTools(i_tools.ITools):
         abs_p = os.path.abspath(path)
         return any(abs_p.startswith(d) for d in dirs)
 
-    def _check_access(self, path: str, mode: str):
+    def _check_access(self, path: str, mode: str, error: str | None = None):
         dirs = self._w_dirs if mode == 'w' else self._r_dirs
         if not self._is_allowed(path, dirs):
-            raise Exception(f"{mode}-access denied to {path}")
+            raise Exception(error if error else f"{mode}-access denied to {path}")
 
     def read_file(self, path: str) -> str:
         self._check_access(path, 'r')
@@ -189,6 +189,29 @@ class DefaultTools(i_tools.ITools):
         return f"available: {self._r_shell}"
 
     def run_shell(self, cwd: str, command: str) -> str:
-        self._check_access(cwd, 'r')
-        res = subprocess.run(command, cwd=cwd, shell=True, capture_output=True)
-        return (res.stdout + res.stderr).decode('utf-8', errors='replace')
+        cmd = command.strip().split(maxsplit=1)[0] if command and command.strip() else ""
+        if cmd not in self._r_shell: raise Exception(f"'{cmd}'-command is not available (available command list is {self._r_shell})")
+        if command in self._w_shell: self._check_access(cwd, 'w', f"'{cwd}'-cwd is denied for '{cmd}'-command (allowed cwd for '{cmd}'-command is {self._w_dirs})")
+        if command in self._r_shell: self._check_access(cwd, 'r', f"'{cwd}'-cwd is denied for '{cmd}'-command (allowed cwd for '{cmd}'-command is {self._r_dirs})")
+
+        try:
+            result = subprocess.run(
+                command,
+                cwd=cwd,
+                shell=True,
+                capture_output=True,
+                text=False,
+                timeout=self._command_execution_limit,
+            )
+            raw_output = result.stdout or result.stderr
+            if raw_output:
+                encodings_to_try = ['utf-8', 'oem', 'cp1251']
+                for encoding in encodings_to_try:
+                    try:
+                        return raw_output.decode(encoding)
+                    except UnicodeDecodeError:
+                        continue
+                return raw_output.decode('utf-8', errors='replace')
+            return "(command finished without output)"
+        except subprocess.TimeoutExpired:
+            raise Exception(f"execution of the '{command}'-command exceed the limit (available limit is {self._command_execution_limit}s)")
