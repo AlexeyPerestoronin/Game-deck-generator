@@ -9,15 +9,15 @@ from . import logger, agent_loop
 
 @invoke.task()
 def run_loop(ctx, safe_mode: bool = False):
-    """Run Gemini-3.8-Flash AI agent loop via invoke."""
+    """Run AI agent loop."""
     cwd = pathlib.Path(os.getcwd())
 
     with open(cwd / "harness.json5", "r", encoding="utf-8") as file:
         harness = json5.load(file)
 
-    prompt_file = cwd / harness["task"]["prompt"] / harness["task"]["prompt"]
+    prompt_file = cwd / harness["task"]["dir"] / harness["task"]["prompt"]
     with open(prompt_file, "r", encoding="utf-8") as file:
-        prompt = json5.load(file)
+        prompt = file.read()
 
     task_settings_file = cwd / harness["task"]["dir"] / harness["task"]["settings"]
     with open(task_settings_file, "r", encoding="utf-8") as file:

@@ -15,10 +15,14 @@ class DefaultTools(i_tools.ITools):
 
     def __init__(self, safe_mode: bool, settings: dir):
         self._safe_mode = safe_mode
-        self._w_shell = [shell_command[2:] for shell_command in settings["shell"] if shell_command[:2] == "w:"]
-        self._r_shell = [shell_command[2:] for shell_command in settings["shell"] if shell_command[:2] == "r:"].extend(self._w_shell)
-        self._w_dirs = [shell_command[2:] for shell_command in settings["dirs"] if shell_command[:2] == "w:"]
-        self._r_dirs = [shell_command[2:] for shell_command in settings["shell"] if shell_command[:2] == "r:"].extend(self._w_dirs)
+        
+        self._w_shell = [command[2:] for command in settings["shell"] if command[:2] == "w:"]
+        self._r_shell = [command[2:] for command in settings["shell"] if command[:2] == "r:"]
+        self._r_shell.extend(self._w_shell)
+
+        self._w_dirs = [command[2:] for command in settings["dirs"] if command[:2] == "w:"]
+        self._r_dirs = [command[2:] for command in settings["dirs"] if command[:2] == "r:"]
+        self._r_dirs.extend(self._w_dirs)
 
         #yapf: disable
         self._tools = [
@@ -106,11 +110,23 @@ class DefaultTools(i_tools.ITools):
         return False
 
     # file work
+    
+    def create_file(self, path: str) -> str:
+        # TODO: need to implement
+        ...
+
+    def remove_file(self, path: str) -> str:
+        # TODO: need to implement
+        ...
+
+    def move_file(self, path: str) -> str:
+        # TODO: need to implement
+        ...
 
     def read_file(self, path: str) -> str:
         abs_path = os.path.abspath(path)
         if not self._is_path_allowed(abs_path, self._r_dirs):
-            raise Exception(f"read-access outside the allowed directories is prohibited (read allowed directories is {self._r_dirs})")
+            raise Exception(f"read-access outside the allowed directories is prohibited (read-access directories is {self._r_dirs})")
         if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
             return f"error: '{path}' is not a file or does not exist"
         try:
@@ -122,7 +138,7 @@ class DefaultTools(i_tools.ITools):
     def write_file(self, path: str, content: str) -> str:
         abs_path = os.path.abspath(path)
         if not self._is_path_allowed(abs_path, self._w_dirs):
-            raise Exception(f"write-access outside the allowed directories is prohibited (write allowed directories is {self._w_dirs})")
+            raise Exception(f"write-access outside the allowed directories is prohibited (write-access directories is {self._w_dirs})")
         if os.path.exists(abs_path):
             return f"error: '{path}' already exists"
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
