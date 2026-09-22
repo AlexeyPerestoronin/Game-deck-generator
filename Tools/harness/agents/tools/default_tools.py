@@ -188,26 +188,25 @@ class DefaultTools(i_tools.ITools):
 
     def list_folder(self, path: str, depth: int) -> str:
         def walk_folder(self, path: str, depth: int) -> list:
-            dirs = []
-            files = []
-            for name in sorted(os.listdir(path)):
-                full = os.path.join(path, name)
-                if os.path.isdir(full):
-                    dirs.append(full)
-                else:
-                    files.append(full)
-
             result = []
-            if depth > 1:
+            if depth > 0:
+                dirs = []
+                files = []
+                for name in sorted(os.listdir(path)):
+                    full = os.path.join(path, name)
+                    if os.path.isdir(full):
+                        dirs.append(full)
+                    else:
+                        files.append(full)
+
                 for folder in dirs:
                     result.append(folder)
                     result.extend(walk_folder(folder, depth - 1))
-            result.extend(files)
+                result.extend(files)
             return result
 
         self._check_access(path, 'r')
         return "\n".join(walk_folder(path, depth))
-
 
     def create_folder(self, path: str) -> str:
         self._check_access(path, 'w')
