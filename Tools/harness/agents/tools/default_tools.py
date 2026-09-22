@@ -78,7 +78,9 @@ class DefaultTools(i_tools.ITools):
                     "properties": {
                         "path": {
                             "type": "string",
-                            "depth": "int"
+                        },
+                        "depth": {
+                            "type": "int",
                         }
                     },
                     "required": ["path", "deep"]
@@ -152,6 +154,14 @@ class DefaultTools(i_tools.ITools):
         dirs = self._w_dirs if mode == 'w' else self._r_dirs
         if not self._is_allowed(path, dirs):
             raise Exception(error if error else f"{mode}-access denied to {path}")
+
+    # text tools
+
+    def patch_file(self, path: str, patch: str) -> str:
+        # TODO: надо реализовать замену текста в файле
+        # path - путь до файла
+        # patch - diff для изменения в файле
+        ...
 
     # file tools
 
