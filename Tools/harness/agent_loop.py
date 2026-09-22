@@ -22,10 +22,10 @@ class AgentLoop:
 
         requested_vendor = self._settings["vendor"]
         requested_model = self._settings["model"]
-        if requested_vendor == agents.Grok.name:
-            self._agent = agents.Grok(self.__tools, self._logger, self._settings.get["token-limit"])
-        elif requested_vendor == agents.GoogleAI.name:
-            model_specification = agents.GoogleAIStudioModelsSpecifications.from_str(requested_model)
+        if requested_vendor == agents.SpaceXAI.vendor:
+            self._agent = agents.SpaceXAI(self.__tools, self._logger, self._settings.get["token-limit"])
+        elif requested_vendor == agents.GoogleAI.vendor:
+            model_specification = agents.GoogleModels.from_str(requested_model)
             self._agent = agents.GoogleAI(self.__tools, self._logger, model_specification)
         else:
             raise Exception("unexpected model of agent")
@@ -55,10 +55,9 @@ class AgentLoop:
         return True
 
     def start(self, prompt: str):
-        agent_name = f"{self._agent.name}-AI-agent"
         self._logger\
             .log_line(f"# Agent-loop session:")\
-            .log_line(f"- agent: {agent_name}")\
+            .log_line(f"- agent: {self._agent.vendor} {self._agent.model}")\
             .log_line(f"- iteration limit: {self._iteration_limit}")\
             .log_line(f"- tokens limit: {self._agent.tokens_limit}")\
             .log_line(f"- start time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")\

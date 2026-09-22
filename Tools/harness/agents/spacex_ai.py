@@ -8,7 +8,8 @@ from . import tools, i_agent
 from .. import logger
 
 __all__ = [
-    'Grok',
+    'SpaceXModels',
+    'SpaceXAI',
 ]
 
 
@@ -23,14 +24,29 @@ class UsageStats:
         self.total_cost_usd = 0.0
 
 
-class Grok(i_agent.IAgent):
+class SpaceXModels:
+    """Model specifications."""
+
+    @classmethod
+    def from_str(cls, model: str) -> 'SpaceXModels':
+        if model == "Grok-4.6":
+            return cls("grok-4.6", 125000)
+        raise ValueError(f"Unknown model: {model}")
+
+    def __init__(self, model: str, tls: int):
+        self.model = model
+        self.tls = tls
+
+
+class SpaceXAI(i_agent.IAgent):
     """Grok agent implementation using xAI SDK with tool calling support."""
 
-    def __init__(self, tools: tools.ITools, logger: logger.ILogger, token_limit: int = 128000):
-        self._token_limit = token_limit
-        self._conv_id = str(uuid.uuid4())
+    def __init__(self, tools: tools.ITools, logger: logger.ILogger, spec: SpaceXModels):
         self._logger = logger
         self._tools = tools
+        self.__spec = spec
+
+        self._conv_id = str(uuid.uuid4())
         # ---
         with open('API_KEY_XAI', encoding='utf-8') as f:
             api_key = f.read().strip()
@@ -43,13 +59,19 @@ class Grok(i_agent.IAgent):
         self._chat = self._client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__grok_tools(self._tools.list))
         self.__usage_stats = UsageStats()
 
+    # i_agent.IAgent
     @classproperty
-    def name(cls) -> str:
+    def vendor(cls) -> str:
         return 'SpaceXAI'
+
+    # i_agent.IAgent
+    @property
+    def model(self) -> str:
+        self.__spec.model
 
     @property
     def tokens_limit(self) -> int:
-        return self._token_limit
+        return self.__spec.tls
 
     @property
     def conversation_id(self) -> str:
@@ -67,6 +89,7 @@ class Grok(i_agent.IAgent):
     def consumed_usd(self) -> float:
         return float(self.__usage_stats.total_cost_usd)
 
+    # i_agent.IAgent
     def iteration(self, prompt: str) -> bool:
         if prompt:
             self._logger\

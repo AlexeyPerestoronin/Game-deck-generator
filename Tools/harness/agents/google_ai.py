@@ -7,7 +7,7 @@ from . import tools, i_agent
 from .. import logger
 
 __all__ = [
-    'GoogleAIStudioModelsSpecifications',
+    'GoogleModels',
     'GoogleAI',
 ]
 
@@ -38,11 +38,11 @@ class UsageStats:
         self.total_cost_usd = 0.0
 
 
-class GoogleAIStudioModelsSpecifications:
+class GoogleModels:
     """Model specifications."""
 
     @classmethod
-    def from_str(cls, model: str) -> 'GoogleAIStudioModelsSpecifications':
+    def from_str(cls, model: str) -> 'GoogleModels':
         if model == "Gemini-3.8-Flash":
             return cls("gemini-3.8-flash", 5, 250000, 20, 500000)
         elif model == "Gemini-3.1-Flash-Lite":
@@ -60,7 +60,7 @@ class GoogleAIStudioModelsSpecifications:
 class GoogleAI(i_agent.IAgent):
     """Gemini agent."""
 
-    def __init__(self, tools_handler: tools.ITools, log: logger.ILogger, spec: GoogleAIStudioModelsSpecifications):
+    def __init__(self, tools_handler: tools.ITools, log: logger.ILogger, spec: GoogleModels):
         self.__tools = tools_handler
         self.__logger = log
         self.__spec = spec
@@ -80,9 +80,15 @@ class GoogleAI(i_agent.IAgent):
             ),
         )
 
+    # i_agent.IAgent
     @classproperty
-    def name(cls) -> str:
+    def vendor(cls) -> str:
         return 'GoogleAI'
+
+    # i_agent.IAgent
+    @property
+    def model(self) -> str:
+        self.__spec.model
 
     @property
     def tokens_limit(self) -> int:
@@ -92,6 +98,7 @@ class GoogleAI(i_agent.IAgent):
     def consumed_tokens(self) -> int:
         return self.__usage_stats.input_tokens + self.__usage_stats.output_tokens
 
+    # i_agent.IAgent
     def iteration(self, prompt: str = None) -> bool:
         if prompt:
             self.__log_prompt(prompt)
@@ -133,10 +140,10 @@ class GoogleAI(i_agent.IAgent):
             except Exception as e:
                 code = getattr(e, "code", None)
                 if code == 429:
-                    self.__logger.log_str("fail 429: model limit exceeded!")
+                    self.__logger.log_str(" fail 429: model limit exceeded!")
                 elif code == 503:
                     delay = random.randint(5, 20)
-                    self.__logger.log_str(f"fail 503: waiting {delay}s...")
+                    self.__logger.log_str(f" fail 503: waiting {delay}s...")
                     time.sleep(delay)
                 else:
                     self.__logger.log_str(f"unexpected exception: {e}")

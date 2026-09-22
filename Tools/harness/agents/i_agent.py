@@ -10,15 +10,11 @@ class IAgent(typing.Protocol):
     """Protocol for pluggable AI agents in the harness."""
 
     @classproperty
-    def name(cls) -> str:
+    def vendor(cls) -> str:
         ...
 
     @property
-    def tokens_limit(self) -> int:
-        ...
-
-    @property
-    def consumed_tokens(self) -> int:
+    def model(self) -> str:
         ...
 
     def iteration(self) -> bool:
