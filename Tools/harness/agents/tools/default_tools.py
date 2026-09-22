@@ -1,9 +1,9 @@
 import io
 import os
+import git
 import shutil
 import subprocess
 
-import git  # engine for applying unified diffs via `git apply`
 from classproperties import classproperty
 
 from . import i_tools
@@ -169,30 +169,31 @@ class DefaultTools(i_tools.ITools):
         if not self._is_allowed(path, dirs):
             raise Exception(error if error else f"{mode}-access denied to {path}")
 
-    def _retarget_patch(self, patch: str, filename: str) -> str:
-        # rewrite unified-diff headers so `git apply` touches only `filename`
-        lines = []
-        has_header = False
-        for line in patch.splitlines():
-            if line.startswith('--- '):
-                lines.append('--- /dev/null' if line.startswith('--- /dev/null') else f'--- a/{filename}')
-                has_header = True
-            elif line.startswith('+++ '):
-                lines.append('+++ /dev/null' if line.startswith('+++ /dev/null') else f'+++ b/{filename}')
-            elif line.startswith('diff --git '):
-                lines.append(f'diff --git a/{filename} b/{filename}')
-            else:
-                lines.append(line)
-        if not has_header:
-            lines = [f'diff --git a/{filename} b/{filename}', f'--- a/{filename}', f'+++ b/{filename}'] + lines
-        return '\n'.join(lines) + '\n'
 
     # text tools
 
     def patch_file(self, path: str, patch: str) -> str:
+        def retarget_patch(patch: str, filename: str) -> str:
+            # rewrite unified-diff headers so `git apply` touches only `filename`
+            lines = []
+            has_header = False
+            for line in patch.splitlines():
+                if line.startswith('--- '):
+                    lines.append('--- /dev/null' if line.startswith('--- /dev/null') else f'--- a/{filename}')
+                    has_header = True
+                elif line.startswith('+++ '):
+                    lines.append('+++ /dev/null' if line.startswith('+++ /dev/null') else f'+++ b/{filename}')
+                elif line.startswith('diff --git '):
+                    lines.append(f'diff --git a/{filename} b/{filename}')
+                else:
+                    lines.append(line)
+            if not has_header:
+                lines = [f'diff --git a/{filename} b/{filename}', f'--- a/{filename}', f'+++ b/{filename}'] + lines
+            return '\n'.join(lines) + '\n'
+
         self._check_access(path, 'w')
         abs_path = os.path.abspath(path)
-        payload = self._retarget_patch(patch, os.path.basename(abs_path))
+        payload = retarget_patch(patch, os.path.basename(abs_path))
         git.Git(os.path.dirname(abs_path)).apply(istream=io.BytesIO(payload.encode('utf-8')))
         return f"success: patched {path}"
 
