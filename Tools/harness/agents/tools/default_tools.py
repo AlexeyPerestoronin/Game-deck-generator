@@ -140,7 +140,7 @@ class DefaultTools(i_tools.ITools):
         abs_path = os.path.abspath(path)
         if not self._is_path_allowed(abs_path, self._w_dirs):
             raise Exception(f"write-access outside the allowed directories is prohibited (write-access directories is {self._w_dirs})")
-        if os.path.exists(abs_path):
+        if not os.path.exists(abs_path):
             return f"error: '{path}' already exists"
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
         with open(abs_path, "w", encoding="utf-8") as f:

@@ -147,27 +147,23 @@ class GoogleAI(i_agent.IAgent):
             self.__logger.log_line("agent request tools:")
             fc_results = []
             for i, fc in enumerate(function_calls, 1):
-                raw_args = getattr(fc, "args", None)
+                arg_str = getattr(fc, "args", None)
+                self.__logger.log_line(f"{i}. {fc.name}({arg_str})")
                 try:
-                    args = self.__fc_args(raw_args)
+                    args = self.__fc_args(arg_str)
                     result = self.__tools.call(fc.name, **args)
-                    status = "success"
+                    self.__logger.log_str(f" → success")\
+                        .log_line("```")\
+                        .log_line(result if fc.name not in ("read_file", "write_file") else f"read/write {len(result)} symbols")\
+                        .log_line("```")
                 except Exception as e:
                     result = f"execution error: {e}"
-                    status = f"fail: {e}"
-                    args = raw_args
+                    self.__logger.log_str(f" → fail → {result}")
 
                 fc_results.append(google.genai.types.Part.from_function_response(
                     name=fc.name,
                     response={"result": result},
                 ))
-
-                arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
-                self.__logger\
-                    .log_line(f"{i}. {fc.name}({arg_str}) → {status}")\
-                    .log_line("```")\
-                    .log_line(f"{result}")\
-                    .log_line("```")
 
             self._message = fc_results
             return False
