@@ -1,3 +1,4 @@
+import pathlib
 import datetime
 
 from . import agents, logger
@@ -55,7 +56,7 @@ class AgentLoop:
                 return user_decision in ("y", "yes")
         return True
 
-    def start(self, prompt: str):
+    def start(self, prompt: str, dump_file: pathlib.Path):
         self._logger\
             .log_line(f"# Agent-loop session:")\
             .log_line(f"- agent: {self._agent.vendor} {self._agent.model}")\
@@ -70,7 +71,7 @@ class AgentLoop:
 
             self._logger.\
                 log_line("")\
-               .log_line(f"## Iteration №{self._iteration}:")
+               .log_line(f"## Iteration №{self._iteration}: (consumed tokens = {self._agent.consumed_tokens})")
 
             if not self.check_session_token_limit():
                 raise Exception("interrupt loop: token limit exceed")
@@ -78,7 +79,9 @@ class AgentLoop:
             if not self.check_session_iteration_limit():
                 raise Exception("interrupt loop: iteration limit exceed")
 
-            if self._agent.iteration(prompt):
+            stop = self._agent.iteration(prompt)
+            self._agent.dump_session(dump_file)
+            if stop:
                 self._logger.log_line(f"# Session results:")
                 self._agent.finish()
                 break

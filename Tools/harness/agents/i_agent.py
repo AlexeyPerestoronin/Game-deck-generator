@@ -18,22 +18,17 @@ class IAgent(typing.Protocol):
 
     @classproperty
     def vendor(cls) -> str:
-        """Return the vendor identifier of this agent implementation.
-
-        Used by the harness to select a concrete agent class.
-
-        Returns:
-            Vendor name, e.g. ``SpaceXAI`` or ``GoogleAI``.
-        """
+        """Return the vendor identifier of this agent implementation."""
         ...
 
     @property
     def model(self) -> str:
-        """Return the concrete model name of this agent instance.
-
-        Returns:
-            Model identifier understood by the vendor API.
-        """
+        """Return the concrete model name of this agent instance."""
+        ...
+    
+    @property
+    def consumed_tokens(self) -> int:
+        """Return the quantity of consumed token for current moment in the session."""
         ...
 
     def iteration(self) -> bool:

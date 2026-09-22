@@ -73,6 +73,16 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["src", "dst"]
                 }),
+                (DefaultTools.list_folder.__name__, "Возвращает содержимое директории на заданную глубину (depth >= 0, где 0 - только корневое содержимое).", {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "depth": "int"
+                        }
+                    },
+                    "required": ["path", "deep"]
+                }),
                 (DefaultTools.create_folder.__name__, "Создать папку.", {
                     "type": "object",
                     "properties": {
@@ -143,6 +153,8 @@ class DefaultTools(i_tools.ITools):
         if not self._is_allowed(path, dirs):
             raise Exception(error if error else f"{mode}-access denied to {path}")
 
+    # file tools
+
     def read_file(self, path: str) -> str:
         self._check_access(path, 'r')
         with open(path, "r", encoding="utf-8") as f:
@@ -172,6 +184,12 @@ class DefaultTools(i_tools.ITools):
         shutil.move(src, dst)
         return f"success: moved {src} to {dst}"
 
+    # folder tools
+
+    def list_folder(self, path: str, depth: int) -> str:
+        # TODO: need to implement
+        ...
+
     def create_folder(self, path: str) -> str:
         self._check_access(path, 'w')
         os.makedirs(path, exist_ok=True)
@@ -187,6 +205,8 @@ class DefaultTools(i_tools.ITools):
         self._check_access(dst, 'w')
         shutil.move(src, dst)
         return f"success: moved {src} to {dst}"
+
+    # command tools
 
     def list_available_shell_commands(self) -> str:
         return f"available: {self._r_shell}"

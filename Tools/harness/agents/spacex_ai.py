@@ -84,6 +84,7 @@ class SpaceXAI(i_agent.IAgent):
     def chat_id(self) -> str:
         return self.__chat_id
 
+    # i_agent.IAgent
     @property
     def consumed_tokens(self) -> int:
         return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens)

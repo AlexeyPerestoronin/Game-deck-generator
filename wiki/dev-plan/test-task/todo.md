@@ -1,5 +1,25 @@
 # Задача: «test task»
-Необходимо реализовать новый методы интерфейса `IAgent` (`dump_session/reload_session`) во всех классах, которые его реализуют + прокомментировать методы данного интерфейса.
+Необходимо реализовать новый метод интерфейса `list_folder` для `DefaultTools` (см. `Tools\harness\agents\tools\default_tools.py`).
+
+Успешное выполнение должно обеспечивать древовидный вывод.
+Пример вывод для папки `Tools\harness` с `depth = 1`
+```
+Tools\harness\__init__.py
+Tools\harness\agent_loop.py
+Tools\harness\logger.py
+```
+
+Пример вывод для папки `Tools\harness` с `depth = 2`
+```
+Tools\harness\agents
+Tools\harness\agents\__init__.py
+Tools\harness\agents\google_ai.py
+Tools\harness\agents\i_agent.py
+Tools\harness\agents\spacex_ai.py
+Tools\harness\__init__.py
+Tools\harness\agent_loop.py
+Tools\harness\logger.py
+```
 
 ***
 

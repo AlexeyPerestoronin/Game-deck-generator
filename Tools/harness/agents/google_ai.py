@@ -97,6 +97,7 @@ class GoogleAI(i_agent.IAgent):
     def tokens_limit(self) -> int:
         return self.__spec.tls
 
+    # i_agent.IAgent
     @property
     def consumed_tokens(self) -> int:
         return self.__usage_stats.input_tokens + self.__usage_stats.output_tokens
