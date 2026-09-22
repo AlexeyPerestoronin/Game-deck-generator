@@ -23,7 +23,8 @@ class AgentLoop:
         requested_vendor = self._settings["vendor"]
         requested_model = self._settings["model"]
         if requested_vendor == agents.SpaceXAI.vendor:
-            self._agent = agents.SpaceXAI(self.__tools, self._logger, self._settings.get["token-limit"])
+            model_specification = agents.SpaceXModels.from_str(requested_model)
+            self._agent = agents.SpaceXAI(self.__tools, self._logger, model_specification)
         elif requested_vendor == agents.GoogleAI.vendor:
             model_specification = agents.GoogleModels.from_str(requested_model)
             self._agent = agents.GoogleAI(self.__tools, self._logger, model_specification)

@@ -29,7 +29,7 @@ class SpaceXModels:
 
     @classmethod
     def from_str(cls, model: str) -> 'SpaceXModels':
-        if model == "Grok-4.6":
+        if model == "Grok 4.6":
             return cls("grok-4.6", 125000)
         raise ValueError(f"Unknown model: {model}")
 

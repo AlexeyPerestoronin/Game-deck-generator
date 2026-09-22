@@ -1,6 +1,6 @@
 {
-    "vendor": "GoogleAI",
-    "model": "Gemini 3.5 Flash Lite",
+    "vendor": "SpaceXAI",
+    "model": "Grok 4.6",
     "tool-settings": {
         "shell": [
             "r:cd",

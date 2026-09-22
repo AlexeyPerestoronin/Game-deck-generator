@@ -1,5 +1,5 @@
 # Задача: «test task»
-Необходимо произвести рефакторинг кода в файле `Tools\harness\agents\spacex_ai.py`.
+Необходимо произвести рефакторинг кода в файле `Tools\harness\agents\spacex_ai.py` по аналогии с тем, как это сделано для `Tools\harness\agents\google_ai.py`.
 Логику менять нельзя.
 
 ***
