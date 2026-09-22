@@ -44,9 +44,11 @@ class GoogleModels:
     @classmethod
     def from_str(cls, model: str) -> 'GoogleModels':
         if model == "Gemini-3.8-Flash":
-            return cls("gemini-3.8-flash", 5, 250000, 20, 500000)
+            return cls("gemini-3.8-flash", 5, 250000, 20, -1)
         elif model == "Gemini-3.1-Flash-Lite":
-            return cls("gemini-3.1-flash-lite", 15, 250000, 500, 500000)
+            return cls("gemini-3.1-flash-lite", 15, 250000, 500, -1)
+        elif model == "Gemini 3.5 Flash Lite":
+            return cls("gemini-3.5-flash-lite", 10, 250000, 500, -1)
         raise ValueError(f"Unknown model: {model}")
 
     def __init__(self, model: str, rpm: int, tpm: int, rpd: int, tls: int):

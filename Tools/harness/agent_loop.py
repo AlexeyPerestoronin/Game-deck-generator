@@ -34,7 +34,7 @@ class AgentLoop:
         """Return True if within limit (or user approved over limit)."""
         limit = self._agent.tokens_limit
         consumed = self._agent.consumed_tokens
-        if limit != 0 and consumed > limit:
+        if limit != -1 and consumed > limit:
             message = f"⚠️ tokens limit exceed ({consumed} > {limit})"
             self._logger.log_line(message)
             if self._safe_mode:
