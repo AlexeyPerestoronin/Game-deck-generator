@@ -14,7 +14,7 @@ class DefaultTools(i_tools.ITools):
 
     def __init__(self, safe_mode: bool, settings: dict):
         self._safe_mode = safe_mode
-        self._command_execution_limit = settings.get("command-execution-limit", 30)
+        self._command_execution_limit = settings.get("command-execution-limit", 60)
         self._w_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("w:")]
         self._r_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("r:")] + self._w_shell
         self._w_dirs = [os.path.abspath(d[2:]) for d in settings.get("dirs", []) if d.startswith("w:")]
@@ -112,6 +112,9 @@ class DefaultTools(i_tools.ITools):
                         },
                         "command": {
                             "type": "string"
+                        },
+                        "arguments": {
+                            "type": "string"
                         }
                     },
                     "required": ["cwd", "command"]
@@ -188,15 +191,15 @@ class DefaultTools(i_tools.ITools):
     def list_available_shell_commands(self) -> str:
         return f"available: {self._r_shell}"
 
-    def run_shell(self, cwd: str, command: str) -> str:
-        cmd = command.strip().split(maxsplit=1)[0] if command and command.strip() else ""
-        if cmd not in self._r_shell: raise Exception(f"'{cmd}'-command is not available (available command list is {self._r_shell})")
-        if command in self._w_shell: self._check_access(cwd, 'w', f"'{cwd}'-cwd is denied for '{cmd}'-command (allowed cwd for '{cmd}'-command is {self._w_dirs})")
-        if command in self._r_shell: self._check_access(cwd, 'r', f"'{cwd}'-cwd is denied for '{cmd}'-command (allowed cwd for '{cmd}'-command is {self._r_dirs})")
+    def run_shell(self, cwd: str, command: str, arguments: str) -> str:
+        if command not in self._r_shell: raise Exception(f"'{command}'-command is not available (available command list is {self._r_shell})")
+        if command in self._w_shell: self._check_access(cwd, 'w', f"'{cwd}'-cwd is denied for '{command}'-command (allowed cwd for '{command}'-command is {self._w_dirs})")
+        if command in self._r_shell: self._check_access(cwd, 'r', f"'{cwd}'-cwd is denied for '{command}'-command (allowed cwd for '{command}'-command is {self._r_dirs})")
 
         try:
+            cmd = command + " " + arguments
             result = subprocess.run(
-                command,
+                cmd,
                 cwd=cwd,
                 shell=True,
                 capture_output=True,
@@ -214,4 +217,4 @@ class DefaultTools(i_tools.ITools):
                 return raw_output.decode('utf-8', errors='replace')
             return "(command finished without output)"
         except subprocess.TimeoutExpired:
-            raise Exception(f"execution of the '{command}'-command exceed the limit (available limit is {self._command_execution_limit}s)")
+            raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")

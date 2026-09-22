@@ -131,23 +131,25 @@ class GoogleAI(i_agent.IAgent):
                 self.__update_stats(response)
                 return response
             except Exception as e:
-                if getattr(e, "code", None) == 429:
+                code = getattr(e, "code", None)
+                if code == 429:
                     self.__logger.log_str("fail 429: model limit exceeded!")
-                elif getattr(e, "code", None) == 503:
+                elif code == 503:
                     delay = random.randint(5, 20)
                     self.__logger.log_str(f"fail 503: waiting {delay}s...")
                     time.sleep(delay)
                 else:
                     self.__logger.log_str(f"unexpected exception: {e}")
+                    raise
         raise Exception("Request failed after max retries")
 
     def __update_stats(self, response):
         self.__usage_stats.requests += 1
         usage = getattr(response, "usage_metadata", None)
         if usage:
-            self.__usage_stats.input_tokens += getattr(usage, "prompt_token_count", 0) or 0
-            self.__usage_stats.output_tokens += getattr(usage, "candidates_token_count", 0) or 0
-            self.__usage_stats.cached_tokens += getattr(usage, "cached_content_token_count", 0) or 0
+            self.__usage_stats.input_tokens += (getattr(usage, "prompt_token_count", 0) or 0)
+            self.__usage_stats.output_tokens += (getattr(usage, "candidates_token_count", 0) or 0)
+            self.__usage_stats.cached_tokens += (getattr(usage, "cached_content_token_count", 0) or 0)
 
     def __prepare_gemini_tools(self, xai_tools) -> list:
         declarations = []
@@ -167,23 +169,28 @@ class GoogleAI(i_agent.IAgent):
             return None
 
     def __get_function_calls(self, response) -> list:
-        fcs = getattr(response, "function_calls", None) or []
-        if not fcs:
-            for candidate in getattr(response, "candidates", None) or []:
-                for part in getattr(candidate.content, "parts", None) or []:
-                    if part.function_call:
-                        fcs.append(part.function_call)
+        fcs = []
+        candidates = getattr(response, "candidates", []) or []
+        for candidate in candidates:
+            parts = getattr(candidate.content, "parts", []) or []
+            for part in parts:
+                if part.function_call:
+                    fcs.append(part.function_call)
         return [fc for fc in fcs if fc.name]
 
     def __handle_tool_calls(self, fcs) -> list:
         self.__logger.log_line("agent request tools:")
         results = []
-        for fc in fcs:
+        for i, fc in enumerate(fcs, 1):
             args = dict(fc.args) if fc.args else {}
-            self.__logger.log_line(f"{fc.name}({args})")
+            self.__logger.log_line(f"{i}. {fc.name}({args})")
             try:
                 result = self.__tools.call(fc.name, **args)
                 self.__logger.log_str(" → success")
+                if fc.name in ['read_file', 'write_file']:
+                    self.__logger.log_str(f" → read/write {len(result)}symbols")
+                else:
+                    self.__logger.log_line("```").log_line(result).log_line("```")
             except Exception as e:
                 result = f"execution error: {e}"
                 self.__logger.log_str(f" → fail → {result}")
