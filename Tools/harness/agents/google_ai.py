@@ -1,6 +1,7 @@
 import json
 import random
 import time
+import pathlib
 import google.genai
 from classproperties import classproperty
 from . import tools, i_agent
@@ -125,6 +126,77 @@ class GoogleAI(i_agent.IAgent):
             .log_line(f"- total tokens: {self.consumed_tokens}")\
             .log_line(f"    - input: {self.__usage_stats.input_tokens} (cached: {self.__usage_stats.cached_tokens})")\
             .log_line(f"    - output: {self.__usage_stats.output_tokens}")
+
+    # i_agent.IAgent
+    def dump_session(self, dump_file: pathlib.Path):
+        history = [content.model_dump(mode="json") for content in self.__chat.get_history(raw=True)]
+        pending_message = self.__pending_message_to_dict()
+        data = {
+            "usage_stats": self.__usage_stats_to_dict(),
+            "history": history,
+            "pending_message": pending_message,
+        }
+        with open(dump_file, "w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+
+    # i_agent.IAgent
+    def reload_session(self, dump_file: pathlib.Path):
+        with open(dump_file, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        self.__usage_stats_from_dict(data.get("usage_stats", {}))
+        history = [
+            google.genai.types.Content.model_validate(item)
+            for item in data.get("history", [])
+        ]
+        self.__chat = self.__client.chats.create(
+            model=self.__spec.model,
+            history=history,
+            config=google.genai.types.GenerateContentConfig(
+                tools=self.__prepare_gemini_tools(self.__tools.list),
+                automatic_function_calling=google.genai.types.AutomaticFunctionCallingConfig(disable=True),
+            ),
+        )
+        self._message = self.__pending_message_from_dict(data.get("pending_message"))
+
+    def __usage_stats_to_dict(self) -> dict:
+        # snapshot of counters stored alongside chat history
+        return {
+            "requests": self.__usage_stats.requests,
+            "input_tokens": self.__usage_stats.input_tokens,
+            "output_tokens": self.__usage_stats.output_tokens,
+            "cached_tokens": self.__usage_stats.cached_tokens,
+            "total_cost_usd": self.__usage_stats.total_cost_usd,
+        }
+
+    def __usage_stats_from_dict(self, stats: dict):
+        # restore counters without replacing the UsageStats instance
+        self.__usage_stats.requests = stats.get("requests", 0)
+        self.__usage_stats.input_tokens = stats.get("input_tokens", 0)
+        self.__usage_stats.output_tokens = stats.get("output_tokens", 0)
+        self.__usage_stats.cached_tokens = stats.get("cached_tokens", 0)
+        self.__usage_stats.total_cost_usd = stats.get("total_cost_usd", 0.0)
+
+    def __pending_message_to_dict(self) -> dict | None:
+        # _message is either a user prompt, function-response parts, or empty
+        if isinstance(self._message, str):
+            return {"type": "str", "value": self._message}
+        if isinstance(self._message, list):
+            return {
+                "type": "parts",
+                "value": [part.model_dump(mode="json") for part in self._message],
+            }
+        return None
+
+    def __pending_message_from_dict(self, pending_message: dict | None):
+        if pending_message is None:
+            return None
+        if pending_message.get("type") == "str":
+            return pending_message.get("value")
+        return [
+            google.genai.types.Part.model_validate(part)
+            for part in pending_message.get("value", [])
+        ]
 
     def __log_prompt(self, prompt: str):
         self.__logger.log_line("user prompt:").log_line('```').log_line(prompt).log_line('```')

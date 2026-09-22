@@ -1,7 +1,10 @@
 import json
 import uuid
+import pathlib
 import xai_sdk
 from classproperties import classproperty
+from google.protobuf.json_format import MessageToDict, ParseDict
+from xai_sdk.proto import chat_pb2
 from . import tools, i_agent
 from .. import logger
 
@@ -115,6 +118,61 @@ class SpaceXAI(i_agent.IAgent):
             .log_line(f"        - cached tokens: {self.__usage_stats.cached_tokens}")\
             .log_line(f"    - output tokens: {self.__usage_stats.output_tokens}")\
             .log_line(f"- total cost: {self.__usage_stats.total_cost_usd}$")
+
+    # i_agent.IAgent
+    def dump_session(self, dump_file: pathlib.Path):
+        data = {
+            "conv_id": self.__conv_id,
+            "chat_id": self.__chat_id,
+            "usage_stats": self.__usage_stats_to_dict(),
+            "messages": [MessageToDict(message) for message in self.__chat.messages],
+        }
+        with open(dump_file, "w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+
+    # i_agent.IAgent
+    def reload_session(self, dump_file: pathlib.Path):
+        with open(dump_file, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        self.__conv_id = data.get("conv_id", self.__conv_id)
+        self.__chat_id = data.get("chat_id", self.__chat_id)
+        self.__usage_stats_from_dict(data.get("usage_stats", {}))
+        self.__recreate_chat()
+        for item in data.get("messages", []):
+            self.__chat.append(ParseDict(item, chat_pb2.Message()))
+
+    def __usage_stats_to_dict(self) -> dict:
+        # snapshot of counters stored alongside conversation ids and messages
+        return {
+            "requests": self.__usage_stats.requests,
+            "input_tokens": self.__usage_stats.input_tokens,
+            "output_tokens": self.__usage_stats.output_tokens,
+            "cached_tokens": self.__usage_stats.cached_tokens,
+            "total_cost_usd": self.__usage_stats.total_cost_usd,
+        }
+
+    def __usage_stats_from_dict(self, stats: dict):
+        # restore counters without replacing the UsageStats instance
+        self.__usage_stats.requests = stats.get("requests", 0)
+        self.__usage_stats.input_tokens = stats.get("input_tokens", 0)
+        self.__usage_stats.output_tokens = stats.get("output_tokens", 0)
+        self.__usage_stats.cached_tokens = stats.get("cached_tokens", 0)
+        self.__usage_stats.total_cost_usd = stats.get("total_cost_usd", 0.0)
+
+    def __recreate_chat(self):
+        # client metadata carries conv_id, so both client and chat are rebuilt
+        with open('API_KEY_XAI', encoding='utf-8') as f:
+            api_key = f.read().strip()
+        self.__client = xai_sdk.Client(
+            api_key=api_key,
+            metadata=(("x-grok-conv-id", self.__conv_id), ),
+        )
+        self.__chat = self.__client.chat.create(
+            model="grok-4.6",
+            conversation_id=self.__chat_id,
+            tools=self.__prepare_grok_tools(self.__tools.list),
+        )
 
     def __log_prompt(self, prompt: str):
         self.__logger.log_line("user prompt:").log_line('```').log_line(prompt).log_line('```')

@@ -1,3 +1,9 @@
+"""Agent protocol for the harness loop.
+
+IAgent is the contract implemented by vendor-specific agents: one iteration
+of the session, completion, and dump/reload of session state.
+"""
+
 import typing
 import pathlib
 from classproperties import classproperty
@@ -12,26 +18,55 @@ class IAgent(typing.Protocol):
 
     @classproperty
     def vendor(cls) -> str:
-        """TODO: need to provide some comment"""
+        """Return the vendor identifier of this agent implementation.
+
+        Used by the harness to select a concrete agent class.
+
+        Returns:
+            Vendor name, e.g. ``SpaceXAI`` or ``GoogleAI``.
+        """
         ...
 
     @property
     def model(self) -> str:
-        """TODO: need to provide some comment"""
+        """Return the concrete model name of this agent instance.
+
+        Returns:
+            Model identifier understood by the vendor API.
+        """
         ...
 
     def iteration(self) -> bool:
-        """TODO: need to provide some comment"""
+        """Run a single agent loop iteration.
+
+        Sends the current user prompt or pending tool results to the model,
+        logs the response, and executes tool calls when requested.
+
+        Returns:
+            True if the session is complete; False if another iteration is needed.
+        """
         ...
 
     def finish(self):
-        """TODO: need to provide some comment"""
+        """Finalize the session and write usage statistics to the logger."""
         ...
 
     def dump_session(self, dump_file: pathlib.Path):
-        """TODO: need to provide some comment"""
+        """Serialize the current session state to ``dump_file``.
+
+        Args:
+            dump_file: Path to the snapshot file to write.
+        """
         ...
 
     def reload_session(self, dump_file: pathlib.Path):
-        """TODO: need to provide some comment"""
+        """Restore session state previously written by ``dump_session``.
+
+        Args:
+            dump_file: Path to the snapshot file to read.
+
+        Raises:
+            OSError: If the dump file cannot be read.
+            ValueError: If the dump file content is invalid.
+        """
         ...
