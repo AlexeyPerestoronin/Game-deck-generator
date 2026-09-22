@@ -1,0 +1,19 @@
+{
+    "vendor": "GoogleAI",
+    "model": "Gemini-3.1-Flash-Lite",
+    "tool-settings": {
+        "shell": [
+            "r:cd",
+            "r:dir",
+            "r:findstr",
+            "w:patch",
+        ],
+        dirs: [
+            "w:Tools",
+            "w:WiKi/dev-plan/test-task",
+            "r:WiKi/rules",
+        ]
+    },
+    "iteration-limit": 50,
+    "token-limit": 0,
+}

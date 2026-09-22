@@ -1,7 +1,7 @@
 {
     "mode": "auto accept",
     "task": {
-        "dir": "WiKi/dev-plan/phase-IV/6 refactoring python code",
+        "dir": "WiKi/dev-plan/test-task",
         "settings": "settings.json5",
         "prompt": "todo.md",
     },

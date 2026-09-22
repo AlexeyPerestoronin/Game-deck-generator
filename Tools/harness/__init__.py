@@ -13,17 +13,17 @@ def run_loop(ctx, safe_mode: bool = False):
     cwd = pathlib.Path(os.getcwd())
 
     with open(cwd / "harness.json5", "r", encoding="utf-8") as file:
-        loop_settings = json5.load(file)
+        harness = json5.load(file)
 
-    prompt_file = cwd / loop_settings["task"]["prompt"] / loop_settings["task"]["prompt"]
+    prompt_file = cwd / harness["task"]["prompt"] / harness["task"]["prompt"]
     with open(prompt_file, "r", encoding="utf-8") as file:
         prompt = json5.load(file)
 
-    task_settings_file = cwd / loop_settings["task"]["dir"] / loop_settings["task"]["settings"]
+    task_settings_file = cwd / harness["task"]["dir"] / harness["task"]["settings"]
     with open(task_settings_file, "r", encoding="utf-8") as file:
         agent_settings = json5.load(file)
 
-    log = logger.DoubleLogger(cwd / loop_settings["paths"]["log"] / f"log-{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}.md")
+    log = logger.DoubleLogger(cwd / harness["paths"]["log"] / f"log-{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}.md")
     loop = agent_loop.AgentLoop(safe_mode, log, agent_settings)
     loop.start(prompt)
 

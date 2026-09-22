@@ -13,11 +13,12 @@ __all__ = [
 class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed to cwd)."""
 
-    def __init__(self, safe_mode: bool, available_shell: list, available_read_dirs: list, available_write_dirs: list):
+    def __init__(self, safe_mode: bool, settings: dir):
         self._safe_mode = safe_mode
-        self._available_shell = available_shell
-        self._available_read_dirs = available_read_dirs
-        self._available_write_dirs = available_write_dirs
+        self._w_shell = [shell_command[2:] for shell_command in settings["shell"] if shell_command[:2] == "w:"]
+        self._r_shell = [shell_command[2:] for shell_command in settings["shell"] if shell_command[:2] == "r:"].extend(self._w_shell)
+        self._w_dirs = [shell_command[2:] for shell_command in settings["dirs"] if shell_command[:2] == "w:"]
+        self._r_dirs = [shell_command[2:] for shell_command in settings["shell"] if shell_command[:2] == "r:"].extend(self._w_dirs)
 
         #yapf: disable
         self._tools = [
@@ -60,15 +61,18 @@ class DefaultTools(i_tools.ITools):
 
             i_tools.Tool(
                 name=DefaultTools.run_shell.__name__,
-                description="Выполнить shell-команду.",
+                description="Выполнить shell-команду из указанной директории.",
                 parameters={
                     "type": "object",
                     "properties": {
+                        "cwd": {
+                            "type": "string"
+                        },
                         "command": {
                             "type": "string"
                         }
                     },
-                    "required": ["command"],
+                    "required": ["cwd", "command"],
                 },
             ),
         ]
@@ -101,10 +105,12 @@ class DefaultTools(i_tools.ITools):
                 return True
         return False
 
+    # file work
+
     def read_file(self, path: str) -> str:
         abs_path = os.path.abspath(path)
-        if not self._is_path_allowed(abs_path, self._available_read_dirs):
-            raise Exception(f"read-access outside the allowed directories is prohibited (read allowed directories is {self._available_read_dirs})")
+        if not self._is_path_allowed(abs_path, self._r_dirs):
+            raise Exception(f"read-access outside the allowed directories is prohibited (read allowed directories is {self._r_dirs})")
         if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
             return f"error: '{path}' is not a file or does not exist"
         try:
@@ -115,8 +121,8 @@ class DefaultTools(i_tools.ITools):
 
     def write_file(self, path: str, content: str) -> str:
         abs_path = os.path.abspath(path)
-        if not self._is_path_allowed(abs_path, self._available_write_dirs):
-            raise Exception(f"write-access outside the allowed directories is prohibited (write allowed directories is {self._available_write_dirs})")
+        if not self._is_path_allowed(abs_path, self._w_dirs):
+            raise Exception(f"write-access outside the allowed directories is prohibited (write allowed directories is {self._w_dirs})")
         if os.path.exists(abs_path):
             return f"error: '{path}' already exists"
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
@@ -124,20 +130,47 @@ class DefaultTools(i_tools.ITools):
             f.write(content)
         return f"success: wrote '{path}'"
 
-    def list_available_shell_commands(self) -> str:
-        return f"available commands list {self._available_shell}"
+    # folder work
 
-    def run_shell(self, command: str) -> str:
-        if self._available_shell:
+    def create_folder(self, path: str) -> str:
+        # TODO: need to implement
+        ...
+
+    def remove_folder(self, path: str) -> str:
+        # TODO: need to implement
+        ...
+
+    def move_folder(self, path: str) -> str:
+        # TODO: need to implement
+        ...
+
+    # shell
+
+    def list_available_shell_commands(self) -> str:
+        return f"available commands list {self._r_shell}"
+
+    def run_shell(self, cwd: str, command: str) -> str:
+        if self._r_shell:
             cmd = command.strip().split(maxsplit=1)[0] if command and command.strip() else ""
-            if cmd not in self._available_shell:
-                raise Exception(f"shell command '{cmd}' is not in the list of available commands {self._available_shell}")
+            if cmd not in self._r_shell:
+                raise Exception(f"shell command '{cmd}' is not in the list of available commands {self._r_shell}")
+
+        abs_cwd = os.path.abspath(cwd)
+        available_dirs = self._r_dirs
+        if not self._is_path_allowed(abs_cwd, available_dirs):
+            raise Exception(f"shell execution outside the allowed directories is prohibited (allowed directories is {available_dirs})")
+
+        if command in self._w_shell:
+            available_dirs = self._w_dirs
+            if not self._is_path_allowed(abs_cwd, available_dirs):
+                raise Exception(f"writable shell-command could not be executed outside the allowed directories with write access (allowed directories is {available_dirs})")
+
         if self._safe_mode:
             confirm = input(f"Execute next command: `{command}`? [y/N]: ").strip().lower()
             if confirm not in ("y", "yes"):
                 raise Exception("the user has prohibited the execution of the command")
         try:
-            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(command, cwd=cwd, shell=True, capture_output=True, text=True, timeout=30)
             output = result.stdout or result.stderr
             return output if output else "(command finished without output)"
         except subprocess.TimeoutExpired:
