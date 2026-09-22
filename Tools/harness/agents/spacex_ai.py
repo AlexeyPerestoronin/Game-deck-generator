@@ -130,8 +130,6 @@ class SpaceXAI(i_agent.IAgent):
     def __update_stats(self, response):
         self.__usage_stats.requests += 1
         if response.usage:
-            # Исправлен подсчет токенов: prompt_tokens в API обычно включает в себя cached_tokens.
-            # Мы сохраняем "чистые" значения, предоставляемые API.
             self.__usage_stats.input_tokens += response.usage.prompt_tokens or 0
             self.__usage_stats.output_tokens += response.usage.completion_tokens or 0
 
@@ -143,18 +141,15 @@ class SpaceXAI(i_agent.IAgent):
             self.__usage_stats.total_cost_usd += response.cost_usd
 
     def __prepare_grok_tools(self, xai_tools) -> list:
-        # Convert our Tool (or xai tool) descriptors into xai_sdk.chat.tool objects for the Grok chat.
         result = []
         for t in xai_tools:
             if hasattr(t, "name") and hasattr(t, "description") and hasattr(t, "parameters"):
-                # plain Tool descriptor (from DefaultTools)
                 result.append(xai_sdk.chat.tool(
                     name=t.name,
                     description=t.description,
                     parameters=t.parameters,
                 ))
             else:
-                # already an xai_sdk tool object (from FSTools etc)
                 result.append(t)
         return result
 
