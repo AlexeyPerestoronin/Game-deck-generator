@@ -1,9 +1,7 @@
-import uuid
 import json
+import uuid
 import xai_sdk
-
 from classproperties import classproperty
-
 from . import tools, i_agent
 from .. import logger
 
@@ -14,7 +12,7 @@ __all__ = [
 
 
 class UsageStats:
-    """Accumulates token usage and cost across agent requests."""
+    """Accumulates usage."""
 
     def __init__(self):
         self.requests = 0
@@ -39,25 +37,27 @@ class SpaceXModels:
 
 
 class SpaceXAI(i_agent.IAgent):
-    """Grok agent implementation using xAI SDK with tool calling support."""
+    """Grok agent."""
 
-    def __init__(self, tools: tools.ITools, logger: logger.ILogger, spec: SpaceXModels):
-        self._logger = logger
-        self._tools = tools
+    def __init__(self, tools_handler: tools.ITools, log: logger.ILogger, spec: SpaceXModels):
+        self.__tools = tools_handler
+        self.__logger = log
         self.__spec = spec
+        self.__conv_id = str(uuid.uuid4())
+        self.__chat_id = str(uuid.uuid4())
+        self.__usage_stats = UsageStats()
 
-        self._conv_id = str(uuid.uuid4())
-        # ---
         with open('API_KEY_XAI', encoding='utf-8') as f:
             api_key = f.read().strip()
-        # ---
-        self._client = xai_sdk.Client(
+        self.__client = xai_sdk.Client(
             api_key=api_key,
-            metadata=(("x-grok-conv-id", self._conv_id), ),
+            metadata=(("x-grok-conv-id", self.__conv_id), ),
         )
-        self.__chat_id = str(uuid.uuid4())
-        self._chat = self._client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__grok_tools(self._tools.list))
-        self.__usage_stats = UsageStats()
+        self.__chat = self.__client.chat.create(
+            model="grok-4.6",
+            conversation_id=self.__chat_id,
+            tools=self.__prepare_grok_tools(self.__tools.list),
+        )
 
     # i_agent.IAgent
     @classproperty
@@ -75,7 +75,7 @@ class SpaceXAI(i_agent.IAgent):
 
     @property
     def conversation_id(self) -> str:
-        return self._conv_id
+        return self.__conv_id
 
     @property
     def chat_id(self) -> str:
@@ -92,55 +92,23 @@ class SpaceXAI(i_agent.IAgent):
     # i_agent.IAgent
     def iteration(self, prompt: str) -> bool:
         if prompt:
-            self._logger\
-                .log_line("user prompt:")\
-                .log_line('```')\
-                .log_line(f'{prompt}')\
-                .log_line('```')
-            self._chat.append(xai_sdk.chat.user(prompt))
+            self.__log_prompt(prompt)
+            self.__chat.append(xai_sdk.chat.user(prompt))
 
-        response = self.__request()
-        self._chat.append(response)
+        response = self.__execute_request()
+        self.__chat.append(response)
 
-        if getattr(response, 'content', None):
-            self._logger\
-                .log_line("agent content:")\
-                .log_line('```')\
-                .log_line(f'{response.content}')\
-                .log_line('```')
+        text = self.__get_response_text(response)
+        if text:
+            self.__log_agent_content(text)
 
         if response.tool_calls:
-            self._logger.log_line("agent request tools:")
-            for i, tool_call in enumerate(response.tool_calls, 1):
-                raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
-                tool_call_id = tool_call.id
-
-                try:
-                    args = json.loads(raw_args)
-                    result = self._tools.call(tool_call.function.name, **args)
-                    status = "success"
-                except Exception as e:
-                    result = f"execution error: {e}"
-                    status = f"fail: {e}"
-                    args = raw_args
-
-                tool_result = xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id)
-                self._chat.append(tool_result)
-
-                arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
-                self._logger\
-                    .log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")\
-                    .log_line("```")\
-                    .log_line(f"{result}")\
-                    .log_line("```")
-
+            self.__handle_tool_calls(response.tool_calls)
             return False
-
         return True
 
     def finish(self):
-        self._logger\
-            .log_line("Sessions statistic")\
+        self.__logger.log_line("Sessions statistic")\
             .log_line(f"- total requests: {self.__usage_stats.requests}")\
             .log_line(f"- total tokens: {self.consumed_tokens}")\
             .log_line(f"    - input tokens: {self.__usage_stats.input_tokens} (from stats)")\
@@ -148,8 +116,18 @@ class SpaceXAI(i_agent.IAgent):
             .log_line(f"    - output tokens: {self.__usage_stats.output_tokens}")\
             .log_line(f"- total cost: {self.__usage_stats.total_cost_usd}$")
 
-    def __request(self):
-        response = self._chat.sample()
+    def __log_prompt(self, prompt: str):
+        self.__logger.log_line("user prompt:").log_line('```').log_line(prompt).log_line('```')
+
+    def __log_agent_content(self, text: str):
+        self.__logger.log_line("agent content:").log_line('```').log_line(text).log_line('```')
+
+    def __execute_request(self):
+        response = self.__chat.sample()
+        self.__update_stats(response)
+        return response
+
+    def __update_stats(self, response):
         self.__usage_stats.requests += 1
         if response.usage:
             # Исправлен подсчет токенов: prompt_tokens в API обычно включает в себя cached_tokens.
@@ -163,9 +141,8 @@ class SpaceXAI(i_agent.IAgent):
 
         if hasattr(response, "cost_usd") and response.cost_usd is not None:
             self.__usage_stats.total_cost_usd += response.cost_usd
-        return response
 
-    def __grok_tools(self, xai_tools) -> list:
+    def __prepare_grok_tools(self, xai_tools) -> list:
         # Convert our Tool (or xai tool) descriptors into xai_sdk.chat.tool objects for the Grok chat.
         result = []
         for t in xai_tools:
@@ -180,3 +157,31 @@ class SpaceXAI(i_agent.IAgent):
                 # already an xai_sdk tool object (from FSTools etc)
                 result.append(t)
         return result
+
+    def __get_response_text(self, response) -> str | None:
+        return getattr(response, 'content', None)
+
+    def __handle_tool_calls(self, tool_calls):
+        self.__logger.log_line("agent request tools:")
+        for i, tool_call in enumerate(tool_calls, 1):
+            raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
+            tool_call_id = tool_call.id
+
+            try:
+                args = json.loads(raw_args)
+                result = self.__tools.call(tool_call.function.name, **args)
+                status = "success"
+            except Exception as e:
+                result = f"execution error: {e}"
+                status = f"fail: {e}"
+                args = raw_args
+
+            tool_result = xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id)
+            self.__chat.append(tool_result)
+
+            arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
+            self.__logger\
+                .log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")\
+                .log_line("```")\
+                .log_line(f"{result}")\
+                .log_line("```")
