@@ -165,23 +165,19 @@ class SpaceXAI(i_agent.IAgent):
         self.__logger.log_line("agent request tools:")
         for i, tool_call in enumerate(tool_calls, 1):
             raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
-            tool_call_id = tool_call.id
+            args = json.loads(raw_args)
 
+            self.__logger.log_line(f"{i}. {tool_call.function.name}({args})")
             try:
-                args = json.loads(raw_args)
                 result = self.__tools.call(tool_call.function.name, **args)
-                status = "success"
+                self.__logger.log_str(" → success")
+                if tool_call.function.name in ['read_file', 'write_file']:
+                    self.__logger.log_str(f" → read/write {len(result)}symbols")
+                else:
+                    self.__logger.log_line("```").log_line(result).log_line("```")
             except Exception as e:
                 result = f"execution error: {e}"
-                status = f"fail: {e}"
-                args = raw_args
+                self.__logger.log_str(f" → fail → {result}")
 
-            tool_result = xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id)
+            tool_result = xai_sdk.chat.tool_result(result, tool_call_id=tool_call.id)
             self.__chat.append(tool_result)
-
-            arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
-            self.__logger\
-                .log_line(f"{i}. {tool_call.function.name}({arg_str}) → {status}")\
-                .log_line("```")\
-                .log_line(f"{result}")\
-                .log_line("```")
