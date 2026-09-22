@@ -3,8 +3,6 @@
     "model": "Grok 4.6",
     "tool-settings": {
         "shell": [
-            "r:cd",
-            "r:dir",
             "r:findstr",
             "w:patch",
         ],
