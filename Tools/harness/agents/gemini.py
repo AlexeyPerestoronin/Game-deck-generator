@@ -85,14 +85,13 @@ class GoogleAIStudioModelsSpecifications:
 class GoogleAI(i_agent.IAgent):
     """Gemini agent implementation using Google GenAI SDK with tool calling support."""
 
-    def __init__(self, prompt: str, tools: tools.ITools, logger: logger.ILogger, model_specification: GoogleAIStudioModelsSpecifications):
-        self.__prompt = prompt
+    def __init__(self, tools: tools.ITools, logger: logger.ILogger, model_specification: GoogleAIStudioModelsSpecifications):
         self.__tools = tools
         self.__logger = logger
         self.__model_specification = model_specification
         self.__rate_limiter = RateLimiter(self.__model_specification.rpm)
 
-        self.__pending_tool_parts = None
+        self._message = None
         with open('API_KEY_GEMINI', encoding='utf-8') as f:
             api_key = f.read().strip()
         self.__client = google.genai.Client(api_key=api_key)
@@ -123,20 +122,17 @@ class GoogleAI(i_agent.IAgent):
         return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens)
 
     # i_agent.IAgent
-    def iteration(self) -> bool:
-        if self.__prompt:
+    def iteration(self, prompt: str) -> bool:
+        if prompt:
             self.__logger\
                 .log_line("user prompt:")\
                 .log_line('```')\
-                .log_line(f'{self.__prompt}')\
+                .log_line(f'{prompt}')\
                 .log_line('```')
-            message = self.__prompt
-            self.__prompt = None
-        else:
-            message = self.__pending_tool_parts
-            self.__pending_tool_parts = None
+            self._message = prompt
 
-        response = self.__request(message)
+        response = self.__request(self._message)
+        self._message = None
 
         text = self.__response_text(response)
         if text:
@@ -173,9 +169,8 @@ class GoogleAI(i_agent.IAgent):
                     .log_line(f"{result}")\
                     .log_line("```")
 
-            self.__pending_tool_parts = fc_results
+            self._message = fc_results
             return False
-
         return True
 
     # i_agent.IAgent

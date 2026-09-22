@@ -26,8 +26,7 @@ class UsageStats:
 class Grok(i_agent.IAgent):
     """Grok agent implementation using xAI SDK with tool calling support."""
 
-    def __init__(self, prompt: str, tools: tools.ITools, logger: logger.ILogger, token_limit: int = 128000):
-        self._prompt = prompt
+    def __init__(self, tools: tools.ITools, logger: logger.ILogger, token_limit: int = 128000):
         self._token_limit = token_limit
         self._conv_id = str(uuid.uuid4())
         self._logger = logger
@@ -41,12 +40,12 @@ class Grok(i_agent.IAgent):
             metadata=(("x-grok-conv-id", self._conv_id), ),
         )
         self.__chat_id = str(uuid.uuid4())
-        self.__chat = self._client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__grok_tools(self._tools.list))
+        self._chat = self._client.chat.create(model="grok-4.6", conversation_id=self.__chat_id, tools=self.__grok_tools(self._tools.list))
         self.__usage_stats = UsageStats()
 
     @classproperty
     def name(cls) -> str:
-        return 'Grok-4.6'
+        return 'SpaceXAI'
 
     @property
     def tokens_limit(self) -> int:
@@ -68,22 +67,17 @@ class Grok(i_agent.IAgent):
     def consumed_usd(self) -> float:
         return float(self.__usage_stats.total_cost_usd)
 
-    def iteration(self) -> bool:
-        # Caching for cost saving (USD) is supported implicitly by keeping the same chat instance
-        # (with conversation_id) across the whole AgentLoop, analogous to GoogleAI.
-        if self._prompt:
+    def iteration(self, prompt: str) -> bool:
+        if prompt:
             self._logger\
                 .log_line("user prompt:")\
                 .log_line('```')\
-                .log_line(f'{self._prompt}')\
+                .log_line(f'{prompt}')\
                 .log_line('```')
-            self.__chat.append(xai_sdk.chat.user(self._prompt))
-            self._prompt = None
+            self._chat.append(xai_sdk.chat.user(prompt))
 
         response = self.__request()
-
-        # Сохраняем ответ ассистента (содержит tool_calls с их уникальными ID)
-        self.__chat.append(response)
+        self._chat.append(response)
 
         if getattr(response, 'content', None):
             self._logger\
@@ -94,11 +88,9 @@ class Grok(i_agent.IAgent):
 
         if response.tool_calls:
             self._logger.log_line("agent request tools:")
-
-            # Собираем все результаты инструментов параллельно, чтобы отправить их корректно
             for i, tool_call in enumerate(response.tool_calls, 1):
                 raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
-                tool_call_id = tool_call.id  # ФИКС: Обязательно вытаскиваем ID вызова инструмента
+                tool_call_id = tool_call.id
 
                 try:
                     args = json.loads(raw_args)
@@ -109,8 +101,8 @@ class Grok(i_agent.IAgent):
                     status = f"fail: {e}"
                     args = raw_args
 
-                # ФИКС: Передаем tool_call_id, чтобы xAI API понимал, к какому вызову относится этот результат
-                self.__chat.append(xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id))
+                tool_result = xai_sdk.chat.tool_result(result, tool_call_id=tool_call_id)
+                self._chat.append(tool_result)
 
                 arg_str = json.dumps(args, ensure_ascii=False) if isinstance(args, (dict, list)) else str(args)
                 self._logger\
@@ -119,7 +111,6 @@ class Grok(i_agent.IAgent):
                     .log_line(f"{result}")\
                     .log_line("```")
 
-            # Возвращаем False: цикл должен продолжиться, так как мы только что дали модели данные из файлов/git
             return False
 
         return True
@@ -135,7 +126,7 @@ class Grok(i_agent.IAgent):
             .log_line(f"- total cost: {self.__usage_stats.total_cost_usd}$")
 
     def __request(self):
-        response = self.__chat.sample()
+        response = self._chat.sample()
         self.__usage_stats.requests += 1
         if response.usage:
             # Исправлен подсчет токенов: prompt_tokens в API обычно включает в себя cached_tokens.
