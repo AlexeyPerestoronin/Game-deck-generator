@@ -8,6 +8,7 @@
         "Leptos",
         "mypy",
         "overengineering",
+        "pycache",
         "Pythonic",
         "retarget",
         "sandboxed",
@@ -44,5 +45,16 @@
         "фичи",
         "хардкода",
         "эндорфинового"
+    ],
+    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-t",
+        ".",
+        "-s",
+        "./Tools/harness/agents/tools/tests",
+        "-p",
+        "*_test.py"
     ]
 }

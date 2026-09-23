@@ -16,8 +16,6 @@
                 "harness.run-loop"
             ],
         },
-        // "projects.casket.prepare-metal-manufacturing-doc"
-        // "projects.punch-guide-holder.prepare-metal-manufacturing-doc"
         {
             "name": "Profile invoke-task",
             "type": "debugpy",

@@ -4,6 +4,7 @@ dist/
 
 #Python
 .venv
+__pycache__
 
 #API_KEYs
 API_KEY*
