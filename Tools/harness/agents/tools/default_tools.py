@@ -177,9 +177,12 @@ class DefaultTools(i_tools.ITools):
             raise Exception(error if error else f"{mode}-access denied to {path} → unavailable file extension {file_extension} (list of available extensions is {self._available_file_extension})")
 
     def verbosity_help(self) -> str:
-        # TODO: необходимо реализовать ввод подробной справки по каждому из доступных инструментов с примерами использования
-        # непосредственную справку по инструментам необходимо писать в Tools\harness\agents\tools\tool_help.md
-        ...
+        help_path = pathlib.Path(__file__).parent / "tool_help.md"
+        try:
+            with open(help_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as error:
+            raise Exception(f"cannot load verbosity help → {error}")
 
     # text tools
 
