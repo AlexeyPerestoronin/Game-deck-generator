@@ -1,5 +1,5 @@
 # Задача: «test task»
-Необходимо решить все TODO в `Tools\harness\agents\tools\default_tools.py`.
+Необходимо реализовать `get_file_diff` в `Tools\harness\agents\tools\default_tools.py` и добавить его в список доступных команд.
 
 ***
 

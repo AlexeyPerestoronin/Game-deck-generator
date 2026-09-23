@@ -11,6 +11,7 @@ from . import i_tools
 
 __all__ = ['DefaultTools']
 
+
 # NOTE: при внесении изменений в список доступных команд, необходимо обновлять справку tool_help.md до актуального состояния.
 class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed)."""
@@ -51,7 +52,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path", "content"]
                 }),
-                (DefaultTools.patch_file.__name__, "Применить diff-патч к файлу.", {
+                (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -177,7 +178,8 @@ class DefaultTools(i_tools.ITools):
     def _check_extensions(self, path: str, mode: str, error: str | None = None):
         file_extension = pathlib.Path(path).suffix
         if file_extension not in self._available_file_extension:
-            raise Exception(error if error else f"{mode}-access denied to {path} → unavailable file extension {file_extension} (list of available extensions is {self._available_file_extension})")
+            raise Exception(error if error else
+                            f"{mode}-access denied to {path} → unavailable file extension {file_extension} (list of available extensions is {self._available_file_extension})")
 
     # help
 
@@ -203,7 +205,8 @@ class DefaultTools(i_tools.ITools):
 
     # text tools
 
-    def patch_file(self, path: str, patch: str) -> str:
+    def apply_diff_patch(self, path: str, patch: str) -> str:
+
         def retarget_patch(patch: str, filename: str) -> str:
             # rewrite unified-diff headers so `git apply` touches only `filename`
             lines = []
@@ -227,6 +230,10 @@ class DefaultTools(i_tools.ITools):
         payload = retarget_patch(patch, os.path.basename(abs_path))
         git.Git(os.path.dirname(abs_path)).apply(istream=io.BytesIO(payload.encode('utf-8')))
         return f"success: patched {path}"
+
+    def get_file_diff(self, path: str) -> str:
+        # TODO: надо реализовать получение diff для целевого файла
+        ...
 
     # file tools
 
@@ -283,6 +290,7 @@ class DefaultTools(i_tools.ITools):
 
     def list_folder(self, path: str, depth: str) -> str:
         try:
+
             def walk_folder(path: str, depth: int) -> list:
                 result = []
                 if depth > 0:

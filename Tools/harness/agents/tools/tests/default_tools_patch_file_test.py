@@ -8,6 +8,7 @@ from .. import default_tools
 
 
 class TestPatchFile(unittest.TestCase):
+
     def setUp(self) -> None:
         self._dir = "sandbox"
         self._tools = default_tools.DefaultTools(False, {
@@ -23,7 +24,7 @@ class TestPatchFile(unittest.TestCase):
 
         with patch.object(git, "Git") as mock_git:
             mock_git.return_value.apply.side_effect = apply
-            result = self._tools.patch_file(path, patch_text)
+            result = self._tools.apply_diff_patch(path, patch_text)
             mock_git.assert_called_once_with(os.path.dirname(os.path.abspath(path)))
         return result, captured["payload"]
 
@@ -39,14 +40,12 @@ class TestPatchFile(unittest.TestCase):
 
     def test_retargets_headers_to_destination_file(self) -> None:
         path = os.path.join(self._dir, "target.py")
-        patch_text = (
-            "diff --git a/other.py b/other.py\n"
-            "--- a/other.py\n"
-            "+++ b/other.py\n"
-            "@@ -1,1 +1,1 @@\n"
-            "-x = 1\n"
-            "+x = 2\n"
-        )
+        patch_text = ("diff --git a/other.py b/other.py\n"
+                      "--- a/other.py\n"
+                      "+++ b/other.py\n"
+                      "@@ -1,1 +1,1 @@\n"
+                      "-x = 1\n"
+                      "+x = 2\n")
         _, payload = self._apply(path, patch_text)
         self.assertEqual(
             payload,
@@ -60,13 +59,11 @@ class TestPatchFile(unittest.TestCase):
 
     def test_preserves_dev_null_headers(self) -> None:
         path = os.path.join(self._dir, "new.py")
-        patch_text = (
-            "diff --git a/old.py b/old.py\n"
-            "--- /dev/null\n"
-            "+++ b/old.py\n"
-            "@@ -0,0 +1,1 @@\n"
-            "+hello\n"
-        )
+        patch_text = ("diff --git a/old.py b/old.py\n"
+                      "--- /dev/null\n"
+                      "+++ b/old.py\n"
+                      "@@ -0,0 +1,1 @@\n"
+                      "+hello\n")
         _, payload = self._apply(path, patch_text)
         self.assertEqual(
             payload,
@@ -79,5 +76,5 @@ class TestPatchFile(unittest.TestCase):
 
     def test_denies_path_outside_w_dirs(self) -> None:
         with self.assertRaises(Exception) as ctx:
-            self._tools.patch_file("outside.py", "@@ -1 +1 @@\n-a\n+b\n")
+            self._tools.apply_diff_patch("outside.py", "@@ -1 +1 @@\n-a\n+b\n")
         self.assertIn("w-access denied", str(ctx.exception))

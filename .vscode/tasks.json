@@ -25,6 +25,15 @@
                 "--exclude",
                 "${workspaceFolder}/WiKi/**"
             ],
+        },
+        {
+            "label": "Remove python cache files",
+            "type": "shell",
+            "group": "none",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": [
+                "-m", "invoke", "tools.remove-python-cache",
+            ],
         }
     ]
 }

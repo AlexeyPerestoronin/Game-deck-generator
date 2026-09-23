@@ -49,7 +49,7 @@
 
 ---
 
-## patch_file
+## apply_diff_patch
 
 Применить unified-diff патч к существующему файлу через `git apply`.
 
@@ -69,7 +69,7 @@
 
 **Пример:**
 - вызов:
-  `patch_file(path="app.py", patch="@@ -1,3 +1,3 @@\n print('a')\n-print('b')\n+print('c')\n print('d')\n")`
+  `apply_diff_patch(path="app.py", patch="@@ -1,3 +1,3 @@\n print('a')\n-print('b')\n+print('c')\n print('d')\n")`
 - результат: `success: patched app.py`
 
 ---

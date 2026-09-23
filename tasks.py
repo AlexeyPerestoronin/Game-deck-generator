@@ -1,8 +1,6 @@
 import invoke
 
-import Tools.harness as harness
-import Tools.crate as crate
+import Tools as tools
 
 namespace = invoke.Collection()
-namespace.add_collection(harness.collection)
-namespace.add_collection(crate.collection)
+namespace.add_collection(tools.collection)

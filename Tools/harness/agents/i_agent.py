@@ -25,7 +25,7 @@ class IAgent(typing.Protocol):
     def model(self) -> str:
         """Return the concrete model name of this agent instance."""
         ...
-    
+
     @property
     def consumed_tokens(self) -> int:
         """Return the quantity of consumed token for current moment in the session."""

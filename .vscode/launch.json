@@ -13,7 +13,7 @@
             "module": "invoke",
             "cwd": "${workspaceFolder}",
             "args": [
-                "harness.run-loop"
+                "tools.harness.run-loop"
             ],
         },
         {
