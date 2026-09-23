@@ -11,7 +11,7 @@ from . import i_tools
 
 __all__ = ['DefaultTools']
 
-
+# NOTE: при внесении изменений в список доступных команд, необходимо обновлять справку tool_help.md до актуального состояния.
 class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed)."""
 
@@ -21,10 +21,12 @@ class DefaultTools(i_tools.ITools):
         self._command_execution_limit = settings.get("command-execution-limit", 60)
         self._w_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("w:")]
         self._r_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("r:")] + self._w_shell
+        # TODO: self._w_dirs и self._r_dirs должны храниться в качестве относительных путей а не абсолютных
         self._w_dirs = [os.path.abspath(d[2:]) for d in settings.get("dirs", []) if d.startswith("w:")]
         self._r_dirs = [os.path.abspath(d[2:]) for d in settings.get("dirs", []) if d.startswith("r:")] + self._w_dirs
 
         self._tools = [
+            # TODO: актуализировать список в правильном порядке
             i_tools.Tool(n, d, p) for n, d, p in [
                 (DefaultTools.read_file.__name__, "Прочитать содержимое файла.", {
                     "type": "object",
@@ -176,6 +178,8 @@ class DefaultTools(i_tools.ITools):
         if file_extension not in self._available_file_extension:
             raise Exception(error if error else f"{mode}-access denied to {path} → unavailable file extension {file_extension} (list of available extensions is {self._available_file_extension})")
 
+    # help
+
     def verbosity_help(self) -> str:
         help_path = pathlib.Path(__file__).parent / "tool_help.md"
         try:
@@ -184,9 +188,25 @@ class DefaultTools(i_tools.ITools):
         except Exception as error:
             raise Exception(f"cannot load verbosity help → {error}")
 
+    def list_available_file_extension(self) -> str:
+        # TODO: необходимо реализовать
+        ...
+
+    def list_available_r_dir(self) -> str:
+        # TODO: необходимо реализовать
+        ...
+
+    def list_available_w_dir(self) -> str:
+        # TODO: необходимо реализовать
+        ...
+
+    def list_available_shell_commands(self) -> str:
+        return f"available: {self._r_shell}"
+
     # text tools
 
     def patch_file(self, path: str, patch: str) -> str:
+        # TODO: необходимо написать unit-тесты для этого метода в конце файла
         def retarget_patch(patch: str, filename: str) -> str:
             # rewrite unified-diff headers so `git apply` touches only `filename`
             lines = []
@@ -317,9 +337,6 @@ class DefaultTools(i_tools.ITools):
 
     # command tools
 
-    def list_available_shell_commands(self) -> str:
-        return f"available: {self._r_shell}"
-
     def run_shell(self, cwd: str, command: str, arguments: str) -> str:
         if command not in self._r_shell: raise Exception(f"'{command}'-command is not available (available command list is {self._r_shell})")
         if command in self._w_shell: self._check_access(cwd, 'w', f"'{cwd}'-cwd is denied for '{command}'-command (allowed cwd for '{command}'-command is {self._w_dirs})")
@@ -347,3 +364,5 @@ class DefaultTools(i_tools.ITools):
             return "(command finished without output)"
         except subprocess.TimeoutExpired:
             raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")
+
+# --- TESTS ---

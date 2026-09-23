@@ -1,5 +1,5 @@
 # Задача: «test task»
-Необходимо реализовать метод `verbosity_help` для `DefaultTools` (см. `Tools\harness\agents\tools\default_tools.py`).
+Необходимо решить все TODO в `Tools\harness\agents\tools\default_tools.py`.
 
 ***
 
