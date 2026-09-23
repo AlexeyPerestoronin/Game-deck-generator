@@ -10,6 +10,11 @@
             "w:Tools",
             "w:WiKi/dev-plan/test-task",
             "r:WiKi/rules",
+            "r:WiKi/roles",
+        ],
+        "available-file-extensions": [
+            ".md",
+            ".py",
         ]
     },
     "iteration-limit": 50,

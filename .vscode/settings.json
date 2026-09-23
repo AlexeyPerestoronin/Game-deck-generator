@@ -2,9 +2,13 @@
     "rust-analyzer.cargo.allTargets": false,
     "cSpell.words": [
         "classproperties",
+        "Docstrings",
         "findstr",
         "genai",
         "Leptos",
+        "mypy",
+        "overengineering",
+        "Pythonic",
         "retarget",
         "sandboxed",
         "setlocal",
@@ -15,6 +19,7 @@
         "виджетами",
         "виджете",
         "виджетом",
+        "докстринги",
         "медбрат",
         "неподтверждаю",
         "номинировали",
@@ -37,6 +42,7 @@
         "Филдсовской",
         "Филдсовскую",
         "фичи",
+        "хардкода",
         "эндорфинового"
     ]
 }

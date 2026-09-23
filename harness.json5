@@ -3,7 +3,7 @@
     "task": {
         "dir": "WiKi/dev-plan/test-task",
         "settings": "settings.json5",
-        "prompt": "todo.md",
+        "prompt": "prompt.md",
     },
     "paths": {
         "log": ".log"
