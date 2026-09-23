@@ -21,12 +21,10 @@ class DefaultTools(i_tools.ITools):
         self._command_execution_limit = settings.get("command-execution-limit", 60)
         self._w_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("w:")]
         self._r_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("r:")] + self._w_shell
-        # TODO: self._w_dirs и self._r_dirs должны храниться в качестве относительных путей а не абсолютных
-        self._w_dirs = [os.path.abspath(d[2:]) for d in settings.get("dirs", []) if d.startswith("w:")]
-        self._r_dirs = [os.path.abspath(d[2:]) for d in settings.get("dirs", []) if d.startswith("r:")] + self._w_dirs
+        self._w_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("w:")]
+        self._r_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("r:")] + self._w_dirs
 
         self._tools = [
-            # TODO: актуализировать список в правильном порядке
             i_tools.Tool(n, d, p) for n, d, p in [
                 (DefaultTools.read_file.__name__, "Прочитать содержимое файла.", {
                     "type": "object",
@@ -133,6 +131,9 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["src", "dst"]
                 }),
+                (DefaultTools.list_available_file_extension.__name__, "Список доступных расширений файлов.", {}),
+                (DefaultTools.list_available_r_dir.__name__, "Список доступных директорий для чтения.", {}),
+                (DefaultTools.list_available_w_dir.__name__, "Список доступных директорий для записи.", {}),
                 (DefaultTools.list_available_shell_commands.__name__, "Список доступных shell команд.", {}),
                 (DefaultTools.run_shell.__name__, "Запуск команды.", {
                     "type": "object",
@@ -166,7 +167,7 @@ class DefaultTools(i_tools.ITools):
 
     def _is_allowed(self, path: str, dirs: list) -> bool:
         abs_p = os.path.abspath(path)
-        return any(abs_p.startswith(d) for d in dirs)
+        return any(abs_p.startswith(os.path.abspath(d)) for d in dirs)
 
     def _check_access(self, path: str, mode: str, error: str | None = None):
         dirs = self._w_dirs if mode == 'w' else self._r_dirs
@@ -189,16 +190,13 @@ class DefaultTools(i_tools.ITools):
             raise Exception(f"cannot load verbosity help → {error}")
 
     def list_available_file_extension(self) -> str:
-        # TODO: необходимо реализовать
-        ...
+        return f"available: {self._available_file_extension}"
 
     def list_available_r_dir(self) -> str:
-        # TODO: необходимо реализовать
-        ...
+        return f"available: {self._r_dirs}"
 
     def list_available_w_dir(self) -> str:
-        # TODO: необходимо реализовать
-        ...
+        return f"available: {self._w_dirs}"
 
     def list_available_shell_commands(self) -> str:
         return f"available: {self._r_shell}"
@@ -206,7 +204,6 @@ class DefaultTools(i_tools.ITools):
     # text tools
 
     def patch_file(self, path: str, patch: str) -> str:
-        # TODO: необходимо написать unit-тесты для этого метода в конце файла
         def retarget_patch(patch: str, filename: str) -> str:
             # rewrite unified-diff headers so `git apply` touches only `filename`
             lines = []
@@ -366,3 +363,86 @@ class DefaultTools(i_tools.ITools):
             raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")
 
 # --- TESTS ---
+
+import unittest
+from unittest.mock import patch
+
+
+class TestPatchFile(unittest.TestCase):
+    def setUp(self) -> None:
+        self._dir = "sandbox"
+        self._tools = DefaultTools(False, {
+            "available-file-extensions": [".py"],
+            "dirs": [f"w:{self._dir}"],
+        })
+
+    def _apply(self, path: str, patch_text: str) -> tuple[str, str]:
+        captured: dict[str, str] = {}
+
+        def apply(istream=None, **kwargs) -> None:
+            captured["payload"] = istream.read().decode("utf-8")
+
+        with patch.object(git, "Git") as mock_git:
+            mock_git.return_value.apply.side_effect = apply
+            result = self._tools.patch_file(path, patch_text)
+            mock_git.assert_called_once_with(os.path.dirname(os.path.abspath(path)))
+        return result, captured["payload"]
+
+    def test_applies_hunk_without_headers(self) -> None:
+        path = os.path.join(self._dir, "app.py")
+        patch_text = "@@ -1,3 +1,3 @@\n print('a')\n-print('b')\n+print('c')\n print('d')\n"
+        result, payload = self._apply(path, patch_text)
+        self.assertEqual(result, f"success: patched {path}")
+        self.assertEqual(
+            payload,
+            "diff --git a/app.py b/app.py\n--- a/app.py\n+++ b/app.py\n" + patch_text,
+        )
+
+    def test_retargets_headers_to_destination_file(self) -> None:
+        path = os.path.join(self._dir, "target.py")
+        patch_text = (
+            "diff --git a/other.py b/other.py\n"
+            "--- a/other.py\n"
+            "+++ b/other.py\n"
+            "@@ -1,1 +1,1 @@\n"
+            "-x = 1\n"
+            "+x = 2\n"
+        )
+        _, payload = self._apply(path, patch_text)
+        self.assertEqual(
+            payload,
+            "diff --git a/target.py b/target.py\n"
+            "--- a/target.py\n"
+            "+++ b/target.py\n"
+            "@@ -1,1 +1,1 @@\n"
+            "-x = 1\n"
+            "+x = 2\n",
+        )
+
+    def test_preserves_dev_null_headers(self) -> None:
+        path = os.path.join(self._dir, "new.py")
+        patch_text = (
+            "diff --git a/old.py b/old.py\n"
+            "--- /dev/null\n"
+            "+++ b/old.py\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+hello\n"
+        )
+        _, payload = self._apply(path, patch_text)
+        self.assertEqual(
+            payload,
+            "diff --git a/new.py b/new.py\n"
+            "--- /dev/null\n"
+            "+++ b/new.py\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+hello\n",
+        )
+
+    def test_denies_path_outside_w_dirs(self) -> None:
+        with self.assertRaises(Exception) as ctx:
+            self._tools.patch_file("outside.py", "@@ -1 +1 @@\n-a\n+b\n")
+        self.assertIn("w-access denied", str(ctx.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()
