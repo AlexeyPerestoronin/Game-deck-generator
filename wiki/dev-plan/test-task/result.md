@@ -1,13 +1,7 @@
 # Результаты
 
-`Tools/harness/agents/tools/default_tools.py`: `_w_dirs`/`_r_dirs` через `os.path.abspath(...)` → исходные пути из settings без `abspath` (TODO: хранить относительные пути, а не абсолютные)
+`Tools/harness/agents/tools/default_tools.py`: `get_file_diff` = `...` → `git.Git(dirname).diff('HEAD', '--', filename)` после `_check_access(..., 'r')` (пара к `apply_diff_patch`/`git apply`, без проверки расширения)
 
-`Tools/harness/agents/tools/default_tools.py`: `_is_allowed` сравнивал абсолютный `path` с dirs как есть → сравнение с `os.path.abspath(d)` (иначе после перехода на относительные dirs проверка доступа ломается)
+`Tools/harness/agents/tools/default_tools.py`: список `_tools` без `get_file_diff` → команда добавлена сразу после `apply_diff_patch` (тот же блок text tools, агент видит инструмент)
 
-`Tools/harness/agents/tools/default_tools.py`: список инструментов без `list_available_file_extension`/`list_available_r_dir`/`list_available_w_dir` → три инструмента добавлены перед `list_available_shell_commands` в порядке help-методов класса (TODO: актуализировать список в правильном порядке)
-
-`Tools/harness/agents/tools/default_tools.py`: `list_available_file_extension`/`list_available_r_dir`/`list_available_w_dir` = `...` → `return f"available: {...}"` по образцу `list_available_shell_commands` (TODO: необходимо реализовать)
-
-`Tools/harness/agents/tools/default_tools.py`: блок `# --- TESTS ---` пустой → unit-тесты `patch_file` (нет заголовков, retarget чужого файла, сохранение `/dev/null`, отказ в доступе) (TODO: написать unit-тесты для метода в конце файла)
-
-`Tools/harness/agents/tools/tool_help.md`: не было секций новых `list_available_*` → добавлены в том же порядке, что и в списке инструментов (NOTE: обновлять справку при изменении списка команд)
+`Tools/harness/agents/tools/tool_help.md`: не было секции `get_file_diff` → добавлена после `apply_diff_patch` (NOTE: обновлять справку при изменении списка команд)
