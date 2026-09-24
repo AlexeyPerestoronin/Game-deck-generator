@@ -49,6 +49,29 @@
 
 ---
 
+## apply_diff_patch
+
+Применить unified-diff патч к файлу через `git apply`.
+
+**Параметры:**
+- `path` (string, обязательный) — целевой файл.
+- `patch` (string, обязательный) — текст патча в формате unified diff.
+
+**Поведение:**
+- Нужен `w`-доступ и расширение файла из списка разрешённых (`list_available_file_extension`).
+- Заголовки `diff --git`, `---`, `+++` не учитываются, поэтому патч применяется только к `path`.
+- Заголовки `--- /dev/null` и `+++ /dev/null` не учитываются т.к. подразумевается, что файл существует.
+
+**Возвращает:** `successfully patched <path>`
+
+**Ошибки:** отказ в доступе либо ошибка `git apply` (контекст не совпал, файл не найден и т.п.).
+
+**Пример:**
+- вызов: `apply_diff_patch(path="app.py", patch="@@ -1,3 +1,3 @@\n print('a')\n-print('b')\n+print('c')\n print('d')\n")`
+- результат: `successfully patched 'app.py'`
+
+---
+
 ## get_file_diff
 
 Получить unified-diff целевого файла относительно `HEAD` через `git diff`.

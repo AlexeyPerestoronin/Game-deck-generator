@@ -1,9 +1,9 @@
-import io
 import os
 import git
 import shutil
 import pathlib
 import subprocess
+import whatthepatch
 
 from classproperties import classproperty
 
@@ -52,18 +52,18 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path", "content"]
                 }),
-                # (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
-                #     "type": "object",
-                #     "properties": {
-                #         "path": {
-                #             "type": "string"
-                #         },
-                #         "patch": {
-                #             "type": "string"
-                #         }
-                #     },
-                #     "required": ["path", "patch"]
-                # }),
+                (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        },
+                        "patch": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["path", "patch"]
+                }),
                 (DefaultTools.get_file_diff.__name__, "Получить diff для целевого файла.", {
                     "type": "object",
                     "properties": {
@@ -215,35 +215,46 @@ class DefaultTools(i_tools.ITools):
     # text tools
 
     def apply_diff_patch(self, path: str, patch: str) -> str:
+        try:
+            self._check_access(path, 'w')
+            self._check_extensions(path, 'w')
+            abs_path = os.path.abspath(path)
 
-        def retarget_patch(patch: str, filename: str) -> str:
-            # rewrite unified-diff headers so `git apply` touches only `filename`
-            lines = []
-            has_header = False
-            for line in patch.splitlines():
-                if line.startswith('--- '):
-                    lines.append('--- /dev/null' if line.startswith('--- /dev/null') else f'--- a/{filename}')
-                    has_header = True
-                elif line.startswith('+++ '):
-                    lines.append('+++ /dev/null' if line.startswith('+++ /dev/null') else f'+++ b/{filename}')
-                elif line.startswith('diff --git '):
-                    lines.append(f'diff --git a/{filename} b/{filename}')
-                else:
-                    lines.append(line)
-            if not has_header:
-                lines = [f'diff --git a/{filename} b/{filename}', f'--- a/{filename}', f'+++ b/{filename}'] + lines
-            return '\n'.join(lines) + '\n'
+            with open(abs_path, "r", encoding="utf-8") as f:
+                text_before = f.read()
+            lines_before = text_before.splitlines(keepends=True)
 
-        self._check_access(path, 'w')
-        abs_path = os.path.abspath(path)
-        payload = retarget_patch(patch, os.path.basename(abs_path))
-        git.Git(os.path.dirname(abs_path)).apply(istream=io.BytesIO(payload.encode('utf-8')))
-        return f"success: patched {path}"
+            diffs = list(whatthepatch.parse_patch(patch))
+            if not diffs:
+                raise Exception("invalid or empty patch format")
+            if len(diffs) > 1:
+                raise Exception("more then one patch")
+            diff = diffs[0]
+
+            if not diff.changes:
+                return f"successfully patched `{path}` but no changes in patch"
+
+            lines_after = whatthepatch.apply_diff(diff, text_before)
+            if lines_after is None:
+                raise Exception("patch compilation failed (hunk mismatch or wrong context)")
+
+            text_after = "\n".join(lines_after)
+            if '\n' in lines_before[-1]:
+                text_after += '\n'
+            with open(abs_path, "w", encoding="utf-8", newline="") as f:
+                f.write(text_after)
+
+            return f"successfully patched '{path}'"
+        except Exception as error:
+            raise Exception(f"cannot apply diff patch for '{path}' → {error}")
 
     def get_file_diff(self, path: str) -> str:
-        self._check_access(path, 'r')
-        abs_path = os.path.abspath(path)
-        return git.Git(os.path.dirname(abs_path)).diff('HEAD', '--', os.path.basename(abs_path))
+        try:
+            self._check_access(path, 'r')
+            abs_path = os.path.abspath(path)
+            return git.Git(os.path.dirname(abs_path)).diff('HEAD', '--', os.path.basename(abs_path))
+        except Exception as error:
+            raise Exception(f"cannot get diff for '{path}' → {error}")
 
     # file tools
 
