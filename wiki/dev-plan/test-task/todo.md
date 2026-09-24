@@ -1,5 +1,6 @@
 # Задача: «test task»
-Необходимо реализовать `get_file_diff` в `Tools\harness\agents\tools\default_tools.py` и добавить его в список доступных команд.
+Необходимо улучшить тесты для метода `apply_diff_patch` в `Tools\harness\agents\tools\default_tools.py` и вернуть его в список доступных команд.
+В конце не забудь обновить `Tools\harness\agents\tools\tool_help.md`.
 
 ***
 

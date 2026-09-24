@@ -7,6 +7,10 @@ from unittest.mock import patch
 from .. import default_tools
 
 
+# TODO: тесты должны быть реальными реализованными по следующей логики:
+# 1. переда началом тестов необходимо создать копию файла default_tools_patch_file_test.txt в той же директории (default_tools_patch_file_test_copy.txt)
+#    - если файл уже создан, то просто перезаписать его содержимое из default_tools_patch_file_test.txt
+# 2. выполнять все необходимы тестовые сценарии для apply_diff_patch в реальном режиме (без mock)
 class TestPatchFile(unittest.TestCase):
 
     def setUp(self) -> None:

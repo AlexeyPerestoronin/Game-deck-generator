@@ -52,18 +52,18 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path", "content"]
                 }),
-                (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
-                    "type": "object",
-                    "properties": {
-                        "path": {
-                            "type": "string"
-                        },
-                        "patch": {
-                            "type": "string"
-                        }
-                    },
-                    "required": ["path", "patch"]
-                }),
+                # (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
+                #     "type": "object",
+                #     "properties": {
+                #         "path": {
+                #             "type": "string"
+                #         },
+                #         "patch": {
+                #             "type": "string"
+                #         }
+                #     },
+                #     "required": ["path", "patch"]
+                # }),
                 (DefaultTools.get_file_diff.__name__, "Получить diff для целевого файла.", {
                     "type": "object",
                     "properties": {
