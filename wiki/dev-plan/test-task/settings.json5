@@ -4,7 +4,6 @@
     "tool-settings": {
         "shell": [
             "r:findstr",
-            "w:patch",
         ],
         dirs: [
             "w:Tools/harness/agents/tools",
@@ -14,8 +13,6 @@
         ],
         "available-file-extensions": [
             ".md",
-            ".json5",
-            ".txt",
             ".py",
         ]
     },

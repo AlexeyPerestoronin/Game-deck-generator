@@ -1,5 +1,4 @@
 import os
-import git
 import shutil
 import pathlib
 import subprocess
@@ -64,15 +63,15 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path", "patch"]
                 }),
-                (DefaultTools.get_file_diff.__name__, "Получить diff для целевого файла.", {
-                    "type": "object",
-                    "properties": {
-                        "path": {
-                            "type": "string"
-                        }
-                    },
-                    "required": ["path"]
-                }),
+                # (DefaultTools.get_file_diff.__name__, "Получить diff для целевого файла.", {
+                #     "type": "object",
+                #     "properties": {
+                #         "path": {
+                #             "type": "string"
+                #         }
+                #     },
+                #     "required": ["path"]
+                # }),
                 (DefaultTools.create_file.__name__, "Создать файл.", {
                     "type": "object",
                     "properties": {
@@ -252,7 +251,8 @@ class DefaultTools(i_tools.ITools):
         try:
             self._check_access(path, 'r')
             abs_path = os.path.abspath(path)
-            return git.Git(os.path.dirname(abs_path)).diff('HEAD', '--', os.path.basename(abs_path))
+            # TODO: необходимо получать diff для файла через вызов git через subprocess c захватом потоков вывода
+            # return git.Git(os.path.dirname(abs_path)).diff('HEAD', '--', os.path.basename(abs_path))
         except Exception as error:
             raise Exception(f"cannot get diff for '{path}' → {error}")
 

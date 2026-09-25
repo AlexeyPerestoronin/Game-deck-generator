@@ -1,5 +1,6 @@
 {
     "mode": "auto accept",
+    "cwd": "C:/MyLife/Game-deck-generator",
     "task": {
         "dir": "WiKi/dev-plan/test-task",
         "settings": "settings.json5",

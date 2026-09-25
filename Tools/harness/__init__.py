@@ -8,12 +8,13 @@ from . import logger, agent_loop
 
 
 @invoke.task()
-def run_loop(ctx, safe_mode: bool = False):
+def run_loop(ctx, settings_path: str):
     """Run AI agent loop."""
-    cwd = pathlib.Path(os.getcwd())
-
-    with open(cwd / "harness.json5", "r", encoding="utf-8") as file:
+    with open(pathlib.Path(settings_path) / "harness.json5", "r", encoding="utf-8") as file:
         harness = json5.load(file)
+
+    cwd = pathlib.Path(harness["cwd"])
+    safe_mode = True if harness["mode"] == "auto accept" else False
 
     prompt_file = cwd / harness["task"]["dir"] / harness["task"]["prompt"]
     with open(prompt_file, "r", encoding="utf-8") as file:
