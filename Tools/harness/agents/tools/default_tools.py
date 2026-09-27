@@ -297,7 +297,7 @@ class DefaultTools(i_tools.ITools):
             git_root = self._git_toplevel(os.getcwd())
             for rel_path in targets:
                 self._check_access(os.path.join(git_root, rel_path), 'w')
-            result = self._run_git(["apply", "--", "-"], git_root, stdin=patch)
+            result = self._run_git(["apply", "--ignore-whitespace", "--", "-"], git_root, stdin=patch)
             if result.returncode != 0:
                 error_text = (result.stderr or result.stdout or "").strip()
                 raise Exception(error_text or f"git apply failed with code {result.returncode}")

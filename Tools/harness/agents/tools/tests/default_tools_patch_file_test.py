@@ -18,15 +18,22 @@ class TestPatchFile(unittest.TestCase):
         os.makedirs(self._allowed_dir)
         os.makedirs(self._forbidden_dir)
 
-        self._rel = os.path.join("allowed", "sample.py")
+        # Use the real fixture files from the test directory (per task requirement)
+        tests_dir = os.path.dirname(os.path.abspath(__file__))
+        for name in ("test_file1.txt", "test_file2.txt", "test_file3.txt"):
+            src = os.path.join(tests_dir, name)
+            dst = os.path.join(self._allowed_dir, name)
+            with open(src, "r", encoding="utf-8", newline=None) as f_in:
+                content = f_in.read()
+            with open(dst, "w", encoding="utf-8", newline="\n") as f_out:
+                f_out.write(content)
+
+        self._rel = os.path.join("allowed", "test_file1.txt")
         self._file = os.path.join(self._repo, self._rel)
-        self._original = "ALPHA = 1\nBETA = 2\nGAMMA = 3\n"
-        self._modified = "ALPHA = 1\nBETA = 9\nGAMMA = 3\n"
 
         self._forbidden_rel = os.path.join("forbidden", "secret.py")
         self._forbidden_file = os.path.join(self._repo, self._forbidden_rel)
 
-        self._write(self._file, self._original)
         self._write(self._forbidden_file, "SECRET = 1\n")
 
         try:
@@ -36,6 +43,10 @@ class TestPatchFile(unittest.TestCase):
             self._git("config", "core.autocrlf", "false")
             self._git("add", ".")
             self._git("-c", "commit.gpgsign=false", "commit", "-m", "init")
+
+            # originals from the real committed fixtures
+            self._original = self._read(self._file)
+            self._modified = self._original.replace("BETA = 2", "BETA = 9", 1)
 
             self._tools = default_tools.DefaultTools(False, {
                 "available-file-extensions": [".py", ".txt", ".md"],
