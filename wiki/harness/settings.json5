@@ -9,12 +9,14 @@
     "vendor": "SpaceXAI",
     "model": "Grok 4.6",
     "tool-settings": {
+        // "cwd": "current working directory for tools"
+        // "temp-dir": "directory for temporary files collecting",
         "shell": [
             "r:findstr",
         ],
         dirs: [
             // minimal directory scope
-            "w:Tools/crates",
+            "w:Tools",
             "w:WiKi/dev-plan/phase-IV/8 modify invoke tasks",
             // rules and roles
             "r:WiKi/harness/rules",
