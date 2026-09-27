@@ -1,4 +1,3 @@
-import os
 import json5
 import invoke
 import pathlib
@@ -28,6 +27,8 @@ def run_loop(ctx, settings_path: str):
     log_dir.mkdir(exist_ok=False)
     log_file = log_dir / "log.md"
     dump_file = log_dir / "dump.json"
+    agent_settings["tool-settings"]["cwd"] = cwd
+    agent_settings["tool-settings"]["temp-dir"] = log_dir
     loop = agent_loop.AgentLoop(safe_mode, logger.DoubleLogger(log_file), agent_settings)
     loop.start(prompt, dump_file)
 

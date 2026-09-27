@@ -17,12 +17,16 @@ class DefaultTools(i_tools.ITools):
 
     def __init__(self, safe_mode: bool, settings: dict):
         self._safe_mode = safe_mode
+        self._cwd = settings["cwd"]
+        self._temp_dir = settings["temp-dir"]
         self._available_file_extension = settings["available-file-extensions"]
         self._command_execution_limit = settings.get("command-execution-limit", 60)
         self._w_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("w:")]
         self._r_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("r:")] + self._w_shell
         self._w_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("w:")]
         self._r_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("r:")] + self._w_dirs
+
+        (pathlib.Path(self._cwd) / pathlib.Path(self._temp_dir)).mkdir(parents=True, exist_ok=True)
 
         self._tools = [
             i_tools.Tool(n, d, p) for n, d, p in [
@@ -295,24 +299,15 @@ class DefaultTools(i_tools.ITools):
             targets = self._extract_patch_target_paths(patch)
             if not targets:
                 raise Exception("invalid or empty patch format")
-            git_root = self._git_toplevel(os.getcwd())
             for rel_path in targets:
                 self._check_access(rel_path, 'w')
 
             # Пишем патч во временный файл — это значительно надёжнее stdin
             # (особенно с кириллицей, многострочными файлами и на Windows).
-            tmp = None
-            try:
-                fd, tmp = tempfile.mkstemp(suffix=".patch", dir=git_root)
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    f.write(patch)
-                result = self._run_git(["apply", "--ignore-whitespace", "--ignore-space-change", "--recount", tmp], git_root)
-            finally:
-                if tmp and os.path.exists(tmp):
-                    try:
-                        os.unlink(tmp)
-                    except Exception:
-                        pass
+            fd, tmp = tempfile.mkstemp(suffix=".patch", dir=self._temp_dir)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(patch)
+            result = self._run_git(["apply", "--ignore-whitespace", "--ignore-space-change", "--recount", tmp], self._cwd)
 
             if result.returncode != 0:
                 error_text = (result.stderr or result.stdout or "").strip()

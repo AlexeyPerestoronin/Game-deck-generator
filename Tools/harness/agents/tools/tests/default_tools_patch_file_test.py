@@ -14,6 +14,7 @@ from .. import default_tools
 
 
 class TestPatchFile(unittest.TestCase):
+
     def setUp(self):
         self.cwd = os.getcwd()
 
@@ -50,6 +51,8 @@ class TestPatchFile(unittest.TestCase):
             "dirs": [
                 f"w:{w_dir}",
             ],
+            "cwd": self.cwd,
+            "temp-dir": self.cwd + "/.log/tests",
             "command-execution-limit": 30,
         }
         self._tools = default_tools.DefaultTools(False, settings)
@@ -164,14 +167,12 @@ class TestPatchFile(unittest.TestCase):
 
     def test_apply_diff_patch_rejects_w_outside_targets(self):
         # Патч, который пытается изменить файл вне разрешённой w: директории
-        patch = (
-            "diff --git a/outside.txt b/outside.txt\n"
-            "--- a/outside.txt\n"
-            "+++ b/outside.txt\n"
-            "@@ -1 +1 @@\n"
-            "-OUTSIDE SECRET\n"
-            "+CHANGED\n"
-        )
+        patch = ("diff --git a/outside.txt b/outside.txt\n"
+                 "--- a/outside.txt\n"
+                 "+++ b/outside.txt\n"
+                 "@@ -1 +1 @@\n"
+                 "-OUTSIDE SECRET\n"
+                 "+CHANGED\n")
         with self.assertRaises(Exception) as ctx:
             self._tools.apply_diff_patch(patch)
         self.assertIn("cannot apply diff patch", str(ctx.exception))
