@@ -15,7 +15,7 @@ from .. import default_tools
 
 class TestPatchFile(unittest.TestCase):
     def setUp(self):
-        self._old_cwd = os.getcwd()
+        self.cwd = os.getcwd()
 
         # Работаем напрямую с реальными файлами в репозитории (они под git)
         self.tests_dir = os.path.dirname(os.path.abspath(__file__))
@@ -43,14 +43,16 @@ class TestPatchFile(unittest.TestCase):
         with open(self._outside_file, "w", encoding="utf-8", newline="\n") as f:
             f.write("OUTSIDE SECRET\n")
 
-        self._tools = default_tools.DefaultTools(False, {
+        w_dir = self.tests_dir.replace(self.cwd + '\\', '')
+        w_dir = w_dir.replace('\\', '/')
+        settings = {
             "available-file-extensions": [".py", ".txt", ".md"],
             "dirs": [
-                f"w:{self.tests_dir}",
-                f"r:{self.tests_dir}",
+                f"w:{w_dir}",
             ],
             "command-execution-limit": 30,
-        })
+        }
+        self._tools = default_tools.DefaultTools(False, settings)
 
     def tearDown(self):
         # Гарантированно возвращаем реальные файлы в исходное состояние
@@ -66,7 +68,7 @@ class TestPatchFile(unittest.TestCase):
                     pass
 
         shutil.rmtree(self._outside_dir, ignore_errors=True)
-        os.chdir(self._old_cwd)
+        os.chdir(self.cwd)
 
     def _write(self, path, content):
         os.makedirs(os.path.dirname(path), exist_ok=True)

@@ -297,7 +297,7 @@ class DefaultTools(i_tools.ITools):
                 raise Exception("invalid or empty patch format")
             git_root = self._git_toplevel(os.getcwd())
             for rel_path in targets:
-                self._check_access(os.path.join(git_root, rel_path), 'w')
+                self._check_access(rel_path, 'w')
 
             # Пишем патч во временный файл — это значительно надёжнее stdin
             # (особенно с кириллицей, многострочными файлами и на Windows).
