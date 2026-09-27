@@ -1,0 +1,32 @@
+{
+    // repo settings
+    "cwd": "C:/MyLife/Game-deck-generator",
+    "paths": {
+        "log-folder": ".log"
+    },
+    // agent's settings
+    "mode": "auto accept",
+    "vendor": "SpaceXAI",
+    "model": "Grok 4.6",
+    "tool-settings": {
+        "shell": [
+            "r:findstr",
+        ],
+        dirs: [
+            // minimal directory scope
+            "w:Tools/crates",
+            "w:WiKi/dev-plan/phase-IV/8 modify invoke tasks",
+            // rules and roles
+            "r:WiKi/harness/rules",
+            "r:WiKi/harness/roles",
+        ],
+        "available-file-extensions": [
+            ".md",
+            ".py",
+        ]
+    },
+    "iteration-limit": 50,
+    "token-limit": 0,
+    // target prompt like entry point
+    "prompt": "Необходимо решить задачу: см. 'WiKi/dev-plan/phase-IV/8 modify invoke tasks/todo.md'",
+}

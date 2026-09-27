@@ -18,7 +18,7 @@ def remove_python_cache(ctx, safe_mode: bool = False):
 collection = invoke.Collection("tools")
 collection.add_task(remove_python_cache)
 
-from . import harness, crate
+from . import harness, crates
 
 collection.add_collection(harness.collection)
-collection.add_collection(crate.collection)
+collection.add_collection(crates.collection)

@@ -4,6 +4,6 @@ import invoke
 
 from . import actions
 
-collection = invoke.Collection("crate")
+collection = invoke.Collection("crates")
 collection.add_task(actions.cargo_build)
 collection.add_task(actions.trunk_build)
