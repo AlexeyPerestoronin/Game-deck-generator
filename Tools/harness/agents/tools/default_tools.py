@@ -2,6 +2,7 @@ import os
 import shutil
 import pathlib
 import subprocess
+import tempfile
 
 from classproperties import classproperty
 
@@ -297,7 +298,22 @@ class DefaultTools(i_tools.ITools):
             git_root = self._git_toplevel(os.getcwd())
             for rel_path in targets:
                 self._check_access(os.path.join(git_root, rel_path), 'w')
-            result = self._run_git(["apply", "--ignore-whitespace", "--", "-"], git_root, stdin=patch)
+
+            # Пишем патч во временный файл — это значительно надёжнее stdin
+            # (особенно с кириллицей, многострочными файлами и на Windows).
+            tmp = None
+            try:
+                fd, tmp = tempfile.mkstemp(suffix=".patch", dir=git_root)
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    f.write(patch)
+                result = self._run_git(["apply", "--ignore-whitespace", "--ignore-space-change", "--recount", tmp], git_root)
+            finally:
+                if tmp and os.path.exists(tmp):
+                    try:
+                        os.unlink(tmp)
+                    except Exception:
+                        pass
+
             if result.returncode != 0:
                 error_text = (result.stderr or result.stdout or "").strip()
                 raise Exception(error_text or f"git apply failed with code {result.returncode}")
