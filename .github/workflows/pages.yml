@@ -43,15 +43,15 @@ jobs:
           trunk --version
 
       - name: Build deck_gen_wasm
-        run: trunk build --release --public-url "${{ steps.pages.outputs.base_path }}/"
+        run: trunk --config Projects/Trunk.toml build --release --public-url "${{ steps.pages.outputs.base_path }}/"
 
       - name: Skip Jekyll
-        run: touch deck_gen_wasm/dist/.nojekyll
+        run: touch Projects/deck_gen_wasm/dist/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: deck_gen_wasm/dist
+          path: Projects/deck_gen_wasm/dist
 
   deploy:
     needs: build
