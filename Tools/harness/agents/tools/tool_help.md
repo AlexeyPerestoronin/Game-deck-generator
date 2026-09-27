@@ -2,6 +2,8 @@
 
 Инструменты работают в песочнице. Доступ к путям ограничен списками `r`- и `w`-директорий; операции с файлами — списком допустимых расширений. Shell-команды ограничены белым списком. Списки допустимых путей, расширений и команд можно получить через `list_available_*`. Перед записью или запуском команд проверяйте, что путь и команда разрешены.
 
+Git-операции (`is_file_under_git`, `get_file_diff`, `apply_diff_patch`, `discard_file_changes`) используют системный `git` через `subprocess`. Перед `get_file_diff` / `apply_diff_patch` / `discard_file_changes` проверяйте `is_file_under_git`.
+
 ---
 
 ## read_file
@@ -49,6 +51,53 @@
 
 ---
 
+## is_file_under_git
+
+Проверить, находится ли файл под контролем git (есть в индексе).
+
+**Параметры:**
+- `path` (string, обязательный) — путь к файлу.
+
+**Поведение:**
+- Нужен `r`-доступ. Расширение файла не проверяется.
+- Выполняется `git ls-files --error-unmatch -- <файл>` в каталоге файла через `subprocess`.
+- Нужно перед `apply_diff_patch`, `get_file_diff` и `discard_file_changes`: эти операции имеют смысл только для отслеживаемых файлов.
+
+**Возвращает:**
+- `file '<path>' is under git`
+- `file '<path>' is not under git`
+
+**Ошибки:** `cannot check if file '<path>' is under git → ...` (нет доступа и т.п.).
+
+**Пример:**
+- вызов: `is_file_under_git(path="app.py")`
+- результат: `file 'app.py' is under git`
+
+---
+
+## apply_diff_patch
+
+Применить unified-diff патч через `git apply`. Путь к файлу отдельным аргументом не передаётся — цели берутся из текста патча.
+
+**Параметры:**
+- `patch` (string, обязательный) — текст патча (например, вывод `get_file_diff`).
+
+**Поведение:**
+- Целевые файлы извлекаются из заголовков патча (`diff --git`, `---`, `+++`).
+- Каждый целевой файл должен находиться в директории с `w`-доступом; иначе патч целиком отклоняется и не применяется.
+- Выполняется `git apply` из корня репозитория (`git rev-parse --show-toplevel`) через `subprocess`, патч передаётся на stdin.
+- Совместим с выводом `get_file_diff`.
+
+**Возвращает:** `successfully applied patch to <files>`
+
+**Ошибки:** `cannot apply diff patch → ...` (пустой/невалидный патч, нет `w`-доступа к цели, конфликт hunk, ошибка `git apply` и т.п.).
+
+**Пример:**
+- вызов: `apply_diff_patch(patch="<unified diff>")`
+- результат: `successfully applied patch to app.py`
+
+---
+
 ## get_file_diff
 
 Получить unified-diff целевого файла относительно `HEAD` через `git diff`.
@@ -61,6 +110,7 @@
 - Выполняется `git diff HEAD -- <файл>` в каталоге файла через `subprocess` с захватом stdout/stderr.
 - Возвращается unified diff, совместимый с `apply_diff_patch`.
 - Нетракнутые файлы и отсутствие изменений дают пустую строку.
+- Имеет смысл для файлов, которые `is_file_under_git` считает отслеживаемыми.
 
 **Возвращает:** текст diff либо пустую строку, если изменений нет.
 
@@ -80,6 +130,28 @@
   +print('c')
    print('d')
   ```
+
+---
+
+## discard_file_changes
+
+Отменить изменения файла относительно `HEAD` (`git checkout HEAD -- <файл>`).
+
+**Параметры:**
+- `path` (string, обязательный) — целевой файл.
+
+**Поведение:**
+- Нужен `w`-доступ. Расширение не проверяется.
+- Восстанавливает содержимое файла из `HEAD` (индекс и рабочая копия).
+- Файл должен быть под контролем git (`is_file_under_git`).
+
+**Возвращает:** `successfully discarded changes in '<path>'`
+
+**Ошибки:** `cannot discard changes in '<path>' → ...` (нет `w`-доступа, файл не в git, ошибка git и т.п.).
+
+**Пример:**
+- вызов: `discard_file_changes(path="app.py")`
+- результат: `successfully discarded changes in 'app.py'`
 
 ---
 

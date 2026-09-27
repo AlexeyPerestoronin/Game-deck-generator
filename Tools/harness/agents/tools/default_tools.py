@@ -2,7 +2,6 @@ import os
 import shutil
 import pathlib
 import subprocess
-import whatthepatch
 
 from classproperties import classproperty
 
@@ -51,19 +50,34 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path", "content"]
                 }),
-                # (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
-                #     "type": "object",
-                #     "properties": {
-                #         "path": {
-                #             "type": "string"
-                #         },
-                #         "patch": {
-                #             "type": "string"
-                #         }
-                #     },
-                #     "required": ["path", "patch"]
-                # }),
+                (DefaultTools.is_file_under_git.__name__, "Проверить, находится ли файл под контролем git.", {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["path"]
+                }),
+                (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлам.", {
+                    "type": "object",
+                    "properties": {
+                        "patch": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["patch"]
+                }),
                 (DefaultTools.get_file_diff.__name__, "Получить diff для целевого файла.", {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["path"]
+                }),
+                (DefaultTools.discard_file_changes.__name__, "Отменить изменения файла после HEAD.", {
                     "type": "object",
                     "properties": {
                         "path": {
@@ -189,6 +203,55 @@ class DefaultTools(i_tools.ITools):
             raise Exception(error if error else
                             f"{mode}-access denied to {path} → unavailable file extension {file_extension} (list of available extensions is {self._available_file_extension})")
 
+    def _run_git(self, args: list, cwd: str, stdin: str | None = None):
+        # системный git с захватом вывода; stdin используется для git apply
+        return subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            input=stdin,
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=self._command_execution_limit,
+        )
+
+    def _git_toplevel(self, cwd: str) -> str:
+        # корень git-репозитория для указанного cwd
+        result = self._run_git(["rev-parse", "--show-toplevel"], cwd)
+        if result.returncode != 0:
+            error_text = (result.stderr or result.stdout or "").strip()
+            raise Exception(error_text or "not a git repository")
+        return os.path.abspath(result.stdout.strip())
+
+    def _extract_patch_target_paths(self, patch: str) -> list:
+        # цели unified-diff / git diff: пути относительно корня репозитория
+        paths = []
+        seen = set()
+
+        def add(raw: str):
+            raw = raw.strip().strip('"')
+            if raw.startswith("a/") or raw.startswith("b/"):
+                raw = raw[2:]
+            if not raw or raw == "/dev/null" or raw in seen:
+                return
+            seen.add(raw)
+            paths.append(raw)
+
+        for line in patch.splitlines():
+            if line.startswith("diff --git "):
+                parts = line.split()
+                if len(parts) >= 4:
+                    add(parts[2])
+                    add(parts[3])
+            elif line.startswith("--- ") or line.startswith("+++ "):
+                add(line[4:].split("\t", 1)[0])
+        return paths
+
+    def _git_path_cwd(self, path: str) -> tuple:
+        # (basename, directory) для git-команд в каталоге файла
+        abs_path = os.path.abspath(path)
+        return os.path.basename(abs_path), os.path.dirname(abs_path) or "."
+
     # help
 
     def verbosity_help(self) -> str:
@@ -213,62 +276,40 @@ class DefaultTools(i_tools.ITools):
 
     # text tools
 
-    def is_file_under_git(self, path) -> str:
-        # TODO: необходимо реализовать метод
-        # метод проверяет находится ли файл под контролем git, чтобы иметь возможность применять к нему методы `apply_diff_patch` и `get_file_diff`
-        # метод необходимо добавить в список доступных tools и обновить тесты default_tools_patch_file_test.py с учётом его наличия
-        ...
-
-    def apply_diff_patch(self, path: str, patch: str) -> str:
-        # TODO: необходимо изменить реализацию этой функции по аналогии с get_file_diff: использовать системный git через subprocess.
-        # Важные моменты:
-        # 1. удали аргумент path, т.к. вся необходима информация должен содержаться в patch
-        # 2. patch необходимо проверять на то, чтобы его целями были файлы в директориях с w-доступом.
+    def is_file_under_git(self, path: str) -> str:
         try:
-            self._check_access(path, 'w')
-            self._check_extensions(path, 'w')
-            abs_path = os.path.abspath(path)
-
-            with open(abs_path, "r", encoding="utf-8") as f:
-                text_before = f.read()
-            lines_before = text_before.splitlines(keepends=True)
-
-            diffs = list(whatthepatch.parse_patch(patch))
-            if not diffs:
-                raise Exception("invalid or empty patch format")
-            if len(diffs) > 1:
-                raise Exception("more then one patch")
-            diff = diffs[0]
-
-            if not diff.changes:
-                return f"successfully patched `{path}` but no changes in patch"
-
-            lines_after = whatthepatch.apply_diff(diff, text_before)
-            if lines_after is None:
-                raise Exception("patch compilation failed (hunk mismatch or wrong context)")
-
-            text_after = "\n".join(lines_after)
-            if '\n' in lines_before[-1]:
-                text_after += '\n'
-            with open(abs_path, "w", encoding="utf-8", newline="") as f:
-                f.write(text_after)
-
-            return f"successfully patched '{path}'"
+            self._check_access(path, 'r')
+            basename, cwd = self._git_path_cwd(path)
+            result = self._run_git(["ls-files", "--error-unmatch", "--", basename], cwd)
+            if result.returncode == 0:
+                return f"file '{path}' is under git"
+            return f"file '{path}' is not under git"
         except Exception as error:
-            raise Exception(f"cannot apply diff patch for '{path}' → {error}")
+            raise Exception(f"cannot check if file '{path}' is under git → {error}")
+
+    def apply_diff_patch(self, patch: str) -> str:
+        try:
+            if not patch or not str(patch).strip():
+                raise Exception("invalid or empty patch format")
+            targets = self._extract_patch_target_paths(patch)
+            if not targets:
+                raise Exception("invalid or empty patch format")
+            git_root = self._git_toplevel(os.getcwd())
+            for rel_path in targets:
+                self._check_access(os.path.join(git_root, rel_path), 'w')
+            result = self._run_git(["apply", "--", "-"], git_root, stdin=patch)
+            if result.returncode != 0:
+                error_text = (result.stderr or result.stdout or "").strip()
+                raise Exception(error_text or f"git apply failed with code {result.returncode}")
+            return f"successfully applied patch to {', '.join(targets)}"
+        except Exception as error:
+            raise Exception(f"cannot apply diff patch → {error}")
 
     def get_file_diff(self, path: str) -> str:
         try:
             self._check_access(path, 'r')
-            abs_path = os.path.abspath(path)
-            result = subprocess.run(
-                ["git", "diff", "HEAD", "--", os.path.basename(abs_path)],
-                cwd=os.path.dirname(abs_path),
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=self._command_execution_limit,
-            )
+            basename, cwd = self._git_path_cwd(path)
+            result = self._run_git(["diff", "HEAD", "--", basename], cwd)
             if result.returncode != 0:
                 error_text = (result.stderr or result.stdout or "").strip()
                 raise Exception(error_text or f"git diff failed with code {result.returncode}")
@@ -276,11 +317,17 @@ class DefaultTools(i_tools.ITools):
         except Exception as error:
             raise Exception(f"cannot get diff for '{path}' → {error}")
 
-    def discard_file_changes(self, path) -> str:
-        # TODO: необходимо реализовать метод
-        # отменяет изменения внесённые в файл после HEAD
-        # метод необходимо добавить в список доступных tools и обновить тесты default_tools_patch_file_test.py с учётом его наличия
-        ...
+    def discard_file_changes(self, path: str) -> str:
+        try:
+            self._check_access(path, 'w')
+            basename, cwd = self._git_path_cwd(path)
+            result = self._run_git(["checkout", "HEAD", "--", basename], cwd)
+            if result.returncode != 0:
+                error_text = (result.stderr or result.stdout or "").strip()
+                raise Exception(error_text or f"git checkout failed with code {result.returncode}")
+            return f"successfully discarded changes in '{path}'"
+        except Exception as error:
+            raise Exception(f"cannot discard changes in '{path}' → {error}")
 
     # file tools
 
