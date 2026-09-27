@@ -5,7 +5,6 @@ dist/
 #Python
 .venv
 __pycache__
-*_copy.txt
 
 #API_KEYs
 API_KEY*

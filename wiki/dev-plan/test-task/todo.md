@@ -1,5 +1,4 @@
-# Задача: «test task»
-Необходимо изменить метод `get_file_diff` в `Tools\harness\agents\tools\default_tools.py` и вернуть его в список доступных команд.
+Необходимо решить все TODO в `Tools\harness\agents\tools\default_tools.py` и `Tools\harness\agents\tools\tests\default_tools_patch_file_test.py`
 В конце не забудь обновить `Tools\harness\agents\tools\tool_help.md`.
 
 ***
@@ -8,3 +7,7 @@
 1. Запускать код не нужно (Я САМ).
 2. О результатах отпишись в `result.md` в формате `было→стало(почему)` (создай файл в той же папке где и `todo.md` для задачи).
 3. Если от меня требуются какие-то действия, то пиши их в `note.md` (создай файл в той же папке где и `todo.md` для задачи).
+4. Старайся беречь токены:
+   - прочитай справку (`verbosity_help`)
+   - узнай доступные директории и расширения файлов для работы;
+   - потом приступай к задаче.

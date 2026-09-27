@@ -51,18 +51,18 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path", "content"]
                 }),
-                (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
-                    "type": "object",
-                    "properties": {
-                        "path": {
-                            "type": "string"
-                        },
-                        "patch": {
-                            "type": "string"
-                        }
-                    },
-                    "required": ["path", "patch"]
-                }),
+                # (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлу.", {
+                #     "type": "object",
+                #     "properties": {
+                #         "path": {
+                #             "type": "string"
+                #         },
+                #         "patch": {
+                #             "type": "string"
+                #         }
+                #     },
+                #     "required": ["path", "patch"]
+                # }),
                 (DefaultTools.get_file_diff.__name__, "Получить diff для целевого файла.", {
                     "type": "object",
                     "properties": {
@@ -213,7 +213,17 @@ class DefaultTools(i_tools.ITools):
 
     # text tools
 
+    def is_file_under_git(self, path) -> str:
+        # TODO: необходимо реализовать метод
+        # метод проверяет находится ли файл под контролем git, чтобы иметь возможность применять к нему методы `apply_diff_patch` и `get_file_diff`
+        # метод необходимо добавить в список доступных tools и обновить тесты default_tools_patch_file_test.py с учётом его наличия
+        ...
+
     def apply_diff_patch(self, path: str, patch: str) -> str:
+        # TODO: необходимо изменить реализацию этой функции по аналогии с get_file_diff: использовать системный git через subprocess.
+        # Важные моменты:
+        # 1. удали аргумент path, т.к. вся необходима информация должен содержаться в patch
+        # 2. patch необходимо проверять на то, чтобы его целями были файлы в директориях с w-доступом.
         try:
             self._check_access(path, 'w')
             self._check_extensions(path, 'w')
@@ -265,6 +275,12 @@ class DefaultTools(i_tools.ITools):
             return result.stdout
         except Exception as error:
             raise Exception(f"cannot get diff for '{path}' → {error}")
+
+    def discard_file_changes(self, path) -> str:
+        # TODO: необходимо реализовать метод
+        # отменяет изменения внесённые в файл после HEAD
+        # метод необходимо добавить в список доступных tools и обновить тесты default_tools_patch_file_test.py с учётом его наличия
+        ...
 
     # file tools
 
