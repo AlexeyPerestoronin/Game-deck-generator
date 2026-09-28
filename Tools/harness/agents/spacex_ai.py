@@ -220,15 +220,11 @@ class SpaceXAI(i_agent.IAgent):
             raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
             args = json.loads(raw_args)
 
-            log_arg = "..." if tool_call.function.name == 'write_file' else args
+            log_arg = "..." if tool_call.function.name in ['write_file', 'apply_diff_patch'] else args
             self.__logger.log_line(f"{i}. {tool_call.function.name}({log_arg})")
             try:
                 result = self.__tools.call(tool_call.function.name, **args)
                 self.__logger.log_str(" → success")
-                if tool_call.function.name in ['read_file', 'write_file']:
-                    self.__logger.log_str(f" → read/write {len(result)}symbols")
-                else:
-                    self.__logger.log_line("```").log_line(result).log_line("```")
             except Exception as e:
                 result = f"execution error: {e}"
                 self.__logger.log_str(f" → fail → {result}")

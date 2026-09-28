@@ -4,9 +4,11 @@ import pathlib
 import subprocess
 import tempfile
 
+from typing import Tuple
 from classproperties import classproperty
 
 from . import i_tools
+from ... import logger
 
 __all__ = ['DefaultTools']
 
@@ -15,8 +17,10 @@ __all__ = ['DefaultTools']
 class DefaultTools(i_tools.ITools):
     """Default tool set: shell execution (with confirm), read/write file (sandboxed)."""
 
-    def __init__(self, safe_mode: bool, settings: dict):
+    def __init__(self, safe_mode: bool, logger: logger.ILogger, settings: dict):
         self._safe_mode = safe_mode
+        self._logger = logger
+
         self._cwd = settings["cwd"]
         self._temp_dir = settings["temp-dir"]
         self._available_file_extension = settings["available-file-extensions"]
@@ -201,8 +205,20 @@ class DefaultTools(i_tools.ITools):
         return self._tools
 
     def call(self, tool_name: str, **args) -> str:
-        if hasattr(self, tool_name): return getattr(self, tool_name)(**args)
-        raise Exception(f"Tool {tool_name} not available")
+        if not hasattr(self, tool_name):
+            raise Exception(f"tool '{tool_name}' not available")
+        result = getattr(self, tool_name)(**args)
+        if tool_name == DefaultTools.apply_diff_patch.__name__:
+            tmp = result[1]
+            self.__logger.log_line(f"Apply patch {tmp}")
+            result = result[0]
+        elif tool_name == DefaultTools.read_file.__name__:
+            self.__logger.log_line(f"Read {len(result)}symbols")
+        elif tool_name == DefaultTools.write_file.__name__:
+            self.__logger.log_line(f"Write {len(result)}symbols")
+        else:
+            self._logger.log_line('Result:').log_line("```").log_line(result).log_line("```")
+        return result
 
     def _is_allowed(self, path: str, dirs: list, files: list) -> bool:
         # директории — по префиксу пути, файлы — только точное совпадение
@@ -313,7 +329,7 @@ class DefaultTools(i_tools.ITools):
         except Exception as error:
             raise Exception(f"cannot check if file '{path}' is under git → {error}")
 
-    def apply_diff_patch(self, patch: str) -> str:
+    def apply_diff_patch(self, patch: str) -> Tuple[str, str]:
         try:
             if not patch or not str(patch).strip():
                 raise Exception("invalid or empty patch format")
@@ -333,7 +349,7 @@ class DefaultTools(i_tools.ITools):
             if result.returncode != 0:
                 error_text = (result.stderr or result.stdout or "").strip()
                 raise Exception(error_text or f"git apply failed with code {result.returncode}")
-            return f"successfully applied patch to {', '.join(targets)}"
+            return f"successfully applied patch to {', '.join(targets)}", tmp
         except Exception as error:
             raise Exception(f"cannot apply diff patch → {error}")
 

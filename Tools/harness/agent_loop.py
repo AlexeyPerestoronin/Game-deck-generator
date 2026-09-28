@@ -19,7 +19,7 @@ class AgentLoop:
         self._iteration = 0
         self._iteration_limit = self._settings["iteration-limit"]
 
-        self.__tools = agents.tools.DefaultTools(self._safe_mode, self._settings["tool-settings"])
+        self.__tools = agents.tools.DefaultTools(self._safe_mode, self._logger, self._settings["tool-settings"])
 
         requested_vendor = self._settings["vendor"]
         requested_model = self._settings["model"]

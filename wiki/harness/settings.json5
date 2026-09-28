@@ -16,11 +16,15 @@
         ],
         dirs: [
             // minimal directory scope
-            "w:Tools/harness/agents/tools",
-            "w:WiKi/dev-plan/phase-IV/9 add rw-files",
+            "w:Tools/utils",
+            "w:WiKi/dev-plan/phase-IV/10 add new invoke task",
             // rules and roles
             "r:WiKi/harness/rules",
             "r:WiKi/harness/roles",
+        ],
+        "files": [
+            "w:tasks.py",
+            "w:tasks.json5"
         ],
         "available-file-extensions": [
             // empty list meant allow all extensions
@@ -31,5 +35,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Необходимо решить задачу: см. 'WiKi/dev-plan/phase-IV/9 add rw-files/todo.md'",
+    "prompt": "Необходимо решить задачу: см. 'WiKi/dev-plan/phase-IV/10 add new invoke task/todo.md'",
 }
