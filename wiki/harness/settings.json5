@@ -35,5 +35,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Необходимо решить задачу: см. 'WiKi/dev-plan/phase-IV/10 add new invoke task/todo.md'",
+    "prompt": "Необходимо решить задачу на доработку №1: см. 'WiKi/dev-plan/phase-IV/10 add new invoke task/todo.md'",
 }
