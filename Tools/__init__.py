@@ -109,14 +109,14 @@ def _start_website(commands: list[str]) -> None:
 
 
 @invoke.task()
-def build_deck_gen(ctx, debug: bool = True):
+def build_deck_gen(ctx, release: bool = False):
     """Build native deck_gen via cargo; copy release binary to repo root."""
     root = pathlib.Path(os.getcwd())
     command = ["cargo", "build", "--manifest-path", _CARGO_MANIFEST]
-    if not debug:
+    if release:
         command.append("--release")
     _run(command, root)
-    if not debug:
+    if release:
         _copy_release_binaries(root)
 
 
@@ -131,21 +131,9 @@ def build_deck_gen_wasm(ctx):
         _start_website(website_commands)
 
 
-@invoke.task()
-def remove_python_cache(ctx, safe_mode: bool = False):
-    """Remove python cache files (__pycache__) and byte-code (*.pyc)"""
-    cwd = pathlib.Path(os.getcwd())
-    target_dir = cwd / "Tools"
-
-    for p in list(target_dir.rglob("*")):
-        if p.is_dir() and p.name == "__pycache__":
-            shutil.rmtree(p)
-
-
 collection = invoke.Collection("tools")
 collection.add_task(build_deck_gen)
 collection.add_task(build_deck_gen_wasm)
-collection.add_task(remove_python_cache)
 
 from . import harness
 

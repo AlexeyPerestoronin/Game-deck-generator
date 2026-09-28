@@ -102,9 +102,17 @@ class SpaceXAI(i_agent.IAgent):
         response = self.__execute_request()
         self.__chat.append(response)
 
-        text = self.__get_response_text(response)
+        role = getattr(response, 'role', None)
+        if role:
+            self.__logger.log_line(f"role: {role}")
+
+        reasoning = getattr(response, 'reasoningContent', None)
+        if reasoning:
+            self.__logger.log_line("request reasoning:").log_line('```').log_line(reasoning).log_line('```')
+
+        text = getattr(response, 'content', None)
         if text:
-            self.__log_agent_content(text)
+            self.__logger.log_line("agent content:").log_line('```').log_line(text).log_line('```')
 
         if response.tool_calls:
             self.__handle_tool_calls(response.tool_calls)
@@ -178,8 +186,9 @@ class SpaceXAI(i_agent.IAgent):
     def __log_prompt(self, prompt: str):
         self.__logger.log_line("user prompt:").log_line('```').log_line(prompt).log_line('```')
 
-    def __log_agent_content(self, text: str):
-        self.__logger.log_line("agent content:").log_line('```').log_line(text).log_line('```')
+    def __log_reasoning(self):
+        ...
+
 
     def __execute_request(self):
         response = self.__chat.sample()
@@ -211,9 +220,6 @@ class SpaceXAI(i_agent.IAgent):
             else:
                 result.append(t)
         return result
-
-    def __get_response_text(self, response) -> str | None:
-        return getattr(response, 'content', None)
 
     def __handle_tool_calls(self, tool_calls):
         self.__logger.log_line("agent request tools:")

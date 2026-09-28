@@ -25,8 +25,11 @@ def run_loop(ctx, settings: str):
     log_dir = _get_log_folder(settings)
     log_file = log_dir / "log.md"
     dump_file = log_dir / "dump.json"
-    settings["tool-settings"]["cwd"] = cwd
-    settings["tool-settings"]["temp-dir"] = log_dir
+    tool_settings = settings["tool-settings"]
+    if not tool_settings.find("cwd"):
+        tool_settings["cwd"] = cwd
+    if not tool_settings.find("temp-dir"):
+        tool_settings["temp-dir"] = log_dir
     loop = agent_loop.AgentLoop(safe_mode, logger.DoubleLogger(log_file), settings)
     loop.start(settings["prompt"], dump_file)
 

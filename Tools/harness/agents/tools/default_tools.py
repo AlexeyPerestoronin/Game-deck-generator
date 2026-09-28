@@ -21,10 +21,22 @@ class DefaultTools(i_tools.ITools):
         self._temp_dir = settings["temp-dir"]
         self._available_file_extension = settings["available-file-extensions"]
         self._command_execution_limit = settings.get("command-execution-limit", 60)
+
+        # r = read
+        # w = write
+
         self._w_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("w:")]
         self._r_shell = [c[2:] for c in settings.get("shell", []) if c.startswith("r:")] + self._w_shell
+
         self._w_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("w:")]
         self._r_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("r:")] + self._w_dirs
+
+        # TODO:
+        # необходимо обновить логику с учётом появления отдельных групп только для файлов
+        # файлы в группе _w_files доступны для записи и для чтения даже если они находятся за пределами разрешённых директорий из _r_dirs
+        # файлы в группе _r_files только для чтения даже если они находятся за пределами разрешённых директорий из _r_dirs
+        self._w_files = [d[2:] for d in settings.get("files", []) if d.startswith("w:")]
+        self._r_files = [d[2:] for d in settings.get("files", []) if d.startswith("r:")] + self._w_files
 
         (pathlib.Path(self._cwd) / pathlib.Path(self._temp_dir)).mkdir(parents=True, exist_ok=True)
 
@@ -204,9 +216,10 @@ class DefaultTools(i_tools.ITools):
 
     def _check_extensions(self, path: str, mode: str, error: str | None = None):
         file_extension = pathlib.Path(path).suffix
-        if file_extension not in self._available_file_extension:
-            raise Exception(error if error else
-                            f"{mode}-access denied to {path} → unavailable file extension {file_extension} (list of available extensions is {self._available_file_extension})")
+        if len(self._available_file_extension) != 0:
+            if file_extension not in self._available_file_extension:
+                raise Exception(error if error else
+                                f"{mode}-access denied to {path} → unavailable file extension {file_extension} (list of available extensions is {self._available_file_extension})")
 
     def _run_git(self, args: list, cwd: str, stdin: str | None = None):
         # системный git с захватом вывода; stdin используется для git apply
@@ -268,7 +281,7 @@ class DefaultTools(i_tools.ITools):
             raise Exception(f"cannot load verbosity help → {error}")
 
     def list_available_file_extension(self) -> str:
-        return f"available: {self._available_file_extension}"
+        return f"available: {self._available_file_extension if len(self._available_file_extension) > 0 else 'all'}"
 
     def list_available_r_dir(self) -> str:
         return f"available: {self._r_dirs}"
