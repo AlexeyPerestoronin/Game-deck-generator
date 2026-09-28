@@ -16,7 +16,7 @@
         ],
         dirs: [
             // minimal directory scope
-            "w:Tools/utils",
+            "w:tools/utils",
             "w:WiKi/dev-plan/phase-IV/10 add new invoke task",
             // rules and roles
             "r:WiKi/harness/rules",

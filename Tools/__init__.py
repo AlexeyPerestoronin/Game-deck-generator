@@ -8,9 +8,9 @@ import sys
 
 import invoke
 
-_CARGO_MANIFEST = "Projects/Cargo.toml"
-_TRUNK_CONFIG = "Projects/Trunk.toml"
-_RELEASE_DIR = pathlib.Path("Projects") / "target" / "release"
+_CARGO_MANIFEST = "projects/Cargo.toml"
+_TRUNK_CONFIG = "projects/Trunk.toml"
+_RELEASE_DIR = pathlib.Path("projects") / "target" / "release"
 _WEBSITE_PORT = 8080
 _DECK_GEN_STEM = "deck_gen"
 

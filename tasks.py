@@ -2,8 +2,8 @@ import invoke
 import shutil
 import pathlib
 
-import Tools as tools
-import Tools.utils as utils
+import tools
+import tools.utils as utils
 
 
 @invoke.task()
