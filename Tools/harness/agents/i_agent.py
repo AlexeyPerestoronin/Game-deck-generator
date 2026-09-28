@@ -31,6 +31,10 @@ class IAgent(typing.Protocol):
         """Return the quantity of consumed token for current moment in the session."""
         ...
 
+    @property
+    def consumed_usd(self) -> float:
+        ...
+
     def iteration(self) -> bool:
         """Run a single agent loop iteration.
 

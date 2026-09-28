@@ -71,7 +71,7 @@ class AgentLoop:
 
             self._logger.\
                 log_line("")\
-               .log_line(f"## Iteration №{self._iteration}: (consumed tokens = {self._agent.consumed_tokens})")
+               .log_line(f"## Iteration №{self._iteration}: (tokens = {self._agent.consumed_tokens}; usd = {self._agent.consumed_usd})")
 
             if not self.check_session_token_limit():
                 raise Exception("interrupt loop: token limit exceed")

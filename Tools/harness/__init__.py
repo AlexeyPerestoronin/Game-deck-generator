@@ -13,6 +13,7 @@ def _get_log_folder(settings) -> pathlib.Path:
     log_folder.mkdir(parents=True, exist_ok=True)
     return log_folder
 
+
 @invoke.task()
 def run_loop(ctx, settings: str):
     """Run AI agent loop."""

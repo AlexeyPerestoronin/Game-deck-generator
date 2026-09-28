@@ -103,6 +103,11 @@ class GoogleAI(i_agent.IAgent):
         return self.__usage_stats.input_tokens + self.__usage_stats.output_tokens
 
     # i_agent.IAgent
+    @property
+    def consumed_usd(self) -> float:
+        return 0.0
+
+    # i_agent.IAgent
     def iteration(self, prompt: str = None) -> bool:
         if prompt:
             self.__log_prompt(prompt)

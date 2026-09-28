@@ -8,7 +8,6 @@ import sys
 
 import invoke
 
-
 _CARGO_MANIFEST = "Projects/Cargo.toml"
 _TRUNK_CONFIG = "Projects/Trunk.toml"
 _RELEASE_DIR = pathlib.Path("Projects") / "target" / "release"

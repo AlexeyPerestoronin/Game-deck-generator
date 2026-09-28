@@ -210,12 +210,12 @@ class DefaultTools(i_tools.ITools):
         result = getattr(self, tool_name)(**args)
         if tool_name == DefaultTools.apply_diff_patch.__name__:
             tmp = result[1]
-            self.__logger.log_line(f"Apply patch {tmp}")
+            self._logger.log_line(f"Apply patch {tmp}")
             result = result[0]
         elif tool_name == DefaultTools.read_file.__name__:
-            self.__logger.log_line(f"Read {len(result)}symbols")
+            self._logger.log_line(f"Read {len(result)}symbols")
         elif tool_name == DefaultTools.write_file.__name__:
-            self.__logger.log_line(f"Write {len(result)}symbols")
+            self._logger.log_line(f"Write {len(result)}symbols")
         else:
             self._logger.log_line('Result:').log_line("```").log_line(result).log_line("```")
         return result
@@ -229,8 +229,10 @@ class DefaultTools(i_tools.ITools):
         dirs = self._w_dirs if mode == 'w' else self._r_dirs
         files = self._w_files if mode == 'w' else self._r_files
         if not self._is_allowed(path, dirs, files):
-            raise Exception(error if error else
-                            f"{mode}-access denied to {path} → unavailable file location (list of available directories for {mode}-access is {dirs}; list of available files for {mode}-access is {files})")
+            raise Exception(
+                error if error else
+                f"{mode}-access denied to {path} → unavailable file location (list of available directories for {mode}-access is {dirs}; list of available files for {mode}-access is {files})"
+            )
 
     def _check_extensions(self, path: str, mode: str, error: str | None = None):
         file_extension = pathlib.Path(path).suffix

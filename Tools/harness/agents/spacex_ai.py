@@ -89,6 +89,7 @@ class SpaceXAI(i_agent.IAgent):
     def consumed_tokens(self) -> int:
         return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens)
 
+    # i_agent.IAgent
     @property
     def consumed_usd(self) -> float:
         return float(self.__usage_stats.total_cost_usd)
@@ -220,14 +221,14 @@ class SpaceXAI(i_agent.IAgent):
             raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
             args = json.loads(raw_args)
 
-            log_arg = "..." if tool_call.function.name in ['write_file', 'apply_diff_patch'] else args
+            log_arg = "..." if len(args) > 150 else args
             self.__logger.log_line(f"{i}. {tool_call.function.name}({log_arg})")
             try:
                 result = self.__tools.call(tool_call.function.name, **args)
-                self.__logger.log_str(" → success")
+                self.__logger.log_line("✅ success")
             except Exception as e:
                 result = f"execution error: {e}"
-                self.__logger.log_str(f" → fail → {result}")
+                self.__logger.log_line(f"❌ fail → {result}")
 
             tool_result = xai_sdk.chat.tool_result(result, tool_call_id=tool_call.id)
             self.__chat.append(tool_result)
