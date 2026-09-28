@@ -16,7 +16,7 @@
         ],
         dirs: [
             // minimal directory scope
-            "w:Tools/harness/tools",
+            "w:Tools/harness/agents/tools",
             "w:WiKi/dev-plan/phase-IV/9 add rw-files",
             // rules and roles
             "r:WiKi/harness/rules",

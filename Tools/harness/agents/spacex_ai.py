@@ -96,7 +96,7 @@ class SpaceXAI(i_agent.IAgent):
     # i_agent.IAgent
     def iteration(self, prompt: str) -> bool:
         if prompt:
-            self.__log_prompt(prompt)
+            self.__logger.log_line("user prompt:").log_line('```').log_line(prompt).log_line('```')
             self.__chat.append(xai_sdk.chat.user(prompt))
 
         response = self.__execute_request()
@@ -182,13 +182,6 @@ class SpaceXAI(i_agent.IAgent):
             conversation_id=self.__chat_id,
             tools=self.__prepare_grok_tools(self.__tools.list),
         )
-
-    def __log_prompt(self, prompt: str):
-        self.__logger.log_line("user prompt:").log_line('```').log_line(prompt).log_line('```')
-
-    def __log_reasoning(self):
-        ...
-
 
     def __execute_request(self):
         response = self.__chat.sample()

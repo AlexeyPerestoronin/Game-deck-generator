@@ -31,10 +31,7 @@ class DefaultTools(i_tools.ITools):
         self._w_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("w:")]
         self._r_dirs = [d[2:] for d in settings.get("dirs", []) if d.startswith("r:")] + self._w_dirs
 
-        # TODO:
-        # необходимо обновить логику с учётом появления отдельных групп только для файлов
-        # файлы в группе _w_files доступны для записи и для чтения даже если они находятся за пределами разрешённых директорий из _r_dirs
-        # файлы в группе _r_files только для чтения даже если они находятся за пределами разрешённых директорий из _r_dirs
+        # точечный доступ к файлам вне разрешённых директорий (_w_files также входят в _r_files)
         self._w_files = [d[2:] for d in settings.get("files", []) if d.startswith("w:")]
         self._r_files = [d[2:] for d in settings.get("files", []) if d.startswith("r:")] + self._w_files
 
@@ -45,6 +42,8 @@ class DefaultTools(i_tools.ITools):
                 (DefaultTools.list_available_file_extension.__name__, "Список доступных расширений файлов.", {}),
                 (DefaultTools.list_available_r_dir.__name__, "Список доступных директорий для чтения.", {}),
                 (DefaultTools.list_available_w_dir.__name__, "Список доступных директорий для записи.", {}),
+                (DefaultTools.list_available_r_file.__name__, "Список доступных файлов для чтения.", {}),
+                (DefaultTools.list_available_w_file.__name__, "Список доступных файлов для записи.", {}),
                 (DefaultTools.list_available_shell_commands.__name__, "Список доступных shell команд.", {}),
                 (DefaultTools.read_file.__name__, "Прочитать содержимое файла.", {
                     "type": "object",
@@ -205,14 +204,17 @@ class DefaultTools(i_tools.ITools):
         if hasattr(self, tool_name): return getattr(self, tool_name)(**args)
         raise Exception(f"Tool {tool_name} not available")
 
-    def _is_allowed(self, path: str, dirs: list) -> bool:
+    def _is_allowed(self, path: str, dirs: list, files: list) -> bool:
+        # директории — по префиксу пути, файлы — только точное совпадение
         abs_p = os.path.abspath(path)
-        return any(abs_p.startswith(os.path.abspath(d)) for d in dirs)
+        return any(abs_p.startswith(os.path.abspath(d)) for d in dirs) or any(abs_p == os.path.abspath(f) for f in files)
 
     def _check_access(self, path: str, mode: str, error: str | None = None):
         dirs = self._w_dirs if mode == 'w' else self._r_dirs
-        if not self._is_allowed(path, dirs):
-            raise Exception(error if error else f"{mode}-access denied to {path} → unavailable file location (list of available file locations for {mode}-access is {dirs})")
+        files = self._w_files if mode == 'w' else self._r_files
+        if not self._is_allowed(path, dirs, files):
+            raise Exception(error if error else
+                            f"{mode}-access denied to {path} → unavailable file location (list of available directories for {mode}-access is {dirs}; list of available files for {mode}-access is {files})")
 
     def _check_extensions(self, path: str, mode: str, error: str | None = None):
         file_extension = pathlib.Path(path).suffix
@@ -288,6 +290,12 @@ class DefaultTools(i_tools.ITools):
 
     def list_available_w_dir(self) -> str:
         return f"available: {self._w_dirs}"
+
+    def list_available_r_file(self) -> str:
+        return f"available: {self._r_files}"
+
+    def list_available_w_file(self) -> str:
+        return f"available: {self._w_files}"
 
     def list_available_shell_commands(self) -> str:
         return f"available: {self._r_shell}"
