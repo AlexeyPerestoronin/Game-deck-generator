@@ -16,8 +16,8 @@
         ],
         dirs: [
             // minimal directory scope
-            "w:tools/utils",
-            "w:WiKi/dev-plan/phase-IV/10 add new invoke task",
+            "w:tools",
+            "w:WiKi/dev-plan/phase-IV/11 check cache usage with grok ai",
             // rules and roles
             "r:WiKi/harness/rules",
             "r:WiKi/harness/roles",
@@ -35,5 +35,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Необходимо решить задачу на доработку №1: см. 'WiKi/dev-plan/phase-IV/10 add new invoke task/todo.md'",
+    "prompt": "Необходимо решить задачу на доработку №1: см. 'WiKi/dev-plan/phase-IV/11 check cache usage with grok ai/todo.md'",
 }
