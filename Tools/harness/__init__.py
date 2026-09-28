@@ -21,7 +21,7 @@ def run_loop(ctx, settings: str):
         settings = json5.load(file)
 
     cwd = pathlib.Path(settings["cwd"])
-    safe_mode = True if settings["mode"] == "auto accept" else False
+    safe_mode = False if settings["mode"] == "auto accept" else True
 
     log_dir = _get_log_folder(settings)
     log_file = log_dir / "log.md"

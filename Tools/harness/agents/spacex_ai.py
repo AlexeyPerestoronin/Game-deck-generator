@@ -194,10 +194,8 @@ class SpaceXAI(i_agent.IAgent):
         if response.usage:
             self.__usage_stats.input_tokens += response.usage.prompt_tokens or 0
             self.__usage_stats.output_tokens += response.usage.completion_tokens or 0
-
-            details = getattr(response.usage, "prompt_tokens_details", None)
-            if details:
-                self.__usage_stats.cached_tokens += getattr(details, "cached_tokens", 0) or 0
+            # xai_sdk gRPC SamplingUsage; OpenAI-style prompt_tokens_details is absent
+            self.__usage_stats.cached_tokens += getattr(response.usage, "cached_prompt_text_tokens", 0) or 0
 
         if hasattr(response, "cost_usd") and response.cost_usd is not None:
             self.__usage_stats.total_cost_usd += response.cost_usd
