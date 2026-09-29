@@ -1,6 +1,6 @@
-Нужно прогнать любую задачу на Grok с несколькими итерациями (tool-loop) и в `Sessions statistic` проверить `cached tokens`.
+Проверка решения (форматирование `WiKi/templates`) выполнена в этой сессии.
 
-Ожидание:
+Проверь `Sessions statistic` именно этого прогона:
 - 1-й request: `cached tokens = 0` — нормально, префикса ещё нет;
 - со 2-го request: `cached tokens > 0` и растёт вместе с history.
 

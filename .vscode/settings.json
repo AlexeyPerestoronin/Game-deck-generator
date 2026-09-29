@@ -58,7 +58,7 @@
         "-t",
         ".",
         "-s",
-        "./Tools/harness/agents/tools/tests",
+        "./tools/harness/agents/tools/tests",
         "-p",
         "*_test.py"
     ]
