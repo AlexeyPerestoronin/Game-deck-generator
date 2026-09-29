@@ -552,3 +552,11 @@ class DefaultTools(i_tools.ITools):
             return "(command finished without output)"
         except subprocess.TimeoutExpired:
             raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._invoke_execution_limit}s)")
+
+    # user communication
+
+    def ask_user(self, question: str) -> str:
+        # TODO: необходимо реализовать
+        # 
+        # Необходимо реализовать инструмент, который позволяет задавать вопросы и получать на них ответы через CLI
+        ...

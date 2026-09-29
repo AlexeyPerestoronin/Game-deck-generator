@@ -132,12 +132,13 @@ class SpaceXAI(i_agent.IAgent):
 
     # i_agent.IAgent
     def finish(self):
+        total_tokens = int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens)
         self.__logger.log_line("Sessions statistic")\
             .log_line(f"- total requests: {self.__usage_stats.requests}")\
-            .log_line(f"- total tokens: {self.consumed_tokens}")\
-            .log_line(f"    - input tokens: {self.__usage_stats.input_tokens} (from stats)")\
-            .log_line(f"        - cached tokens: {self.__usage_stats.cached_tokens}")\
-            .log_line(f"    - output tokens: {self.__usage_stats.output_tokens}")\
+            .log_line(f"- total tokens: {total_tokens}")\
+            .log_line(f"    → input tokens: {self.__usage_stats.input_tokens} (from stats)")\
+            .log_line(f"    ← output tokens: {self.__usage_stats.output_tokens}")\
+            .log_line(f"    ↔ cached tokens: {self.__usage_stats.cached_tokens}")\
             .log_line(f"- total cost: {self.__usage_stats.total_cost_usd}$")
 
     # i_agent.IAgent

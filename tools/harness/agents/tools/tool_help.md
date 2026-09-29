@@ -460,7 +460,7 @@ Git-операции (`is_file_under_git`, `get_file_diff`, `apply_diff_patch`, 
 **Поведение:**
 - Выполняется строка `invoke ` + `command` (`shell=True`) в `cwd` из настроек.
 - Белый список `run_shell` не используется: запускается только `invoke`.
-- Лимит времени задается настройкой `command-execution-limit` (по умолчанию 60 с).
+- Лимит времени задается настройкой `command-execution-limit` (по умолчанию 120 с).
 - Вывод декодируется как `utf-8`, затем `oem`, затем `cp1251`.
 
 **Возвращает:** вывод команды либо `(command finished without output)`.
