@@ -517,3 +517,10 @@ class DefaultTools(i_tools.ITools):
             return "(command finished without output)"
         except subprocess.TimeoutExpired:
             raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")
+
+    def run_invoke(self, command: str) -> str:
+        # TODO: необходимо реализовать
+        # 
+        # Данный метод должен запускать через subprocess команду invoke (например: invoke --list) c определёнными аргументами.
+        # В качестве рабоче директории используй self._cwd
+        ...
