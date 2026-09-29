@@ -5,9 +5,13 @@
         "log-folder": ".log"
     },
     // agent's settings
-    "mode": "auto accept",
+    "mode": "safe",
     "vendor": "SpaceXAI",
-    "model": "Grok 4.6",
+    "model": {
+        "name": "Grok 4.6",
+        "token-limit": 128000,
+        "USD-limit": 0.5
+    },
     "tool-settings": {
         // "cwd": "current working directory for tools"
         // "temp-dir": "directory for temporary files collecting",

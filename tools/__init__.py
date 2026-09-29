@@ -126,11 +126,9 @@ def _run_crate_tests(crate: str, name: str | None) -> None:
     _run(command, root)
 
 
-@invoke.task(
-    help = {
-        "release": "optional flag parameter defined building in release mode (by default False = debug mode)",
-    }
-)
+@invoke.task(help={
+    "release": "optional flag parameter defined building in release mode (by default False = debug mode)",
+})
 def build_deck_gen(ctx, release: bool = False):
     """Build native deck_gen via cargo; copy release binary to repo root."""
     root = pathlib.Path(os.getcwd())
@@ -142,11 +140,9 @@ def build_deck_gen(ctx, release: bool = False):
         _copy_release_binaries(root)
 
 
-@invoke.task(
-    help = {
-        "name": "unit-test name to be running (by default None = run all tests)",
-    }
-)
+@invoke.task(help={
+    "name": "unit-test name to be running (by default None = run all tests)",
+})
 def run_deck_gen_tests(ctx, name: str | None = None):
     """Run unit tests for the deck_gen crate.
 
@@ -167,11 +163,9 @@ def build_deck_gen_wasm(ctx):
         _start_website(website_commands)
 
 
-@invoke.task(
-    help = {
-        "name": "unit-test name to be running (by default None = run all tests)",
-    }
-)
+@invoke.task(help={
+    "name": "unit-test name to be running (by default None = run all tests)",
+})
 def run_deck_gen_wasm_tests(ctx, name: str | None = None):
     """Run unit tests for the deck_gen_wasm crate.
 

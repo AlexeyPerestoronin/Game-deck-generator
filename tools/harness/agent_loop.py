@@ -22,9 +22,16 @@ class AgentLoop:
         self.__tools = agents.tools.DefaultTools(self._safe_mode, self._logger, self._settings["tool-settings"])
 
         requested_vendor = self._settings["vendor"]
-        requested_model = self._settings["model"]
+        requested_model = self._settings["model"]["name"]
         if requested_vendor == agents.SpaceXAI.vendor:
             model_specification = agents.SpaceXModels.from_str(requested_model)
+
+            token_limit = self._settings["model"].get("token-limit", None)
+            if token_limit: model_specification.tls = token_limit
+
+            usd_limit = self._settings["model"].get("USD-limit", None)
+            if usd_limit: model_specification.usd_limit = usd_limit
+
             self._agent = agents.SpaceXAI(self.__tools, self._logger, model_specification)
         elif requested_vendor == agents.GoogleAI.vendor:
             model_specification = agents.GoogleModels.from_str(requested_model)
@@ -33,7 +40,6 @@ class AgentLoop:
             raise Exception("unexpected model of agent")
 
     def check_session_token_limit(self) -> bool:
-        """Return True if within limit (or user approved over limit)."""
         limit = self._agent.tokens_limit
         consumed = self._agent.consumed_tokens
         if limit != -1 and consumed > limit:
@@ -44,8 +50,18 @@ class AgentLoop:
                 return user_decision in ("y", "yes")
         return True
 
+    def check_session_usd_limit(self) -> bool:
+        limit = self._agent.limit_usd
+        consumed = self._agent.consumed_usd
+        if limit != -1 and consumed > limit:
+            message = f"⚠️ USD limit exceed ({consumed} > {limit})"
+            self._logger.log_line(message)
+            if self._safe_mode:
+                user_decision = input(f"{message} → resume execution? [y/N]: ").strip().lower()
+                return user_decision in ("y", "yes")
+        return True
+
     def check_session_iteration_limit(self) -> bool:
-        """Return True if within limit (or user approved over limit)."""
         limit = self._iteration_limit
         consumed = self._iteration
         if consumed > limit:
@@ -75,6 +91,9 @@ class AgentLoop:
 
             if not self.check_session_token_limit():
                 raise Exception("interrupt loop: token limit exceed")
+
+            if not self.check_session_usd_limit():
+                raise Exception("interrupt loop: USD limit exceed")
 
             if not self.check_session_iteration_limit():
                 raise Exception("interrupt loop: iteration limit exceed")

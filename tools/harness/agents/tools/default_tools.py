@@ -520,7 +520,7 @@ class DefaultTools(i_tools.ITools):
 
     def run_invoke(self, command: str) -> str:
         # TODO: необходимо реализовать
-        # 
+        #
         # Данный метод должен запускать через subprocess команду invoke (например: invoke --list) c определёнными аргументами.
         # В качестве рабоче директории используй self._cwd
         ...

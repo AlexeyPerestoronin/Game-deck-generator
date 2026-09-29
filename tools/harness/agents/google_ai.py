@@ -93,6 +93,7 @@ class GoogleAI(i_agent.IAgent):
     def model(self) -> str:
         self.__spec.model
 
+    # i_agent.IAgent
     @property
     def tokens_limit(self) -> int:
         return self.__spec.tls
@@ -101,6 +102,11 @@ class GoogleAI(i_agent.IAgent):
     @property
     def consumed_tokens(self) -> int:
         return self.__usage_stats.input_tokens + self.__usage_stats.output_tokens
+
+    # i_agent.IAgent
+    @property
+    def limit_usd(self) -> float:
+        return -1
 
     # i_agent.IAgent
     @property
@@ -126,6 +132,7 @@ class GoogleAI(i_agent.IAgent):
             return False
         return True
 
+    # i_agent.IAgent
     def finish(self):
         self.__logger.log_line("Sessions statistic")\
             .log_line(f"- total requests: {self.__usage_stats.requests}")\

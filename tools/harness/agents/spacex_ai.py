@@ -31,12 +31,13 @@ class SpaceXModels:
     @classmethod
     def from_str(cls, model: str) -> 'SpaceXModels':
         if model == "Grok 4.6":
-            return cls("grok-4.6", 250000)
+            return cls("grok-4.6", 500000, -1)
         raise ValueError(f"Unknown model: {model}")
 
-    def __init__(self, model: str, tls: int):
+    def __init__(self, model: str, tls: int, usd_limit: int):
         self.model = model
         self.tls = tls
+        self.usd_limit = usd_limit
 
 
 class SpaceXAI(i_agent.IAgent):
@@ -86,8 +87,18 @@ class SpaceXAI(i_agent.IAgent):
 
     # i_agent.IAgent
     @property
+    def tokens_limit(self) -> int:
+        return self.__spec.tls
+
+    # i_agent.IAgent
+    @property
     def consumed_tokens(self) -> int:
-        return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens)
+        return int(self.__usage_stats.input_tokens) + int(self.__usage_stats.output_tokens) - int(self.__usage_stats.cached_tokens)
+
+    # i_agent.IAgent
+    @property
+    def limit_usd(self) -> float:
+        return self.__spec.usd_limit
 
     # i_agent.IAgent
     @property
@@ -101,13 +112,12 @@ class SpaceXAI(i_agent.IAgent):
             self.__chat.append(xai_sdk.chat.user(prompt))
 
         response = self.__execute_request()
-        self.__chat.append(response)
 
         role = getattr(response, 'role', None)
         if role:
             self.__logger.log_line(f"role: {role}")
 
-        reasoning = getattr(response, 'reasoningContent', None)
+        reasoning = getattr(response, 'reasoning_content', None)
         if reasoning:
             self.__logger.log_line("request reasoning:").log_line('```').log_line(reasoning).log_line('```')
 
@@ -120,6 +130,7 @@ class SpaceXAI(i_agent.IAgent):
             return False
         return True
 
+    # i_agent.IAgent
     def finish(self):
         self.__logger.log_line("Sessions statistic")\
             .log_line(f"- total requests: {self.__usage_stats.requests}")\
@@ -186,6 +197,7 @@ class SpaceXAI(i_agent.IAgent):
 
     def __execute_request(self):
         response = self.__chat.sample()
+        self.__chat.append(response)
         self.__update_stats(response)
         return response
 

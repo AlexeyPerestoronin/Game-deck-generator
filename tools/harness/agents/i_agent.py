@@ -27,12 +27,23 @@ class IAgent(typing.Protocol):
         ...
 
     @property
+    def tokens_limit(self) -> int:
+        """Return the limit quantity of token could be consumed during the session."""
+        ...
+
+    @property
     def consumed_tokens(self) -> int:
         """Return the quantity of consumed token for current moment in the session."""
         ...
 
     @property
+    def limit_usd(self) -> float:
+        """Return the limit of USD could be spent during the session."""
+        ...
+
+    @property
     def consumed_usd(self) -> float:
+        """Return the quantity of spent USD for current moment in the session."""
         ...
 
     def iteration(self) -> bool:

@@ -8,7 +8,7 @@ from . import logger, agent_loop
 
 def _get_log_folder(settings) -> pathlib.Path:
     log_folder_1part = pathlib.Path(settings["cwd"]) / pathlib.Path(settings["paths"]["log-folder"])
-    log_folder_2part = f"{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}_{settings['vendor']}_{settings['model']}"
+    log_folder_2part = f"{datetime.datetime.now().strftime('%Y-%m-%d %H-%M')}_{settings['vendor']}_{settings['model']['name']}"
     log_folder = log_folder_1part / log_folder_2part
     log_folder.mkdir(parents=True, exist_ok=True)
     return log_folder
