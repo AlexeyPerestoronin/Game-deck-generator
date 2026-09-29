@@ -1,6 +1,9 @@
 import invoke
 import shutil
 import pathlib
+import subprocess
+import sys
+import unittest
 
 import tools
 import tools.utils as utils
@@ -56,28 +59,65 @@ def make_task_template(ctx, type: str = None, name: str = None):
     shutil.copy(settings_template, dst_dir / "settings.json5")
 
 
+def _collect_test_ids(suite: unittest.TestSuite) -> list[str]:
+    # рекурсивно собираем id тестов из TestSuite
+    ids: list[str] = []
+    for item in suite:
+        if isinstance(item, unittest.TestSuite):
+            ids.extend(_collect_test_ids(item))
+        else:
+            ids.append(item.id())
+    return ids
+
+
+def _discover_tool_test_ids() -> list[str]:
+    # находим unittest-модули в ./Tools и возвращаем id доступных тестов
+    cwd = pathlib.Path(utils.settings.get_cwd())
+    tools_dir = cwd / "Tools"
+    loader = unittest.TestLoader()
+    suite = unittest.TestSuite()
+
+    for py_file in sorted(tools_dir.rglob("*.py")):
+        if "__pycache__" in py_file.parts:
+            continue
+        name = py_file.name
+        if not (name.startswith("test") or name.endswith("_test.py")):
+            continue
+        rel = py_file.relative_to(tools_dir)
+        module_name = "tools." + ".".join(rel.with_suffix("").parts)
+        suite.addTests(loader.loadTestsFromName(module_name))
+
+    return _collect_test_ids(suite)
+
+
 @invoke.task()
 def list_tool_tests(ctx):
     """Get list of all unittest of python-tools for this repository"""
-    # TODO: необходимо реализовать
-    # 
-    # Необходимо найти все unittest в директории ./tools и сформировать список доступных unit-тестов для запуска через run_tool_test
-    ...
+    for test_id in _discover_tool_test_ids():
+        print(test_id)
+
 
 @invoke.task(help={
     "name": "name of the unittest which should be run",
 })
-def run_tool_test(ctx, name: str = None):
+def run_tool_test(ctx, name: str | None = None):
     """Run unittest of python-tools for this repository"""
-    # TODO: необходимо реализовать
-    # 
-    # Запускает целевой тест через python -m unittest <name>
-    # Если name = None - запускает все доступных тесты.
-    ...
+    cwd = pathlib.Path(utils.settings.get_cwd())
+    if name is None:
+        names = _discover_tool_test_ids()
+        if not names:
+            print("No tool tests found")
+            return
+    else:
+        names = [name]
+    command = [sys.executable, "-m", "unittest", *names]
+    subprocess.run(command, cwd=cwd, check=True, stdout=sys.stdout, stderr=sys.stderr)
 
 
 namespace = invoke.Collection()
 namespace.add_task(remove_python_cache)
 namespace.add_task(make_task_template)
+namespace.add_task(list_tool_tests)
+namespace.add_task(run_tool_test)
 
 namespace.add_collection(tools.collection)
