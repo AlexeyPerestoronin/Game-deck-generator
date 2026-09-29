@@ -23,7 +23,7 @@
             "r:WiKi/harness/roles",
         ],
         "files": [
-            "tools/__init__.py"
+            "w:tools/__init__.py"
         ],
         "available-file-extensions": [
             // empty list meant allow all extensions

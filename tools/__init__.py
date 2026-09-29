@@ -1,4 +1,4 @@
-"""Invoke-задачи сборки deck_gen и обслуживания tools."""
+"""Invoke-задачи сборки и тестирования deck_gen и обслуживания tools."""
 
 import os
 import pathlib
@@ -8,11 +8,21 @@ import sys
 
 import invoke
 
+__all__ = [
+    "build_deck_gen",
+    "run_deck_gen_tests",
+    "build_deck_gen_wasm",
+    "run_deck_gen_wasm_tests",
+    "collection",
+]
+
 _CARGO_MANIFEST = "projects/Cargo.toml"
 _TRUNK_CONFIG = "projects/Trunk.toml"
 _RELEASE_DIR = pathlib.Path("projects") / "target" / "release"
 _WEBSITE_PORT = 8080
 _DECK_GEN_STEM = "deck_gen"
+_DECK_GEN_CRATE = "deck_gen"
+_DECK_GEN_WASM_CRATE = "deck_gen_wasm"
 
 
 def _run(command: list[str], cwd: pathlib.Path) -> None:
@@ -107,6 +117,15 @@ def _start_website(commands: list[str]) -> None:
         subprocess.Popen(command, shell=True)
 
 
+def _run_crate_tests(crate: str, name: str | None) -> None:
+    # cargo test для крейта; name фильтрует тест, None — все тесты
+    root = pathlib.Path(os.getcwd())
+    command = ["cargo", "test", "--manifest-path", _CARGO_MANIFEST, "-p", crate]
+    if name:
+        command.append(name)
+    _run(command, root)
+
+
 @invoke.task(
     help = {
         "release": "optional flag parameter defined building in release mode (by default False = debug mode)",
@@ -122,17 +141,19 @@ def build_deck_gen(ctx, release: bool = False):
     if release:
         _copy_release_binaries(root)
 
+
 @invoke.task(
     help = {
         "name": "unit-test name to be running (by default None = run all tests)",
     }
 )
 def run_deck_gen_tests(ctx, name: str | None = None):
-    """Run unit-tests for deck_gen"""
-    # TODO: необходимо реализовать
-    # 
-    # Необходимо реализовать прогон тесто для крейта deck_gen.
-    # Если имя теста задано - запускаем конкретный тест; если нет - запускаем все тесты.
+    """Run unit tests for the deck_gen crate.
+
+    Args:
+        name: Optional test name filter. Runs all tests when omitted.
+    """
+    _run_crate_tests(_DECK_GEN_CRATE, name)
 
 
 @invoke.task()
@@ -152,15 +173,19 @@ def build_deck_gen_wasm(ctx):
     }
 )
 def run_deck_gen_wasm_tests(ctx, name: str | None = None):
-    """Run unit-tests for deck_gen_wasm"""
-    # TODO: необходимо реализовать
-    # 
-    # Необходимо реализовать прогон тесто для крейта deck_gen_wasm.
-    # Если имя теста задано - запускаем конкретный тест; если нет - запускаем все тесты.
+    """Run unit tests for the deck_gen_wasm crate.
+
+    Args:
+        name: Optional test name filter. Runs all tests when omitted.
+    """
+    _run_crate_tests(_DECK_GEN_WASM_CRATE, name)
+
 
 collection = invoke.Collection("tools")
 collection.add_task(build_deck_gen)
+collection.add_task(run_deck_gen_tests)
 collection.add_task(build_deck_gen_wasm)
+collection.add_task(run_deck_gen_wasm_tests)
 
 from . import harness
 
