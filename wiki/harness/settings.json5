@@ -16,15 +16,14 @@
         ],
         dirs: [
             // minimal directory scope
-            "w:WiKi/templates",
-            "w:WiKi/dev-plan/phase-IV/11 check cache usage with grok ai",
+            "w:tools",
+            "w:WiKi/dev-plan/phase-IV/12 apply diff path does not work correctly",
             // rules and roles
             "r:WiKi/harness/rules",
             "r:WiKi/harness/roles",
         ],
         "files": [
-            "w:tasks.py",
-            "w:tasks.json5"
+            "r:.log/2026-09-28 21-59_SpaceXAI_Grok 4.6/tmpu2dmnsl_.patch",
         ],
         "available-file-extensions": [
             // empty list meant allow all extensions
@@ -35,5 +34,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Необходимо проверить решение задачи: см. 'Проверка решения' в 'WiKi/dev-plan/phase-IV/11 check cache usage with grok ai/todo.md'",
+    "prompt": "Необходимо исправить баг: см. WiKi/dev-plan/phase-IV/12 apply diff path does not work correctly/todo.md",
 }

@@ -323,8 +323,9 @@ class DefaultTools(i_tools.ITools):
     def is_file_under_git(self, path: str) -> str:
         try:
             self._check_access(path, 'r')
-            basename, cwd = self._git_path_cwd(path)
-            result = self._run_git(["ls-files", "--error-unmatch", "--", basename], cwd)
+            # Use the path as-is (repo-relative) and main cwd so that produced diffs contain full paths.
+            # This ensures apply_diff_patch (which runs git apply from _cwd) sees matching paths in patch.
+            result = self._run_git(["ls-files", "--error-unmatch", "--", path], self._cwd)
             if result.returncode == 0:
                 return f"file '{path}' is under git"
             return f"file '{path}' is not under git"
@@ -343,9 +344,12 @@ class DefaultTools(i_tools.ITools):
 
             # Пишем патч во временный файл — это значительно надёжнее stdin
             # (особенно с кириллицей, многострочными файлами и на Windows).
+            # Гарантируем завершающий \n, иначе git apply может счесть патч повреждённым
+            # (corrupt patch), если входная строка patch не оканчивается на перевод строки.
             fd, tmp = tempfile.mkstemp(suffix=".patch", dir=self._temp_dir)
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                f.write(patch)
+            patch_to_write = patch if patch.endswith("\n") else (patch + "\n" if patch else patch)
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+                f.write(patch_to_write)
             result = self._run_git(["apply", "--ignore-whitespace", "--ignore-space-change", "--recount", tmp], self._cwd)
 
             if result.returncode != 0:
@@ -358,8 +362,8 @@ class DefaultTools(i_tools.ITools):
     def get_file_diff(self, path: str) -> str:
         try:
             self._check_access(path, 'r')
-            basename, cwd = self._git_path_cwd(path)
-            result = self._run_git(["diff", "HEAD", "--", basename], cwd)
+            # Use full path + main _cwd so diff contains correct repo-relative paths usable by apply_diff_patch.
+            result = self._run_git(["diff", "HEAD", "--", path], self._cwd)
             if result.returncode != 0:
                 error_text = (result.stderr or result.stdout or "").strip()
                 raise Exception(error_text or f"git diff failed with code {result.returncode}")
@@ -370,8 +374,8 @@ class DefaultTools(i_tools.ITools):
     def discard_file_changes(self, path: str) -> str:
         try:
             self._check_access(path, 'w')
-            basename, cwd = self._git_path_cwd(path)
-            result = self._run_git(["checkout", "HEAD", "--", basename], cwd)
+            # Use full path + main _cwd so checkout works for deep paths and matches patch path expectations.
+            result = self._run_git(["checkout", "HEAD", "--", path], self._cwd)
             if result.returncode != 0:
                 error_text = (result.stderr or result.stdout or "").strip()
                 raise Exception(error_text or f"git checkout failed with code {result.returncode}")

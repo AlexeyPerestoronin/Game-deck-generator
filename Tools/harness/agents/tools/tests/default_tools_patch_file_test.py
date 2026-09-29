@@ -13,6 +13,12 @@ import unittest
 from .. import default_tools
 
 
+class _NoopLogger:
+    """Минимальная заглушка ILogger для тестов (не пишет логи)."""
+    def log_line(self, message: str = "") -> '_NoopLogger':
+        return self
+
+
 class TestPatchFile(unittest.TestCase):
 
     def setUp(self):
@@ -27,6 +33,7 @@ class TestPatchFile(unittest.TestCase):
         self.repo_root = up
         os.chdir(self.repo_root)
 
+        # Используем 'Tools/...' (с большой буквы) чтобы совпадало с регистром в git index и abspath startswith.
         self.rel_f1 = "Tools/harness/agents/tools/tests/test_file1.txt"
         self.rel_f2 = "Tools/harness/agents/tools/tests/test_file2.txt"
         self.rel_f3 = "Tools/harness/agents/tools/tests/test_file3.txt"
@@ -44,18 +51,18 @@ class TestPatchFile(unittest.TestCase):
         with open(self._outside_file, "w", encoding="utf-8", newline="\n") as f:
             f.write("OUTSIDE SECRET\n")
 
-        w_dir = self.tests_dir.replace(self.cwd + '\\', '')
-        w_dir = w_dir.replace('\\', '/')
+        # Корректный относительный путь (с учётом регистра 'Tools/' для совпадения abspath и git pathspec)
+        tests_rel = "Tools/harness/agents/tools/tests"
         settings = {
             "available-file-extensions": [".py", ".txt", ".md"],
             "dirs": [
-                f"w:{w_dir}",
+                f"w:{tests_rel}",
             ],
-            "cwd": self.cwd,
-            "temp-dir": self.cwd + "/.log/tests",
+            "cwd": self.repo_root,
+            "temp-dir": ".log/tests",
             "command-execution-limit": 30,
         }
-        self._tools = default_tools.DefaultTools(False, settings)
+        self._tools = default_tools.DefaultTools(False, _NoopLogger(), settings)
 
     def tearDown(self):
         # Гарантированно возвращаем реальные файлы в исходное состояние
@@ -162,7 +169,7 @@ class TestPatchFile(unittest.TestCase):
         self._tools.discard_file_changes(self.rel_f1)
         self.assertEqual(self._read(self.rel_f1), self._originals[self.rel_f1])
         result = self._tools.apply_diff_patch(diff)
-        self.assertIn("successfully applied patch", result)
+        self.assertIn("successfully applied patch", result[0])
         self.assertEqual(self._read(self.rel_f1), self.modified_f1)
 
     def test_apply_diff_patch_rejects_w_outside_targets(self):
@@ -257,3 +264,20 @@ class TestPatchFile(unittest.TestCase):
 
         self.assertEqual(self._read(self.rel_f1), c1)
         self.assertEqual(self._read(self.rel_f3), c3)
+
+    def test_apply_diff_patch_without_final_newline_in_patch(self):
+        """Патч, не оканчивающийся на \n (как в кейсе с 'corrupt patch'), должен успешно применяться."""
+        self._write(self.rel_f1, self.modified_f1)
+        diff = self._tools.get_file_diff(self.rel_f1)
+        self._tools.discard_file_changes(self.rel_f1)
+        self.assertEqual(self._read(self.rel_f1), self._originals[self.rel_f1])
+
+        # Удаляем завершающие переводы строк из строки патча — эмулируем "патч без финального \n"
+        patch_no_nl = diff.rstrip("\r\n")
+        # Убеждаемся, что в строке теперь нет финального nl (для покрытия бага)
+        self.assertFalse(patch_no_nl.endswith("\n"))
+        self.assertFalse(patch_no_nl.endswith("\r"))
+
+        result = self._tools.apply_diff_patch(patch_no_nl)
+        self.assertIn("successfully applied patch", result[0])
+        self.assertEqual(self._read(self.rel_f1), self.modified_f1)

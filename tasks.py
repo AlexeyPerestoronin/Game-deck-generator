@@ -34,8 +34,9 @@ def make_task_template(ctx, type: str, name: str):
 
     templates = {
         "development": "development.md",
-        "planning": "planning.md",
         "refactoring": "refactoring.md",
+        "planning": "planning.md",
+        "fixing": "fixing.md",
     }
     if type not in templates:
         raise ValueError(f"Unknown task type: {type}")
