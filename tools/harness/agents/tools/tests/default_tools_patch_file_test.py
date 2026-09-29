@@ -27,17 +27,16 @@ class TestPatchFile(unittest.TestCase):
 
         # Работаем напрямую с реальными файлами в репозитории (они под git)
         self.tests_dir = os.path.dirname(os.path.abspath(__file__))
-        # Поднимаемся на 5 уровней: tests -> tools -> agents -> harness -> Tools -> repo root
+        # Поднимаемся на 5 уровней: tests -> tools -> agents -> harness -> tools -> repo root
         up = self.tests_dir
         for _ in range(5):
             up = os.path.dirname(up)
         self.repo_root = up
         os.chdir(self.repo_root)
 
-        # Используем 'Tools/...' (с большой буквы) чтобы совпадало с регистром в git index и abspath startswith.
-        self.rel_f1 = "Tools/harness/agents/tools/tests/test_file1.txt"
-        self.rel_f2 = "Tools/harness/agents/tools/tests/test_file2.txt"
-        self.rel_f3 = "Tools/harness/agents/tools/tests/test_file3.txt"
+        self.rel_f1 = "tools/harness/agents/tools/tests/test_file1.txt"
+        self.rel_f2 = "tools/harness/agents/tools/tests/test_file2.txt"
+        self.rel_f3 = "tools/harness/agents/tools/tests/test_file3.txt"
 
         self._originals = {
             self.rel_f1: self._read(self.rel_f1),
@@ -52,8 +51,8 @@ class TestPatchFile(unittest.TestCase):
         with open(self._outside_file, "w", encoding="utf-8", newline="\n") as f:
             f.write("OUTSIDE SECRET\n")
 
-        # Корректный относительный путь (с учётом регистра 'Tools/' для совпадения abspath и git pathspec)
-        tests_rel = "Tools/harness/agents/tools/tests"
+        # Корректный относительный путь (с учётом регистра 'tools/' для совпадения abspath и git pathspec)
+        tests_rel = "tools/harness/agents/tools/tests"
         settings = {
             "available-file-extensions": [".py", ".txt", ".md"],
             "dirs": [
@@ -130,7 +129,7 @@ class TestPatchFile(unittest.TestCase):
         # Создаём временный неотслеживаемый файл внутри разрешённой директории
         untracked_path = os.path.join(self.tests_dir, "untracked_patch_test.tmp")
         self._write(untracked_path, "X = 1\n")
-        rel = "Tools/harness/agents/tools/tests/untracked_patch_test.tmp"
+        rel = "tools/harness/agents/tools/tests/untracked_patch_test.tmp"
         result = self._tools.is_file_under_git(rel)
         self.assertEqual(result, f"file '{rel}' is not under git")
         # убираем сразу, чтобы не засорять

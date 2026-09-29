@@ -1,4 +1,4 @@
-"""Invoke-задачи сборки deck_gen и обслуживания Tools."""
+"""Invoke-задачи сборки deck_gen и обслуживания tools."""
 
 import os
 import pathlib

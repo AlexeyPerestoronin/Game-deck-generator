@@ -13,7 +13,7 @@ import tools.utils as utils
 def remove_python_cache(ctx):
     """Remove python cache files (__pycache__) and byte-code (*.pyc)"""
     cwd = pathlib.Path(utils.settings.get_cwd())
-    target_dir = cwd / "Tools"
+    target_dir = cwd / "tools"
 
     for p in list(target_dir.rglob("*")):
         if p.is_dir() and p.name == "__pycache__":
@@ -71,9 +71,9 @@ def _collect_test_ids(suite: unittest.TestSuite) -> list[str]:
 
 
 def _discover_tool_test_ids() -> list[str]:
-    # находим unittest-модули в ./Tools и возвращаем id доступных тестов
+    # находим unittest-модули в ./tools и возвращаем id доступных тестов
     cwd = pathlib.Path(utils.settings.get_cwd())
-    tools_dir = cwd / "Tools"
+    tools_dir = cwd / "tools"
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
 

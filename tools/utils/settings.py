@@ -10,7 +10,7 @@ __all__ = [
 
 
 def _load_settings() -> dict:
-    # tasks.json5 лежит в корне проекта (родитель каталога Tools)
+    # tasks.json5 лежит в корне проекта (родитель каталога tools)
     path = pathlib.Path(__file__).resolve().parents[2] / "tasks.json5"
     with path.open(encoding="utf-8") as file:
         return json.load(file)
