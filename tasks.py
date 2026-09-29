@@ -98,7 +98,7 @@ def list_tool_tests(ctx):
 
 
 @invoke.task(help={
-    "name": "name of the unittest which should be run",
+    "name": "name of the unittest which should be run (if not defined run all tests)",
 })
 def run_tool_test(ctx, name: str | None = None):
     """Run unittest of python-tools for this repository"""
