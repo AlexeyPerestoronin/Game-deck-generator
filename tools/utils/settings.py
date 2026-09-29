@@ -1,4 +1,4 @@
-"""Чтение настроек проекта из ``tasks.json5``."""
+"""Чтение настроек проекта из ``tasks.conf.json5``."""
 
 import json
 import pathlib
@@ -11,7 +11,7 @@ __all__ = [
 
 def _load_settings() -> dict:
     # tasks.json5 лежит в корне проекта (родитель каталога tools)
-    path = pathlib.Path(__file__).resolve().parents[2] / "tasks.json5"
+    path = pathlib.Path(__file__).resolve().parents[2] / "tasks.conf.json5"
     with path.open(encoding="utf-8") as file:
         return json.load(file)
 
