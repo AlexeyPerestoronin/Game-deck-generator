@@ -447,3 +447,27 @@ Git-операции (`is_file_under_git`, `get_file_diff`, `apply_diff_patch`, 
 **Пример:**
 - вызов: `run_shell(cwd="Tools", command="python", arguments="-c \"print(1)\"")`
 - результат: `1`
+
+---
+
+## run_invoke
+
+Запустить команду `invoke` в рабочем каталоге агента (`cwd` из настроек).
+
+**Параметры:**
+- `command` (string, обязательный) — аргументы `invoke` (например `--list` или имя задачи).
+
+**Поведение:**
+- Выполняется строка `invoke ` + `command` (`shell=True`) в `cwd` из настроек.
+- Белый список `run_shell` не используется: запускается только `invoke`.
+- Лимит времени задается настройкой `command-execution-limit` (по умолчанию 60 с).
+- Вывод декодируется как `utf-8`, затем `oem`, затем `cp1251`.
+
+**Возвращает:** вывод команды либо `(command finished without output)`.
+
+**Ошибки:**
+- таймаут: `execution of the '<cmd>' exceed the limit ...`.
+
+**Пример:**
+- вызов: `run_invoke(command="--list")`
+- результат: список invoke-задач проекта.

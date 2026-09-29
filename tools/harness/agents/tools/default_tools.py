@@ -193,6 +193,15 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["cwd", "command"]
                 }),
+                (DefaultTools.run_invoke.__name__, "Запуск команды invoke.", {
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["command"]
+                }),
             ]
         ]
 
@@ -519,8 +528,26 @@ class DefaultTools(i_tools.ITools):
             raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")
 
     def run_invoke(self, command: str) -> str:
-        # TODO: необходимо реализовать
-        #
-        # Данный метод должен запускать через subprocess команду invoke (например: invoke --list) c определёнными аргументами.
-        # В качестве рабоче директории используй self._cwd
-        ...
+        try:
+            # invoke с переданными аргументами в рабочей директории агента
+            cmd = f"invoke {command}"
+            result = subprocess.run(
+                cmd,
+                cwd=self._cwd,
+                shell=True,
+                capture_output=True,
+                text=False,
+                timeout=self._command_execution_limit,
+            )
+            raw_output = result.stdout or result.stderr
+            if raw_output:
+                encodings_to_try = ['utf-8', 'oem', 'cp1251']
+                for encoding in encodings_to_try:
+                    try:
+                        return raw_output.decode(encoding)
+                    except UnicodeDecodeError:
+                        continue
+                return raw_output.decode('utf-8', errors='replace')
+            return "(command finished without output)"
+        except subprocess.TimeoutExpired:
+            raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")
