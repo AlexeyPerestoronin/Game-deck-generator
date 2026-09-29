@@ -219,7 +219,7 @@ class SpaceXAI(i_agent.IAgent):
             raw_args = getattr(tool_call.function, 'arguments', '') or '{}'
             args = json.loads(raw_args)
 
-            log_arg = "..." if len(args) > 150 else args
+            log_arg = "..." if len(raw_args) > 150 else raw_args
             self.__logger.log_line(f"{i}. {tool_call.function.name}({log_arg})")
             try:
                 result = self.__tools.call(tool_call.function.name, **args)

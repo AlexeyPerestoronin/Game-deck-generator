@@ -107,7 +107,11 @@ def _start_website(commands: list[str]) -> None:
         subprocess.Popen(command, shell=True)
 
 
-@invoke.task()
+@invoke.task(
+    help = {
+        "release": "optional flag parameter defined building in release mode (by default False = debug mode)",
+    }
+)
 def build_deck_gen(ctx, release: bool = False):
     """Build native deck_gen via cargo; copy release binary to repo root."""
     root = pathlib.Path(os.getcwd())
@@ -117,6 +121,18 @@ def build_deck_gen(ctx, release: bool = False):
     _run(command, root)
     if release:
         _copy_release_binaries(root)
+
+@invoke.task(
+    help = {
+        "name": "unit-test name to be running (by default None = run all tests)",
+    }
+)
+def run_deck_gen_tests(ctx, name: str | None = None):
+    """Run unit-tests for deck_gen"""
+    # TODO: необходимо реализовать
+    # 
+    # Необходимо реализовать прогон тесто для крейта deck_gen.
+    # Если имя теста задано - запускаем конкретный тест; если нет - запускаем все тесты.
 
 
 @invoke.task()
@@ -129,6 +145,18 @@ def build_deck_gen_wasm(ctx):
     finally:
         _start_website(website_commands)
 
+
+@invoke.task(
+    help = {
+        "name": "unit-test name to be running (by default None = run all tests)",
+    }
+)
+def run_deck_gen_wasm_tests(ctx, name: str | None = None):
+    """Run unit-tests for deck_gen_wasm"""
+    # TODO: необходимо реализовать
+    # 
+    # Необходимо реализовать прогон тесто для крейта deck_gen_wasm.
+    # Если имя теста задано - запускаем конкретный тест; если нет - запускаем все тесты.
 
 collection = invoke.Collection("tools")
 collection.add_task(build_deck_gen)
