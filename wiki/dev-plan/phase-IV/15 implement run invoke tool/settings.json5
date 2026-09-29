@@ -38,5 +38,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Есть задача: см. WiKi/dev-plan/phase-IV/15 implement run invoke tool/todo.md",
+    "prompt": "Есть задача: см. WiKi/dev-plan/phase-IV/15 implement run invoke tool/todo.md. Надо проверить: читай `# Дополнительная задача: проверить доступность invoke команд`",
 }

@@ -531,7 +531,7 @@ class DefaultTools(i_tools.ITools):
     def run_invoke(self, command: str) -> str:
         try:
             # invoke с переданными аргументами в рабочей директории агента
-            cmd = f"invoke {command}"
+            cmd = f"{self._cwd}/.venv/Scripts/python.exe -m invoke {command}"
             result = subprocess.run(
                 cmd,
                 cwd=self._cwd,
