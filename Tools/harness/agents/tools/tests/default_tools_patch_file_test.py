@@ -15,6 +15,7 @@ from .. import default_tools
 
 class _NoopLogger:
     """Минимальная заглушка ILogger для тестов (не пишет логи)."""
+
     def log_line(self, message: str = "") -> '_NoopLogger':
         return self
 

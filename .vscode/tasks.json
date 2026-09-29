@@ -34,6 +34,18 @@
             "args": [
                 "-m", "invoke", "remove-python-cache",
             ],
-        }
+        },
+        {
+            "label": "Run AI hurness loop",
+            "type": "shell",
+            "group": "none",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": [
+                "-m",
+                    "invoke",
+                        "tools.harness.run-loop",
+                            "--settings=${file}"
+            ],
+        },
     ]
 }

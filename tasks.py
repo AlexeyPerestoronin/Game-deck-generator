@@ -17,9 +17,15 @@ def remove_python_cache(ctx):
             shutil.rmtree(p)
 
 
-@invoke.task()
-def make_task_template(ctx, type: str, name: str):
+@invoke.task(help={
+    "type": "type of template (could be on of: development, refactoring, planning, fixing)",
+    "name": "short name for the task",
+})
+def make_task_template(ctx, type: str = None, name: str = None):
     """Creates template for new task"""
+    if type is None: raise Exception(f"Error: The '--type' argument is required to create a template (use --help)")
+    if name is None: raise Exception(f"Error: The '--name' argument is required to create a template (use --help)")
+
     cwd = pathlib.Path(utils.settings.get_cwd())
     task_dir = pathlib.Path(utils.settings.get_task_dir())
 
@@ -45,6 +51,29 @@ def make_task_template(ctx, type: str, name: str):
     dst_dir = task_dir / f"{index} {name}"
     dst_dir.mkdir()
     shutil.copy(src, dst_dir / "todo.md")
+
+    settings_template = cwd / "WiKi" / "templates" / "settings_template.json5"
+    shutil.copy(settings_template, dst_dir / "settings.json5")
+
+
+@invoke.task()
+def list_tool_tests(ctx):
+    """Get list of all unittest of python-tools for this repository"""
+    # TODO: необходимо реализовать
+    # 
+    # Необходимо найти все unittest в директории ./tools и сформировать список доступных unit-тестов для запуска через run_tool_test
+    ...
+
+@invoke.task(help={
+    "name": "name of the unittest which should be run",
+})
+def run_tool_test(ctx, name: str = None):
+    """Run unittest of python-tools for this repository"""
+    # TODO: необходимо реализовать
+    # 
+    # Запускает целевой тест через python -m unittest <name>
+    # Если name = None - запускает все доступных тесты.
+    ...
 
 
 namespace = invoke.Collection()
