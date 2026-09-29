@@ -25,6 +25,7 @@ class DefaultTools(i_tools.ITools):
         self._temp_dir = settings["temp-dir"]
         self._available_file_extension = settings["available-file-extensions"]
         self._command_execution_limit = settings.get("command-execution-limit", 60)
+        self._invoke_execution_limit = settings.get("invoke-execution-limit", 120)
 
         # r = read
         # w = write
@@ -537,7 +538,7 @@ class DefaultTools(i_tools.ITools):
                 shell=True,
                 capture_output=True,
                 text=False,
-                timeout=self._command_execution_limit,
+                timeout=self._invoke_execution_limit,
             )
             raw_output = result.stdout or result.stderr
             if raw_output:
@@ -550,4 +551,4 @@ class DefaultTools(i_tools.ITools):
                 return raw_output.decode('utf-8', errors='replace')
             return "(command finished without output)"
         except subprocess.TimeoutExpired:
-            raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")
+            raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._invoke_execution_limit}s)")

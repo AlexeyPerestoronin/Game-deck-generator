@@ -31,8 +31,8 @@
         ],
         "available-file-extensions": [
             // empty list meant allow all extensions
-            // ".md",
-            // ".py",
+            ".md",
+            ".py",
         ]
     },
     "iteration-limit": 50,
