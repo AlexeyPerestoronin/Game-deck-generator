@@ -13,6 +13,7 @@
         // "temp-dir": "directory for temporary files collecting",
         "shell": [
             "r:findstr",
+            "w:invoke"
         ],
         dirs: [
             // minimal directory scope
