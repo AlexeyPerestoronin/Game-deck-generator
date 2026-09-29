@@ -203,6 +203,15 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["command"]
                 }),
+                (DefaultTools.ask_user.__name__, "Задать вопрос пользователю и получить ответ.", {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["question"]
+                }),
             ]
         ]
 
@@ -556,7 +565,7 @@ class DefaultTools(i_tools.ITools):
     # user communication
 
     def ask_user(self, question: str) -> str:
-        # TODO: необходимо реализовать
-        # 
-        # Необходимо реализовать инструмент, который позволяет задавать вопросы и получать на них ответы через CLI
-        ...
+        try:
+            return input(f"{question}\n")
+        except Exception as error:
+            raise Exception(f"cannot ask user → {error}")
