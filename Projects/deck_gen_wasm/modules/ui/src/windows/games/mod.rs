@@ -1,19 +1,23 @@
 //! GamesPanel: SidebarMode::Games content (Local/Global sections like VSCode Extensions).
 //!
 //! Collapsible sections default to 50/50 height split of the sidebar. Vertical drag resizer
-//! between them adjusts proportions. Local has load button; Global lists GitHub games.
-
+//! between them adjusts proportions. Local lists persist-VFS games; Global lists Deck-Games.
 
 use leptos::html;
 use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::spawn_local;
 use web_sys::MouseEvent as WasmMouseEvent;
 
+use deck_gen_wasm_browser as js;
+use deck_gen_wasm_conf as conf;
+use deck_gen_wasm_fs::kind;
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
-use deck_gen_wasm_workspace::Workspace;
+use deck_gen_wasm_template::{info_matches_query, CatalogEntry, GameInfo, DEFAULT_ICON_PNG};
+use deck_gen_wasm_workspace::{
+    game_card_name, local_games, TabKind, Workspace,
+};
 
 /// Returns CSS `flex` values for Local/Global sections depending on collapse flags and split ratio.
 fn section_flex(local_collapsed: bool, global_collapsed: bool, ratio: f32) -> (String, String) {
@@ -26,11 +30,55 @@ fn section_flex(local_collapsed: bool, global_collapsed: bool, ratio: f32) -> (S
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq)]
 struct MenuState {
-    game: String,
+    id: String,
     left: f64,
     top: f64,
+    local: bool,
+}
+
+fn preview_path_of(root: &str, info: &GameInfo) -> Option<String> {
+    let name = info.preview.as_ref().filter(|s| !s.is_empty())?;
+    if root.is_empty() {
+        Some(format!("{}/{}", conf::catalog::PREVIEW_DIR, name))
+    } else {
+        Some(format!("{root}/{}/{}", conf::catalog::PREVIEW_DIR, name))
+    }
+}
+
+fn icon_path_of(root: &str, info: &GameInfo) -> Option<String> {
+    let name = info.icon.as_ref().filter(|s| !s.is_empty())?;
+    if root.is_empty() {
+        Some(format!("{}/{}", conf::catalog::PREVIEW_DIR, name))
+    } else {
+        Some(format!("{root}/{}/{}", conf::catalog::PREVIEW_DIR, name))
+    }
+}
+
+fn fallback_preview_path(root: &str) -> String {
+    format!("__defaults__/{root}/preview.html")
+}
+
+fn row_is_selected(workspace: Workspace, root: &str, info: &GameInfo) -> bool {
+    let path = if workspace.split_preview.get() {
+        workspace.active_preview_tab.get().map(|tab| tab.path)
+    } else {
+        workspace
+            .active_tab
+            .get()
+            .filter(|tab| tab.kind == TabKind::Preview)
+            .map(|tab| tab.path)
+    };
+    let Some(path) = path else {
+        return false;
+    };
+    if let Some(preview) = preview_path_of(root, info) {
+        if path == preview {
+            return true;
+        }
+    }
+    path == fallback_preview_path(root)
 }
 
 #[component]
@@ -40,53 +88,22 @@ pub fn GamesPanel(
     warning: RwSignal<Option<String>>,
     warning_title: RwSignal<String>,
 ) -> impl IntoView {
-    // Collapsible headers (false = expanded, default per spec).
     let local_collapsed = RwSignal::new(false);
     let global_collapsed = RwSignal::new(false);
-
-    // Height split ratio for bodies (local fraction). 0.5 = equal.
     let split_ratio = RwSignal::new(0.5f32);
-
-    // Global list (fetched once on mount of this panel).
-    let games = RwSignal::new(Vec::<String>::new());
-    let loading = RwSignal::new(false);
-    let fetch_error = RwSignal::new(None::<String>);
-
-    // Per-game settings menu (simple, anchored).
     let game_menu = RwSignal::new(None::<MenuState>);
+    let search_input = RwSignal::new(String::new());
+    let applied_query = RwSignal::new(String::new());
 
-    // Drag state for vertical split between Local/Global sections.
     let is_dragging = RwSignal::new(false);
     let drag_start_y = RwSignal::new(0i32);
     let drag_start_ratio = RwSignal::new(0.5f32);
     let container_ref: NodeRef<html::Div> = NodeRef::new();
 
-    // One-time fetch on first render of Games panel.
-    Effect::new({
-        let g = games;
-        let l = loading;
-        let e = fetch_error;
-        move |_| {
-            if !g.get_untracked().is_empty() || l.get_untracked() {
-                return;
-            }
-            l.set(true);
-            e.set(None);
-            spawn_local(async move {
-                match deck_gen_wasm_template::list_game_folders().await {
-                    Ok(list) => {
-                        g.set(list);
-                    }
-                    Err(err) => {
-                        e.set(Some(err));
-                    }
-                }
-                l.set(false);
-            });
-        }
+    Effect::new(move |_| {
+        workspace.ensure_catalog();
     });
 
-    // Global listeners for vertical resizer (closures leaked).
     Effect::new({
         let ratio = split_ratio;
         let dragging = is_dragging;
@@ -116,12 +133,9 @@ pub fn GamesPanel(
 
     let start_vdrag = move |ev: leptos::ev::MouseEvent| {
         ev.prevent_default();
-        if let Some(c) = container_ref.get() {
-            // We don't strictly need height here; heuristic works for ratio.
-            is_dragging.set(true);
-            drag_start_y.set(ev.client_y());
-            drag_start_ratio.set(split_ratio.get_untracked());
-        }
+        is_dragging.set(true);
+        drag_start_y.set(ev.client_y());
+        drag_start_ratio.set(split_ratio.get_untracked());
     };
 
     let toggle_local = move |_| local_collapsed.update(|b| *b = !*b);
@@ -131,25 +145,26 @@ pub fn GamesPanel(
         show_load.set(true);
     };
 
-    let open_game_settings = move |game: String, ev: leptos::ev::MouseEvent| {
+    let open_game_settings = move |id: String, local: bool, ev: leptos::ev::MouseEvent| {
         ev.stop_propagation();
-        // Anchor near click for the small menu (reuse context style).
         let left = ev.client_x() as f64 + 4.0;
         let top = ev.client_y() as f64;
-        game_menu.set(Some(MenuState { game, left, top }));
+        game_menu.set(Some(MenuState {
+            id,
+            left,
+            top,
+            local,
+        }));
     };
 
     let close_game_menu = move || {
         game_menu.set(None);
     };
 
-    let load_selected_game = move |game: String| {
-        close_game_menu();
-        warning_title.set(locale::localize(keys::WARNING_CANNOT_LOAD_NEW_GAME));
-        workspace.add_game_from_github(&game, warning);
+    let apply_search = move |_| {
+        applied_query.set(search_input.get());
     };
 
-    // Section flex via pure helper (see section_flex). Produces CSS flex value.
     let ratio = split_ratio;
     let lc = local_collapsed;
     let gc = global_collapsed;
@@ -167,7 +182,6 @@ pub fn GamesPanel(
     view! {
         <aside class="explorer games">
             <div class="games-container" node_ref=container_ref>
-                // Local
                 <div class="games-section" style=move || format!("flex: {};", local_flex())>
                     <div class="games-section-header" on:click=toggle_local>
                         <span class="chevron">{move || chevron(local_collapsed.get())}</span>
@@ -182,16 +196,38 @@ pub fn GamesPanel(
                             >
                                 {move || locale::localize(keys::GAMES_LOAD_LOCAL)}
                             </button>
+                            <For
+                                each=move || workspace.vfs.with(|vfs| local_games(vfs))
+                                key=|g| g.root.clone()
+                                children=move |game| {
+                                    let root = game.root.clone();
+                                    let info = game.info.clone();
+                                    let root_open = root.clone();
+                                    let info_open = info.clone();
+                                    let root_sel = root.clone();
+                                    let info_sel = info.clone();
+                                    let root_menu = root.clone();
+                                    view! {
+                                        <GameCard
+                                            workspace=workspace
+                                            root=root
+                                            info=info
+                                            from_temp=false
+                                            selected=Signal::derive(move || row_is_selected(workspace, &root_sel, &info_sel))
+                                            on_open=move |_| workspace.open_game_preview(&root_open, &info_open, false)
+                                            on_settings=move |ev| open_game_settings(root_menu.clone(), true, ev)
+                                        />
+                                    }
+                                }
+                            />
                         </div>
                     </Show>
                 </div>
 
-                // Vertical resizer between sections (only when both expanded)
                 <Show when=move || !local_collapsed.get() && !global_collapsed.get()>
                     <div class="games-hresizer" on:mousedown=start_vdrag></div>
                 </Show>
 
-                // Global
                 <div class="games-section" style=move || format!("flex: {};", global_flex())>
                     <div class="games-section-header" on:click=toggle_global>
                         <span class="chevron">{move || chevron(global_collapsed.get())}</span>
@@ -199,44 +235,93 @@ pub fn GamesPanel(
                     </div>
                     <Show when=move || !global_collapsed.get()>
                         <div class="games-section-body games-global-body">
-                            <Show when=move || loading.get()>
-                                <div class="games-status">...</div>
+                            <div class="games-search">
+                                <input
+                                    type="text"
+                                    class="games-search-input"
+                                    placeholder=move || locale::localize(keys::GAMES_SEARCH_PLACEHOLDER)
+                                    prop:value=move || search_input.get()
+                                    on:input=move |ev| search_input.set(event_target_value(&ev))
+                                    on:keydown=move |ev: leptos::ev::KeyboardEvent| {
+                                        if ev.key() == "Enter" {
+                                            applied_query.set(search_input.get());
+                                        }
+                                    }
+                                />
+                                <button class="games-search-btn" on:click=apply_search>
+                                    {move || locale::localize(keys::GAMES_SEARCH)}
+                                </button>
+                            </div>
+                            <Show when=move || workspace.catalog_loading.get()>
+                                <div class="games-status">{move || locale::localize(keys::GAMES_LOADING)}</div>
                             </Show>
-                            <Show when=move || fetch_error.get().is_some()>
-                                <div class="games-status error">{move || fetch_error.get().unwrap_or_default()}</div>
+                            <Show when=move || workspace.catalog_error.get().is_some()>
+                                <div class="games-status error">{move || workspace.catalog_error.get().unwrap_or_default()}</div>
                             </Show>
                             <For
-                                each=move || games.get()
-                                key=|g| g.clone()
-                                children=move |g| {
-                                    let g_for_click = g.clone();
-                                    let g_for_label = g.clone();
+                                each=move || {
+                                    let q = applied_query.get();
+                                    workspace
+                                        .catalog_games
+                                        .get()
+                                        .into_iter()
+                                        .filter(|g| info_matches_query(&g.info, &q))
+                                        .collect::<Vec<_>>()
+                                }
+                                key=|g: &CatalogEntry| g.root.clone()
+                                children=move |game: CatalogEntry| {
+                                    let root = game.root.clone();
+                                    let info = game.info.clone();
+                                    let root_open = root.clone();
+                                    let info_open = info.clone();
+                                    let root_sel = root.clone();
+                                    let info_sel = info.clone();
+                                    let root_menu = root.clone();
                                     view! {
-                                        <div class="game-row">
-                                            <span class="game-name">{g_for_label}</span>
-                                            <button
-                                                class="game-settings-btn"
-                                                on:click=move |ev| open_game_settings(g_for_click.clone(), ev)
-                                            >
-                                                {move || locale::localize(keys::GAMES_SETTINGS)}
-                                            </button>
-                                        </div>
+                                        <GameCard
+                                            workspace=workspace
+                                            root=root
+                                            info=info
+                                            from_temp=true
+                                            selected=Signal::derive(move || row_is_selected(workspace, &root_sel, &info_sel))
+                                            on_open=move |_| workspace.open_game_preview(&root_open, &info_open, true)
+                                            on_settings=move |ev| open_game_settings(root_menu.clone(), false, ev)
+                                        />
                                     }
                                 }
                             />
-                            <Show when=move || !loading.get() && games.get().is_empty() && fetch_error.get().is_none()>
-                                <div class="games-status">(no games listed)</div>
+                            <Show when=move || {
+                                !workspace.catalog_loading.get()
+                                    && workspace.catalog_error.get().is_none()
+                                    && workspace.catalog_games.get().is_empty()
+                            }>
+                                <div class="games-status">{move || locale::localize(keys::GAMES_EMPTY)}</div>
+                            </Show>
+                            <Show when=move || {
+                                !workspace.catalog_loading.get()
+                                    && workspace.catalog_error.get().is_none()
+                                    && !workspace.catalog_games.get().is_empty()
+                                    && {
+                                        let q = applied_query.get();
+                                        workspace
+                                            .catalog_games
+                                            .get()
+                                            .iter()
+                                            .all(|g| !info_matches_query(&g.info, &q))
+                                    }
+                            }>
+                                <div class="games-status">{move || locale::localize(keys::GAMES_SEARCH_EMPTY)}</div>
                             </Show>
                         </div>
                     </Show>
                 </div>
             </div>
 
-            // Per-game popup menu (one item: Load)
             <Show when=move || game_menu.get().is_some()>
                 {move || {
                     if let Some(m) = game_menu.get() {
-                        let game = m.game.clone();
+                        let id = m.id.clone();
+                        let local = m.local;
                         view! {
                             <div class="context-backdrop" on:click=move |_| close_game_menu()>
                                 <div
@@ -245,13 +330,54 @@ pub fn GamesPanel(
                                     style=format!("left:{}px;top:{}px", m.left, m.top)
                                     on:click=move |ev| ev.stop_propagation()
                                 >
-                                    <button
-                                        class="context-item"
-                                        role="menuitem"
-                                        on:click=move |_| load_selected_game(game.clone())
-                                    >
-                                        {move || locale::localize(keys::GAMES_LOAD)}
-                                    </button>
+                                    {if local {
+                                        let id_html = id.clone();
+                                        let id_pdf = id.clone();
+                                        view! {
+                                            <>
+                                                <button
+                                                    class="context-item"
+                                                    role="menuitem"
+                                                    disabled=move || workspace.loading.get()
+                                                    on:click=move |_| {
+                                                        close_game_menu();
+                                                        warning_title.set(locale::localize(keys::WARNING_CANNOT_PREPARE_HTML));
+                                                        workspace.prepare_html_for(&[id_html.clone()], warning);
+                                                    }
+                                                >
+                                                    {move || locale::localize(keys::ARIA_PREPARE_HTML)}
+                                                </button>
+                                                <button
+                                                    class="context-item"
+                                                    role="menuitem"
+                                                    disabled=move || workspace.loading.get()
+                                                    on:click=move |_| {
+                                                        close_game_menu();
+                                                        warning_title.set(locale::localize(keys::WARNING_CANNOT_PREPARE_PDF));
+                                                        workspace.prepare_pdf_for(&[id_pdf.clone()], warning);
+                                                    }
+                                                >
+                                                    {move || locale::localize(keys::ARIA_PREPARE_PDF)}
+                                                </button>
+                                            </>
+                                        }.into_any()
+                                    } else {
+                                        let id_load = id.clone();
+                                        view! {
+                                            <button
+                                                class="context-item"
+                                                role="menuitem"
+                                                disabled=move || workspace.loading.get()
+                                                on:click=move |_| {
+                                                    close_game_menu();
+                                                    warning_title.set(locale::localize(keys::WARNING_CANNOT_LOAD_NEW_GAME));
+                                                    workspace.add_game_from_catalog(&id_load, warning);
+                                                }
+                                            >
+                                                {move || locale::localize(keys::GAMES_LOAD)}
+                                            </button>
+                                        }.into_any()
+                                    }}
                                 </div>
                             </div>
                         }.into_any()
@@ -261,6 +387,79 @@ pub fn GamesPanel(
                 }}
             </Show>
         </aside>
+    }
+}
+
+#[component]
+fn GameCard<F, S>(
+    workspace: Workspace,
+    root: String,
+    info: GameInfo,
+    from_temp: bool,
+    selected: Signal<bool>,
+    on_open: F,
+    on_settings: S,
+) -> impl IntoView
+where
+    F: Fn(leptos::ev::MouseEvent) + Clone + 'static + Send,
+    S: Fn(leptos::ev::MouseEvent) + Clone + 'static + Send,
+{
+    let icon_path = icon_path_of(&root, &info);
+    let name_info = info.clone();
+    view! {
+        <div
+            class=move || {
+                if selected.get() {
+                    "game-row selected"
+                } else {
+                    "game-row"
+                }
+            }
+            on:click=on_open
+        >
+            <GameIcon workspace=workspace path=icon_path from_temp=from_temp />
+            <span class="game-name">{move || game_card_name(&name_info)}</span>
+            <button
+                class="game-settings-btn"
+                on:click=move |ev| {
+                    ev.stop_propagation();
+                    on_settings(ev);
+                }
+            >
+                {move || locale::localize(keys::GAMES_SETTINGS)}
+            </button>
+        </div>
+    }
+}
+
+#[component]
+fn GameIcon(workspace: Workspace, path: Option<String>, from_temp: bool) -> impl IntoView {
+    let src = RwSignal::new(String::new());
+    Effect::new(move |_| {
+        let (bytes, mime) = match &path {
+            Some(p) => {
+                let data = if from_temp {
+                    workspace.temp_vfs.with(|vfs| vfs.read_bytes(p).map(Vec::from))
+                } else {
+                    workspace.vfs.with(|vfs| vfs.read_bytes(p).map(Vec::from))
+                };
+                match data {
+                    Some(bytes) => (bytes, kind::image_mime(p)),
+                    None => (DEFAULT_ICON_PNG.to_vec(), "image/png"),
+                }
+            }
+            None => (DEFAULT_ICON_PNG.to_vec(), "image/png"),
+        };
+        let next = js::blob_url(&bytes, mime).unwrap_or_default();
+        let prev = src.get_untracked();
+        src.set(next.clone());
+        if prev != next {
+            js::revoke_object_url(&prev);
+        }
+    });
+    on_cleanup(move || js::revoke_object_url(&src.get_untracked()));
+    view! {
+        <img class="game-icon" prop:src=move || src.get() alt="" />
     }
 }
 

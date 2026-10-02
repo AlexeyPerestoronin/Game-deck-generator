@@ -22,7 +22,7 @@ deck_gen_wasm_fs = { path = "../fs" }
 deck_gen_wasm_persist = { path = "../persist" }
 # internal: Workspace state, tabs, VFS binding for editor panes
 deck_gen_wasm_workspace = { path = "../workspace" }
-# internal: for Global games list (list_game_folders). Install still goes via workspace actions to keep logic centralized.
+# internal: Deck-Games catalog types, search filter, bundled default icon/preview.
 deck_gen_wasm_template = { path = "../template" }
 # timers for debounce (edit flush, autosave)
 gloo-timers = { version = "0.3", features = ["futures"] }
@@ -44,4 +44,6 @@ web-sys = { version = "0.3", features = [
     "DomRect",
     "DragEvent",
     "DataTransfer",
+    "Window",
+    "KeyboardEvent",
 ] }

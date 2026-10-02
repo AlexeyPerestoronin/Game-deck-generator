@@ -1,9 +1,9 @@
-//! GitHub git-tree listing and raw file URLs for the sample game.
+//! GitHub git-tree listing and raw file URLs.
 //!
 //! The “new game” action needs every blob under `games/new-game/` plus
-//! `games/conf.json5`. This module talks to the GitHub HTTP API and
-//! `raw.githubusercontent.com`; it does not install files into the VFS — that
-//! stays in [`crate::template`].
+//! `games/conf.json5`. The catalog uses the same helpers against Deck-Games.
+//! This module talks to the GitHub HTTP API and `raw.githubusercontent.com`;
+//! it does not install files into the VFS.
 
 use serde::Deserialize;
 
@@ -24,28 +24,33 @@ pub(crate) struct GithubTreeItem {
 
 /// `raw.githubusercontent.com` URL for `path` on the configured branch.
 pub fn raw_url(path: &str) -> String {
-    format!(
-        "https://raw.githubusercontent.com/{}/{}/{path}",
-        conf::github::REPO,
-        conf::github::BRANCH
-    )
+    raw_url_for(conf::github::REPO, conf::github::BRANCH, path)
 }
 
-/// Recursive git-tree blob paths for a specific game folder + the shared conf.
-pub async fn list_game_blob_paths(game_folder: &str) -> Result<Vec<String>, String> {
-    let tree_url = format!(
-        "https://api.github.com/repos/{}/git/trees/{}?recursive=1",
-        conf::github::REPO,
-        conf::github::BRANCH
-    );
+/// `raw.githubusercontent.com` URL for `path` on `repo`/`branch`.
+pub fn raw_url_for(repo: &str, branch: &str, path: &str) -> String {
+    format!("https://raw.githubusercontent.com/{repo}/{branch}/{path}")
+}
+
+/// Recursive git-tree blob paths for `repo` at `branch`.
+pub async fn fetch_tree_blob_paths(repo: &str, branch: &str) -> Result<Vec<String>, String> {
+    let tree_url = format!("https://api.github.com/repos/{repo}/git/trees/{branch}?recursive=1");
     let body = fetch_text(&tree_url).await?;
     let parsed: GithubTree = serde_json::from_str(&body).map_err(|err| err.to_string())?;
-    let prefix = format!("games/{}/", game_folder);
     Ok(parsed
         .tree
         .into_iter()
         .filter(|item| item.kind == "blob")
         .map(|item| item.path)
+        .collect())
+}
+
+/// Recursive git-tree blob paths for a specific game folder + the shared conf.
+pub async fn list_game_blob_paths(game_folder: &str) -> Result<Vec<String>, String> {
+    let paths = fetch_tree_blob_paths(conf::github::REPO, conf::github::BRANCH).await?;
+    let prefix = format!("games/{}/", game_folder);
+    Ok(paths
+        .into_iter()
         .filter(|path| path == conf::template::GAMES_CONF || path.starts_with(&prefix))
         .collect())
 }

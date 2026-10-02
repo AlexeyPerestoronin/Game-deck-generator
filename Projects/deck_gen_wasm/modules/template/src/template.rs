@@ -53,7 +53,7 @@ pub fn unique_game_folder(taken: impl Fn(&str) -> bool, base: &str) -> String {
     unique_name(base, taken)
 }
 
-fn retarget_game_id(content: &str, from: &str, to: &str) -> String {
+pub(crate) fn retarget_game_id(content: &str, from: &str, to: &str) -> String {
     if from == to {
         return content.to_string();
     }
@@ -108,16 +108,16 @@ mod tests {
 
     #[test]
     fn both_components_are_conf_and_folder() {
-        assert!(!has_both_components(&[]));
-        assert!(!has_both_components(&[(
+        assert!(!has_game_components("new-game", &[]));
+        assert!(!has_game_components("new-game", &[(
             conf::template::GAMES_CONF.to_string(),
             String::new()
         )]));
-        assert!(!has_both_components(&[(
+        assert!(!has_game_components("new-game", &[(
             "games/new-game/help.md".into(),
             String::new()
         )]));
-        assert!(has_both_components(&[
+        assert!(has_game_components("new-game", &[
             (conf::template::GAMES_CONF.to_string(), String::new()),
             ("games/new-game/help.md".into(), String::new()),
         ]));

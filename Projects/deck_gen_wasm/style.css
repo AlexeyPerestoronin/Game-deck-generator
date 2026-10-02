@@ -887,12 +887,31 @@ body {
 .game-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 2px 4px;
+  gap: 8px;
+  padding: 6px 8px;
+  min-height: 54px;
   font-size: 12px;
+  cursor: pointer;
+}
+
+.game-row:hover {
+  background: var(--hover);
+}
+
+.game-row.selected {
+  background: var(--selected);
+}
+
+.game-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  object-fit: contain;
+  background: transparent;
 }
 
 .game-name {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -905,10 +924,72 @@ body {
   cursor: pointer;
   font-size: 11px;
   padding: 1px 4px;
+  flex: 0 0 auto;
 }
 
 .game-settings-btn:hover {
   color: var(--fg);
+  background: var(--hover);
+}
+
+.games-search {
+  display: flex;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--sidebar);
+  padding-bottom: 4px;
+}
+
+.games-search-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--editor);
+  color: var(--fg);
+  padding: 4px 6px;
+  font: inherit;
+}
+
+.games-search-btn {
+  border: 1px solid var(--border);
+  background: var(--sidebar);
+  color: var(--fg);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.games-search-btn:hover {
+  background: var(--hover);
+}
+
+.prepare-game-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 180px;
+  max-width: 280px;
+  max-height: 70vh;
+  overflow: auto;
+  padding: 4px 0;
+  background: var(--context-bg);
+  border: 1px solid var(--context-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.prepare-game-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: var(--fg);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.prepare-game-item:hover {
   background: var(--hover);
 }
 

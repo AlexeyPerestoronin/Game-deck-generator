@@ -18,6 +18,7 @@ use deck_gen_wasm_fs::{
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_persist::Session;
+use deck_gen_wasm_template::CatalogEntry;
 
 /// Whether an editor tab shows the source or a rendered preview.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,6 +43,16 @@ pub struct OpenTab {
 pub struct Workspace {
     /// In-memory file tree.
     pub vfs: RwSignal<Vfs>,
+    /// Session-only catalog posters. Not persisted; empty after reload.
+    pub temp_vfs: RwSignal<Vfs>,
+    /// Games fetched from Deck-Games for the Globals list.
+    pub catalog_games: RwSignal<Vec<CatalogEntry>>,
+    /// Error text from the last catalog fetch, if any.
+    pub catalog_error: RwSignal<Option<String>>,
+    /// True after the first catalog fetch attempt this page session.
+    pub catalog_loaded: RwSignal<bool>,
+    /// True while the catalog tree/posters are downloading.
+    pub catalog_loading: RwSignal<bool>,
     /// Primary explorer selection (last clicked path, used by create/tabs).
     pub selected: RwSignal<Option<String>>,
     /// All explorer paths in the current multi-selection.
@@ -78,6 +89,11 @@ impl Workspace {
         let multi_selected = session.selected.iter().cloned().collect();
         Self {
             vfs: RwSignal::new(session.vfs),
+            temp_vfs: RwSignal::new(Vfs::default()),
+            catalog_games: RwSignal::new(Vec::new()),
+            catalog_error: RwSignal::new(None),
+            catalog_loaded: RwSignal::new(false),
+            catalog_loading: RwSignal::new(false),
             selected: RwSignal::new(session.selected),
             multi_selected: RwSignal::new(multi_selected),
             copy_planned: RwSignal::new(HashSet::new()),

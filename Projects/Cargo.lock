@@ -718,6 +718,7 @@ dependencies = [
  "deck_gen_wasm_browser",
  "deck_gen_wasm_conf",
  "deck_gen_wasm_fs",
+ "json5",
  "progress_viewer",
  "serde",
  "serde_json",

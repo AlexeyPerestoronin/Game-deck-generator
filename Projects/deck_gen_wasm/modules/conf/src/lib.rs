@@ -17,6 +17,26 @@ pub mod github {
     pub const BRANCH: &str = "master";
 }
 
+/// GitHub catalog of published games (Globals in the Games sidebar).
+pub mod catalog {
+    /// `owner/name` on github.com.
+    pub const REPO: &str = "AlexeyPerestoronin/Deck-Games";
+    /// Branch whose git tree and raw files are fetched.
+    pub const BRANCH: &str = "master";
+    /// Folder in the catalog repo that contains games.
+    pub const GAMES_DIR: &str = "Games";
+    /// File whose presence marks a directory as a game root.
+    pub const GAME_MARKER: &str = "game.json5";
+    /// Relative folder with poster metadata and assets.
+    pub const PREVIEW_DIR: &str = "rules/preview";
+    /// JSON5 metadata file inside [`PREVIEW_DIR`].
+    pub const INFO_FILE: &str = "info.json5";
+    /// Bundled HTML shown when a game has no poster file.
+    pub const DEFAULT_PREVIEW: &str = "default-preview.html";
+    /// Bundled PNG shown when a game has no icon file.
+    pub const DEFAULT_ICON: &str = "default-icon.png";
+}
+
 /// Paths and labels for installing the sample game into `games/`.
 pub mod template {
     /// Default folder name under `games/` (suffix `-N` when taken).

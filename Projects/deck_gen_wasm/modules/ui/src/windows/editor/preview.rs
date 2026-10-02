@@ -32,17 +32,26 @@ fn HtmlPreview(workspace: Workspace, path: String) -> impl IntoView {
         <div class="preview-host">
             <iframe
                 class="preview-frame"
-                prop:srcdoc=move || {
-                    workspace.vfs.with(|vfs| {
-                        let Some(html) = vfs.read_file(&path) else {
-                            return String::new();
-                        };
-                        inline_relative_iframes(vfs, &path, html)
-                    })
-                }
+                prop:srcdoc=move || html_srcdoc(workspace, &path)
             />
         </div>
     }
+}
+
+fn html_srcdoc(workspace: Workspace, path: &str) -> String {
+    workspace.vfs.with(|_| {});
+    workspace.temp_vfs.with(|_| {});
+    if let Some(html) = workspace.vfs.with_untracked(|vfs| {
+        vfs.read_file(path)
+            .map(|html| inline_relative_iframes(vfs, path, html))
+    }) {
+        return html;
+    }
+    workspace.temp_vfs.with_untracked(|vfs| {
+        vfs.read_file(path)
+            .map(|html| inline_relative_iframes(vfs, path, html))
+            .unwrap_or_default()
+    })
 }
 
 #[component]
@@ -135,5 +144,3 @@ fn replace_object_url(slot: RwSignal<String>, next: String) {
         js::revoke_object_url(&prev);
     }
 }
-
-

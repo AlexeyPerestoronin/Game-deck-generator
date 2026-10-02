@@ -47,6 +47,8 @@
   "warning-cannot-prepare-pdf": { EN: "Cannot prepare PDF", RU: "Не удалось подготовить PDF" },
   "warning-cannot-load-new-game": { EN: "Cannot load new-game", RU: "Не удалось загрузить new-game" },
   "warning-cannot-load-files": { EN: "Cannot load files", RU: "Не удалось загрузить файлы" },
+  "warning-no-games": { EN: "No games in the workspace.", RU: "В рабочей области нет игр." },
+  "warning-no-game-selected": { EN: "Select at least one game.", RU: "Выберите хотя бы одну игру." },
 
   // explorer
   "explorer-games": { EN: "Games", RU: "Игры" },
@@ -87,6 +89,13 @@
   "games-load-local": { EN: "Load Local Games", RU: "Загрузить локальную игру" },
   "games-load": { EN: "Load Games", RU: "Загрузить игру" },
   "games-settings": { EN: "Settings", RU: "Настройки" },
+  "games-name-undefined": { EN: "Name is not defined...", RU: "Имя не определено..." },
+  "games-search-placeholder": { EN: "Search games", RU: "Поиск игр" },
+  "games-search": { EN: "Search", RU: "Поиск" },
+  "games-empty": { EN: "No games in the catalog.", RU: "В каталоге нет игр." },
+  "games-search-empty": { EN: "No games match the search.", RU: "Поиск не дал результатов." },
+  "games-loading": { EN: "Loading catalog…", RU: "Загрузка каталога…" },
+  "games-loading-preview": { EN: "Loading preview…", RU: "Загрузка превью…" },
 
   // prompts
   "prompt-new-file": { EN: "New file name", RU: "Имя нового файла" },
@@ -117,6 +126,7 @@
   "status-downloading-zip": { EN: "Downloading ZIP…", RU: "Скачивание ZIP…" },
   "status-downloaded": { EN: "Downloaded {filename}", RU: "Скачано {filename}" },
   "status-not-a-folder": { EN: "'{path}' is not a folder", RU: "'{path}' не является папкой" },
+  "status-loading-catalog": { EN: "Loading game catalog…", RU: "Загрузка каталога игр…" },
 
   // document
   "html-lang": { EN: "en", RU: "ru" },

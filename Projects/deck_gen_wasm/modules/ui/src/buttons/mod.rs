@@ -15,6 +15,7 @@ mod new_file;
 mod new_folder;
 mod new_game;
 mod prepare_html;
+mod prepare_menu;
 mod prepare_pdf;
 mod settings;
 mod split_preview;

@@ -25,7 +25,26 @@ use deck_gen_wasm_import::{
 use deck_gen_wasm_persist::{save_binaries, save_session};
 use progress_viewer::{progress_block, progress_wrapper};
 use deck_gen_wasm_template as help;
-use deck_gen_wasm_template::{install_game, install_new_game};
+use deck_gen_wasm_template::{
+    install_catalog_game, install_game, install_new_game, load_catalog, GameInfo,
+    DEFAULT_PREVIEW_HTML,
+};
+
+use super::games::{isolate_game_trees, merge_game_trees};
+
+#[derive(Clone, Copy)]
+enum PrepareKind {
+    Html,
+    Pdf,
+}
+
+struct SyncSub(progress_viewer::Progress);
+unsafe impl Sync for SyncSub {}
+impl progress_viewer::ProgressHandler for SyncSub {
+    fn set(&self, pct: f32) {
+        self.0.set(pct);
+    }
+}
 
 impl Workspace {
     /// Write the text snapshot to localStorage and binaries to IndexedDB.
@@ -87,6 +106,11 @@ impl Workspace {
     pub fn clear(&self) {
         self.draft.set(None);
         self.vfs.set(deck_gen_wasm_fs::Vfs::default());
+        self.temp_vfs.set(deck_gen_wasm_fs::Vfs::default());
+        self.catalog_games.set(Vec::new());
+        self.catalog_error.set(None);
+        self.catalog_loaded.set(false);
+        self.catalog_loading.set(false);
         self.set_primary_selection(None);
         self.copy_planned.set(HashSet::new());
         self.tabs.set(Vec::new());
@@ -188,92 +212,14 @@ impl Workspace {
         });
     }
 
-    /// Run [`deck_gen::prepare_html`] on the VFS after a 0ms yield so the UI can paint.
-    pub fn prepare_html(&self, warning: RwSignal<Option<String>>) {
-        if !self.try_begin_async(locale::localize(keys::STATUS_PREPARING_HTML)) {
-            return;
-        }
-        let workspace = *self;
-        spawn_local(async move {
-            let progress = workspace.progress_handle();
-            progress_wrapper!(progress, {
-                progress_block!(progress, 0.0, 10.0, {});
-                let prepared = progress_block!(progress, 10.0, 90.0, {
-                    workspace.flush_draft();
-                    let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
-                    let sub = progress.new_subprocess(10.0, 90.0);
-                    // concurrency=false for WASM. Local wrapper to satisfy `+ Sync` in deck_gen sig
-                    // (rayon branch is not compiled on wasm32).
-                    struct SyncSub(progress_viewer::Progress);
-                    unsafe impl Sync for SyncSub {}
-                    impl progress_viewer::ProgressHandler for SyncSub {
-                        fn set(&self, pct: f32) { self.0.set(pct); }
-                    }
-                    let sync_sub = SyncSub(sub);
-                    let result = deck_gen::prepare_html(fs.clone(), false, &sync_sub);
-                    (fs, result)
-                });
-                progress_block!(progress, 90.0, 100.0, {
-                    let (fs, result) = prepared;
-                    match result {
-                        Ok(n) => {
-                            workspace.vfs.set(VfsFs::try_unwrap_or_clone(fs));
-                            let tmpl = locale::localize(keys::STATUS_PREPARED_HTML);
-                            workspace.status.set(tmpl.replace("{n}", &n.to_string()));
-                        }
-                        Err(err) => {
-                            warning.set(Some(err.to_string()));
-                            workspace.status.set(String::new());
-                        }
-                    }
-                });
-            });
-            workspace.finish_async();
-        });
+    /// Run [`deck_gen::prepare_html`] on selected game trees only.
+    pub fn prepare_html_for(&self, game_roots: &[String], warning: RwSignal<Option<String>>) {
+        self.prepare_scoped(game_roots, warning, PrepareKind::Html);
     }
 
-    /// Run [`deck_gen::prepare_pdf`] with the browser engine after a 0ms yield.
-    pub fn prepare_pdf(&self, warning: RwSignal<Option<String>>) {
-        if !self.try_begin_async(locale::localize(keys::STATUS_PREPARING_PDF)) {
-            return;
-        }
-        let workspace = *self;
-        spawn_local(async move {
-            let progress = workspace.progress_handle();
-            progress_wrapper!(progress, {
-                progress_block!(progress, 0.0, 10.0, {});
-                let prepared = progress_block!(progress, 10.0, 90.0, {
-                    workspace.flush_draft();
-                    let fs = Arc::new(VfsFs::new(workspace.vfs.get_untracked()));
-                    let engine = prepare_pdf_web::WebPdfEngine;
-                    let sub = progress.new_subprocess(10.0, 90.0);
-                    // concurrency=false for WASM. Local wrapper...
-                    struct SyncSub(progress_viewer::Progress);
-                    unsafe impl Sync for SyncSub {}
-                    impl progress_viewer::ProgressHandler for SyncSub {
-                        fn set(&self, pct: f32) { self.0.set(pct); }
-                    }
-                    let sync_sub = SyncSub(sub);
-                    let result = deck_gen::prepare_pdf(fs.clone(), &engine, false, &sync_sub).await;
-                    (fs, result)
-                });
-                progress_block!(progress, 90.0, 100.0, {
-                    let (fs, result) = prepared;
-                    match result {
-                        Ok(n) => {
-                            workspace.vfs.set(VfsFs::try_unwrap_or_clone(fs));
-                            let tmpl = locale::localize(keys::STATUS_PREPARED_PDF);
-                            workspace.status.set(tmpl.replace("{n}", &n.to_string()));
-                        }
-                        Err(err) => {
-                            warning.set(Some(err.to_string()));
-                            workspace.status.set(String::new());
-                        }
-                    }
-                });
-            });
-            workspace.finish_async();
-        });
+    /// Run [`deck_gen::prepare_pdf`] on selected game trees only.
+    pub fn prepare_pdf_for(&self, game_roots: &[String], warning: RwSignal<Option<String>>) {
+        self.prepare_scoped(game_roots, warning, PrepareKind::Pdf);
     }
 
     /// Fetch the `new-game` template from GitHub and install it under `games/`.
@@ -387,6 +333,175 @@ impl Workspace {
                             }
                         }
                         Err(err) => workspace.status.set(err),
+                    }
+                });
+            });
+            workspace.finish_async();
+        });
+    }
+
+    /// Fetch the Deck-Games catalog once per page session into `temp_vfs`.
+    pub fn ensure_catalog(&self) {
+        if self.catalog_loaded.get() || self.catalog_loading.get() {
+            return;
+        }
+        self.catalog_loading.set(true);
+        self.catalog_error.set(None);
+        self.status.set(locale::localize(keys::STATUS_LOADING_CATALOG));
+        let workspace = *self;
+        spawn_local(async move {
+            match load_catalog().await {
+                Ok((temp, entries)) => {
+                    workspace.temp_vfs.set(temp);
+                    workspace.catalog_games.set(entries);
+                    workspace.catalog_error.set(None);
+                    workspace.status.set(String::new());
+                }
+                Err(err) => {
+                    workspace.catalog_error.set(Some(err));
+                    workspace.status.set(String::new());
+                }
+            }
+            workspace.catalog_loaded.set(true);
+            workspace.catalog_loading.set(false);
+        });
+    }
+
+    /// Download a catalog game folder into persist-VFS under `games/`.
+    pub fn add_game_from_catalog(&self, game_root: &str, warning: RwSignal<Option<String>>) {
+        if !self.try_begin_async(locale::localize(keys::STATUS_LOADING_TEMPLATE)) {
+            return;
+        }
+        let workspace = *self;
+        let game_root = game_root.to_string();
+        spawn_local(async move {
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                progress_block!(progress, 0.0, 10.0, {
+                    workspace.flush_draft();
+                });
+                let installed = progress_block!(progress, 10.0, 90.0, {
+                    let mut vfs = workspace.vfs.get_untracked();
+                    let subprocess = progress.new_subprocess(10.0, 90.0);
+                    let result = install_catalog_game(&mut vfs, &game_root, subprocess).await;
+                    (vfs, result)
+                });
+                progress_block!(progress, 90.0, 100.0, {
+                    match installed {
+                        (vfs, Ok(installed)) => {
+                            workspace.vfs.set(vfs);
+                            let path = format!("games/{}", installed.folder);
+                            workspace.expand_ancestors(&path);
+                            workspace.set_primary_selection(Some(path.clone()));
+                            let tmpl = locale::localize(keys::STATUS_ADDED);
+                            workspace.status.set(
+                                tmpl.replace("{path}", &path)
+                                    .replace("{source}", installed.source),
+                            );
+                        }
+                        (_, Err(err)) => {
+                            warning.set(Some(err));
+                            workspace.status.set(String::new());
+                        }
+                    }
+                });
+            });
+            workspace.finish_async();
+        });
+    }
+
+    /// Open an HTML preview tab for a game poster (persist or temp VFS).
+    pub fn open_game_preview(&self, root: &str, info: &GameInfo, from_temp: bool) {
+        let candidate = info.preview.as_ref().filter(|name| !name.is_empty()).map(|name| {
+            if root.is_empty() {
+                format!("{}/{}", conf::catalog::PREVIEW_DIR, name)
+            } else {
+                format!("{root}/{}/{}", conf::catalog::PREVIEW_DIR, name)
+            }
+        });
+        let found = candidate.as_ref().and_then(|path| {
+            let exists = if from_temp {
+                self.temp_vfs.with(|vfs| vfs.is_file(path))
+            } else {
+                self.vfs.with(|vfs| vfs.is_file(path))
+            };
+            exists.then(|| path.clone())
+        });
+        let path = match found {
+            Some(path) => path,
+            None => {
+                let fallback = format!("__defaults__/{root}/preview.html");
+                self.temp_vfs.update(|vfs| {
+                    if !vfs.is_file(&fallback) {
+                        let _ = vfs.put_file(&fallback, DEFAULT_PREVIEW_HTML.to_string());
+                    }
+                });
+                fallback
+            }
+        };
+        self.open_tab(OpenTab {
+            path,
+            kind: TabKind::Preview,
+        });
+    }
+
+    fn prepare_scoped(
+        &self,
+        game_roots: &[String],
+        warning: RwSignal<Option<String>>,
+        kind: PrepareKind,
+    ) {
+        if game_roots.is_empty() {
+            warning.set(Some(locale::localize(keys::WARNING_NO_GAME_SELECTED)));
+            return;
+        }
+        let status = match kind {
+            PrepareKind::Html => locale::localize(keys::STATUS_PREPARING_HTML),
+            PrepareKind::Pdf => locale::localize(keys::STATUS_PREPARING_PDF),
+        };
+        if !self.try_begin_async(status) {
+            return;
+        }
+        let workspace = *self;
+        let roots = game_roots.to_vec();
+        spawn_local(async move {
+            let progress = workspace.progress_handle();
+            progress_wrapper!(progress, {
+                progress_block!(progress, 0.0, 10.0, {});
+                let prepared = progress_block!(progress, 10.0, 90.0, {
+                    workspace.flush_draft();
+                    let persist = workspace.vfs.get_untracked();
+                    let working = isolate_game_trees(&persist, &roots);
+                    let fs = Arc::new(VfsFs::new(working));
+                    let sub = progress.new_subprocess(10.0, 90.0);
+                    let sync_sub = SyncSub(sub);
+                    let result = match kind {
+                        PrepareKind::Html => deck_gen::prepare_html(fs.clone(), false, &sync_sub),
+                        PrepareKind::Pdf => {
+                            let engine = prepare_pdf_web::WebPdfEngine;
+                            deck_gen::prepare_pdf(fs.clone(), &engine, false, &sync_sub).await
+                        }
+                    };
+                    (fs, result)
+                });
+                progress_block!(progress, 90.0, 100.0, {
+                    let (fs, result) = prepared;
+                    match result {
+                        Ok(n) => {
+                            let working = VfsFs::try_unwrap_or_clone(fs);
+                            workspace.vfs.update(|persist| {
+                                merge_game_trees(persist, &working, &roots);
+                            });
+                            let tmpl = match kind {
+                                PrepareKind::Html => locale::localize(keys::STATUS_PREPARED_HTML),
+                                PrepareKind::Pdf => locale::localize(keys::STATUS_PREPARED_PDF),
+                            };
+                            workspace.status.set(tmpl.replace("{n}", &n.to_string()));
+                        }
+                        Err(err) => {
+                            warning.set(Some(err.to_string()));
+                            workspace.status.set(String::new());
+                        }
                     }
                 });
             });

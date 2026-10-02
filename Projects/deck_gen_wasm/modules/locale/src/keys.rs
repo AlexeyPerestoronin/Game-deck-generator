@@ -45,6 +45,8 @@ pub const WARNING_CANNOT_PREPARE_HTML: &str = "warning-cannot-prepare-html";
 pub const WARNING_CANNOT_PREPARE_PDF: &str = "warning-cannot-prepare-pdf";
 pub const WARNING_CANNOT_LOAD_NEW_GAME: &str = "warning-cannot-load-new-game";
 pub const WARNING_CANNOT_LOAD_FILES: &str = "warning-cannot-load-files";
+pub const WARNING_NO_GAMES: &str = "warning-no-games";
+pub const WARNING_NO_GAME_SELECTED: &str = "warning-no-game-selected";
 
 pub const EXPLORER_GAMES: &str = "explorer-games";
 pub const EXPLORER_NEW_FILE: &str = "explorer-new-file";
@@ -79,6 +81,13 @@ pub const GAMES_GLOBAL: &str = "games-global";
 pub const GAMES_LOAD_LOCAL: &str = "games-load-local";
 pub const GAMES_LOAD: &str = "games-load";
 pub const GAMES_SETTINGS: &str = "games-settings";
+pub const GAMES_NAME_UNDEFINED: &str = "games-name-undefined";
+pub const GAMES_SEARCH_PLACEHOLDER: &str = "games-search-placeholder";
+pub const GAMES_SEARCH: &str = "games-search";
+pub const GAMES_EMPTY: &str = "games-empty";
+pub const GAMES_SEARCH_EMPTY: &str = "games-search-empty";
+pub const GAMES_LOADING: &str = "games-loading";
+pub const GAMES_LOADING_PREVIEW: &str = "games-loading-preview";
 
 pub const PROMPT_NEW_FILE: &str = "prompt-new-file";
 pub const PROMPT_NEW_FOLDER: &str = "prompt-new-folder";
@@ -107,6 +116,7 @@ pub const STATUS_ADDED: &str = "status-added";
 pub const STATUS_DOWNLOADING_ZIP: &str = "status-downloading-zip";
 pub const STATUS_DOWNLOADED: &str = "status-downloaded";
 pub const STATUS_NOT_A_FOLDER: &str = "status-not-a-folder";
+pub const STATUS_LOADING_CATALOG: &str = "status-loading-catalog";
 
 pub const HTML_LANG: &str = "html-lang";
 pub const DOCUMENT_TITLE: &str = "document-title";
