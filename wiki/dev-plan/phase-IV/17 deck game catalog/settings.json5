@@ -20,9 +20,9 @@
         ],
         dirs: [
             // minimal scope
-            "w:<code_scope>",
+            "r:projects/deck_gen_wasm",
             // task dir
-            "w:<task_dir>",
+            "w:WiKi/dev-plan/phase-IV/17 deck game catalog",
             // rules and roles
             "r:WiKi/harness/rules",
             "r:WiKi/harness/roles",
@@ -38,5 +38,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "what prompt???",
+    "prompt": "Необходимо составить ТЗ для задачи: см. WiKi/dev-plan/phase-IV/17 deck game catalog/concept.md",
 }
