@@ -82,7 +82,7 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["path"]
                 }),
-                (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлам.", {
+                (DefaultTools.apply_diff_patch.__name__, "Применить diff-патч к файлам (в стиле git т.к. под капотом git apply).", {
                     "type": "object",
                     "properties": {
                         "patch": {

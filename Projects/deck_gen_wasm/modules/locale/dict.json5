@@ -1,6 +1,6 @@
 {
   // tooltips
-  "tooltip-clear": { EN: "Clear the workspace in this browser.", RU: "Очистить рабочую область в этом браузере." },
+  "tooltip-clear": { EN: "Delete all games in this browser. Help and AI configs stay.", RU: "Удалить все игры в этом браузере. Help и AI-конфиги останутся." },
   "tooltip-download": { EN: "Download the workspace as a ZIP archive.", RU: "Скачать рабочую область как ZIP-архив." },
   "tooltip-load-game": { EN: "Load a game folder from disk into games/.", RU: "Загрузить папку игры с диска в games/." },
   "tooltip-new-game": { EN: "Add a new game from the GitHub master template.", RU: "Добавить новую игру из шаблона GitHub master." },
@@ -44,8 +44,8 @@
   "modal-ai-api-key-show": { EN: "Show API key", RU: "Показать API-ключ" },
   "modal-ai-api-key-hide": { EN: "Hide API key", RU: "Скрыть API-ключ" },
 
-  "confirm-clear-title": { EN: "Clear workspace?", RU: "Очистить рабочую область?" },
-  "confirm-clear-message": { EN: "This removes every file in the current browser session. It cannot be undone.", RU: "Это удалит все файлы в текущей сессии браузера. Действие нельзя отменить." },
+  "confirm-clear-title": { EN: "Clear games?", RU: "Удалить игры?" },
+  "confirm-clear-message": { EN: "This removes every game in the current browser session. It cannot be undone. Help and AI configs stay.", RU: "Это удалит все игры в текущей сессии браузера. Действие нельзя отменить. Help и AI-конфиги останутся." },
   "confirm-clear-label": { EN: "Clear", RU: "Очистить" },
   "confirm-load-title": { EN: "Load Game", RU: "Загрузить игру" },
   "confirm-load-message": { EN: "Choose a folder on disk. The whole folder will be copied into games/. Allowed files: md, json, json5, html, scss, and images jpg/png/icon (max 100 MB each).", RU: "Выберите папку на диске. Вся папка будет скопирована в games/. Разрешённые файлы: md, json, json5, html, scss, а также изображения jpg/png/icon (макс. 100 МБ каждый)." },
@@ -122,7 +122,7 @@
   "status-pasted": { EN: "Pasted {n} item(s) into {dest}", RU: "Вставлено {n} элемент(ов) в {dest}" },
   "status-deleted": { EN: "Deleted {path}", RU: "Удалено {path}" },
   "status-renamed": { EN: "Renamed to {new_path}", RU: "Переименовано в {new_path}" },
-  "status-workspace-cleared": { EN: "Workspace cleared", RU: "Рабочая область очищена" },
+  "status-workspace-cleared": { EN: "Games cleared", RU: "Игры удалены" },
   "status-opened": { EN: "Opened {path}", RU: "Открыто {path}" },
   "status-saved": { EN: "Saved in this browser", RU: "Сохранено в этом браузере" },
   "status-select-files": { EN: "Select file(s)…", RU: "Выберите файл(ы)…" },

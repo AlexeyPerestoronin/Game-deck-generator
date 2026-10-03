@@ -6,7 +6,6 @@
 //! 0..=100 through `progress_*` macros; each `set` yields a frame so the ray
 //! can paint.
 
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use leptos::prelude::*;
@@ -30,7 +29,7 @@ use deck_gen_wasm_template::{
 };
 use progress_viewer::{progress_block, progress_wrapper};
 
-use super::games::{isolate_game_trees, merge_game_trees};
+use super::games::{clear_games, isolate_game_trees, merge_game_trees};
 
 #[derive(Clone, Copy)]
 enum PrepareKind {
@@ -103,27 +102,16 @@ impl Workspace {
         self.status.set(tmpl.replace("{path}", conf::help::PATH));
     }
 
-    /// Empty the tree and persist that empty session.
+    /// Delete everything under `games/`, keep the rest of the VFS, persist.
     pub fn clear(&self) {
-        self.draft.set(None);
-        self.vfs.set(deck_gen_wasm_fs::Vfs::default());
-        self.temp_vfs.set(deck_gen_wasm_fs::Vfs::default());
-        self.catalog_games.set(Vec::new());
-        self.catalog_error.set(None);
-        self.catalog_loaded.set(false);
-        self.catalog_loading.set(false);
-        self.set_primary_selection(None);
-        self.copy_planned.set(HashSet::new());
-        self.tabs.set(Vec::new());
-        self.active_tab.set(None);
-        self.preview_tabs.set(Vec::new());
-        self.active_preview_tab.set(None);
-        self.expanded.set(HashSet::new());
+        self.forget_path("games");
+        self.vfs.update(|vfs| clear_games(vfs));
         self.status
             .set(locale::localize(keys::STATUS_WORKSPACE_CLEARED));
         let _ = save_session(&self.snapshot());
-        spawn_local(async {
-            let _ = save_binaries(&deck_gen_wasm_fs::Vfs::default()).await;
+        let vfs = self.vfs.with(|vfs| vfs.clone());
+        spawn_local(async move {
+            let _ = save_binaries(&vfs).await;
         });
     }
 

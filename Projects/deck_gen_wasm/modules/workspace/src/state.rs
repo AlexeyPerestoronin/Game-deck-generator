@@ -238,6 +238,11 @@ impl Workspace {
 
     pub(crate) fn forget_path(&self, path: &str) {
         let gone = |current: &str| deck_gen_wasm_fs::path_is_or_under(current, path);
+        self.draft.update(|draft| {
+            if draft.as_ref().is_some_and(|(current, _)| gone(current)) {
+                *draft = None;
+            }
+        });
         self.selected.update(|selected| {
             if selected.as_ref().is_some_and(|current| gone(current)) {
                 *selected = None;

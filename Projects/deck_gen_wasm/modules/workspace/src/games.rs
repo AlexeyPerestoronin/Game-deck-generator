@@ -1,4 +1,4 @@
-//! Local game detection and scoped VFS isolate/merge for Prepare HTML/PDF.
+//! Local games: detect roots, isolate/merge for Prepare, empty `games/` on Clear.
 
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::{file_name, path_is_or_under, Vfs};
@@ -117,6 +117,12 @@ pub fn merge_game_trees(dest: &mut Vfs, working: &Vfs, roots: &[String]) {
     });
 }
 
+/// Drop every child of `games/`, then ensure that folder exists and is empty.
+pub(crate) fn clear_games(vfs: &mut Vfs) {
+    let _ = vfs.remove("games");
+    let _ = vfs.mkdir("games");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,5 +177,22 @@ mod tests {
         assert_eq!(roots, vec!["games/a", "games/nested/b"]);
         assert!(!games[0].has_info);
         assert!(!games[1].has_info);
+    }
+
+    #[test]
+    fn clear_games_drops_only_games_tree() {
+        let mut vfs = Vfs::default();
+        vfs.put_file("games/a/game.json5", "{}".into()).unwrap();
+        vfs.put_file("games/conf.json5", "conf".into()).unwrap();
+        vfs.put_file("user-help.md", "help".into()).unwrap();
+        vfs.put_file("ai-models/x.json5", "key".into()).unwrap();
+        clear_games(&mut vfs);
+        assert!(vfs.is_dir("games"));
+        assert_eq!(vfs.children("games").count(), 0);
+        assert!(!vfs.exists("games/a"));
+        assert!(!vfs.exists("games/a/game.json5"));
+        assert!(!vfs.exists("games/conf.json5"));
+        assert_eq!(vfs.read_file("user-help.md"), Some("help"));
+        assert_eq!(vfs.read_file("ai-models/x.json5"), Some("key"));
     }
 }
