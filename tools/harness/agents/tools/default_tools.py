@@ -1,10 +1,12 @@
 import os
+import re
 import shutil
 import pathlib
 import subprocess
+import sys
 import tempfile
 
-from typing import Tuple
+from typing import Callable, Tuple
 from classproperties import classproperty
 
 from . import i_tools
@@ -106,6 +108,30 @@ class DefaultTools(i_tools.ITools):
                         }
                     },
                     "required": ["path"]
+                }),
+                (DefaultTools.find_str.__name__, "Поиск строки в файлах начиная с корневого каталога.", {
+                    "type": "object",
+                    "properties": {
+                        "root": {
+                            "type": "string"
+                        },
+                        "string": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["root", "string"]
+                }),
+                (DefaultTools.find_str_by_regex.__name__, "Поиск строк по регулярному выражению начиная с корневого каталога.", {
+                    "type": "object",
+                    "properties": {
+                        "root": {
+                            "type": "string"
+                        },
+                        "regex": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["root", "regex"]
                 }),
                 (DefaultTools.create_file.__name__, "Создать файл.", {
                     "type": "object",
@@ -443,46 +469,96 @@ class DefaultTools(i_tools.ITools):
 
     # search tools
 
+    def _iter_files_for_search(self, root: str):
+        # файлы с r-доступом и допустимым расширением, начиная с root
+        self._check_access(root, 'r')
+        if os.path.isfile(root):
+            self._check_extensions(root, 'r')
+            yield root
+            return
+        if not os.path.isdir(root):
+            raise Exception(f"root '{root}' is not a file or directory")
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames.sort()
+            for name in sorted(filenames):
+                path = os.path.join(dirpath, name)
+                try:
+                    self._check_access(path, 'r')
+                    self._check_extensions(path, 'r')
+                except Exception:
+                    continue
+                yield path
+
+    def _emit_search_progress(self, title: str, fields: list, files_observed: int, match_detected: int, active: str, prev_lines: int) -> int:
+        # каждая следующая сводка перезаписывает предыдущую
+        field_block = ",\n".join(f"  {name} = {value}" for name, value in fields)
+        text = (
+            f"{title}(\n"
+            f"{field_block}\n"
+            f") result:\n"
+            f"- files observed: {files_observed}\n"
+            f"- match detected: {match_detected}\n"
+            f"- active scanning from: {active}\n"
+        )
+        if prev_lines > 0:
+            sys.stdout.write(f"\033[{prev_lines}A\033[J")
+        sys.stdout.write(text)
+        sys.stdout.flush()
+        return text.count("\n")
+
+    def _scan_files(self, root: str, title: str, fields: list, line_matches: Callable[[str], bool]) -> str:
+        matches = []
+        files_observed = 0
+        match_detected = 0
+        prev_lines = 0
+        active = ""
+        try:
+            for path in self._iter_files_for_search(root):
+                files_observed += 1
+                active = path
+                prev_lines = self._emit_search_progress(
+                    title, fields, files_observed, match_detected, active, prev_lines
+                )
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                except Exception:
+                    continue
+                for line in lines:
+                    content = line.rstrip("\r\n")
+                    if line_matches(content):
+                        match_detected += 1
+                        matches.append(f"{path}:{content}")
+                prev_lines = self._emit_search_progress(
+                    title, fields, files_observed, match_detected, active, prev_lines
+                )
+            if files_observed == 0:
+                prev_lines = self._emit_search_progress(
+                    title, fields, files_observed, match_detected, active, prev_lines
+                )
+            return "\n".join(matches)
+        except Exception as error:
+            raise Exception(f"cannot {title} → {error}")
+
     def find_str(self, root: str, string: str) -> str:
-        # TODO: необходимо реализовать
-        # 
-        # Функция осуществляет поиск строки string по всем файлам с доступными разрешениями начиная из корневого каталога root.
-        # Особенности:
-        # 1. Результат формирует образом похожем на то, как это делает findstr.exe.
-        # 2. Процесс работы функции долен быть наблюдаемым в консоли:
-        #    - по ходу поиска в файлах в консоль должно выводиться такое сообщение:
-        #     ```
-        #     find_str(
-        #       root = {root},
-        #       string = {string}
-        #     ) result:
-        #     - files observed: <количество просмотренных файлов>
-        #     - match detected: <количество найденных совпадений>
-        #     - active scanning from: <файл в котором ведётся сканирование в настоящий момент>
-        #     ```
-        #    - чтобы не засорять консольный вывод каждая следующая сводка должна перезаписывать текст предыдущей. 
-        ...
+        return self._scan_files(
+            root,
+            "find_str",
+            [("root", root), ("string", string)],
+            lambda content: string in content,
+        )
 
     def find_str_by_regex(self, root: str, regex: str) -> str:
-        # TODO: необходимо реализовать
-        # 
-        # Функция осуществляет поиск строк по регулярному выражения regex по всем файлам с доступными разрешениями начиная из корневого каталога root.
-        # Особенности:
-        # 1. Результат формирует образом похожем на то, как это делает findstr.exe.
-        # 2. Процесс работы функции долен быть наблюдаемым в консоли:
-        #    - по ходу поиска в файлах в консоль должно выводиться такое сообщение:
-        #     ```
-        #     find_str_by_regex(
-        #       root = {root},
-        #       regex = {regex}
-        #     ) result:
-        #     - files observed: <количество просмотренных файлов>
-        #     - match detected: <количество найденных совпадений>
-        #     - active scanning from: <файл в котором ведётся сканирование в настоящий момент>
-        #     ```
-        #    - чтобы не засорять консольный вывод каждая следующая сводка должна перезаписывать текст предыдущей. 
-        ...
-        ...
+        try:
+            pattern = re.compile(regex)
+        except Exception as error:
+            raise Exception(f"cannot find_str_by_regex → {error}")
+        return self._scan_files(
+            root,
+            "find_str_by_regex",
+            [("root", root), ("regex", regex)],
+            lambda content: pattern.search(content) is not None,
+        )
 
     # file tools
 
