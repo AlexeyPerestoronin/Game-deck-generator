@@ -28,7 +28,7 @@ flowchart TB
 
 Каталог игр: Globals читает GitHub `AlexeyPerestoronin/Deck-Games` (ветка `master`, папка `Games`); афиши каталога живут в сессионном `temp_vfs` и не персистятся.
 
-AI: модели — файлы `ai-models/<id>.json5` в корне VFS. Ключ — в json5 или в поле модалки на один запуск (в файл не пишется). Один запрос → цикл инструментов по VFS → лог `ai-models/log/`. Правила для агента — `game-help.md`.
+AI: модели — файлы `ai-models/<id>.json5` в корне VFS. Ключ — в json5 или в поле модалки на один запуск (в файл не пишется). Один запрос → цикл инструментов по VFS → лог `ai-models/log/`. Промпты агента — bundled markdown (`create-game-pt-*.md`, `edit-game-pt-*.md`) по типу запроса и локали UI; правила игр — `game-help.md`.
 
 Технологии: Rust → wasm32, Leptos 0.8 (CSR), Trunk, wasm-bindgen; `deck_gen` без default-features; `prepare_pdf_web`; localStorage / IndexedDB.
 

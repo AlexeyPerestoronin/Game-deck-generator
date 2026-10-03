@@ -12,6 +12,8 @@ path = "src/lib.rs"
 deck_gen_wasm_fs = { path = "../fs" }
 # Path constants for ai-models/ and game-help.md
 deck_gen_wasm_conf = { path = "../conf" }
+# Active UI locale (en/ru) for bundled prompt templates
+deck_gen_wasm_locale = { path = "../locale" }
 # Browser POST JSON (WASM); native tests do not call HTTP
 deck_gen_wasm_browser = { path = "../browser" }
 # prepare_html tool
