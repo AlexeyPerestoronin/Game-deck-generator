@@ -14,7 +14,7 @@
 В `projects/deck_gen_wasm/modules/ai/bundled/`:
 
 1. `create-game-pt-en.md` / `create-game-pt-ru.md` — создание новой игры (`CreateGame`).
-2. `edit-game-en.md` / `edit-game-ru.md` — правка существующей (`EditGame`).
+2. `edit-game-pt-en.md` / `edit-game-pt-ru.md` — правка существующей (`EditGame`).
 
 Каждый файл покрывает то, что сейчас делают **оба** `system_prompt` и `request_text` для своего сценария (правила агента + формулировка задачи).
 
@@ -41,8 +41,8 @@ EN: перенести текущий английский смысл 1:1. RU: �
 ## Scope
 - `projects/deck_gen_wasm/modules/ai/bundled/create-game-pt-en.md`
 - `projects/deck_gen_wasm/modules/ai/bundled/create-game-pt-ru.md`
-- `projects/deck_gen_wasm/modules/ai/bundled/edit-game-en.md`
-- `projects/deck_gen_wasm/modules/ai/bundled/edit-game-ru.md`
+- `projects/deck_gen_wasm/modules/ai/bundled/edit-game-pt-en.md`
+- `projects/deck_gen_wasm/modules/ai/bundled/edit-game-pt-ru.md`
 - `projects/deck_gen_wasm/modules/ai/src/engine.rs` — загрузка шаблона вместо `request_text` / `system_prompt`
 - зависимость `deck_gen_wasm_locale` у `ai` — только если её ещё нет и иначе не взять текущую локаль; не тащить leptos
 

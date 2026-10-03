@@ -26,7 +26,7 @@ class DefaultTools(i_tools.ITools):
         self._cwd = settings["cwd"]
         self._temp_dir = settings["temp-dir"]
         self._available_file_extension = settings["available-file-extensions"]
-        self._command_execution_limit = settings.get("command-execution-limit", 60)
+        self._command_execution_limit = settings.get("command-execution-limit", 120)
         self._invoke_execution_limit = settings.get("invoke-execution-limit", 120)
 
         # r = read
