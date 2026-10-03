@@ -38,6 +38,8 @@ pub struct ModelConf {
     pub api_key: String,
     pub cors: CorsKind,
     pub proxy_url: String,
+    /// Vendor page to create a key. Empty/missing in json5 → `None`.
+    pub api_key_hosting: Option<String>,
     pub requests_per_second: Option<u32>,
     pub max_rounds: u32,
 }
@@ -52,6 +54,7 @@ struct RawConf {
     api_key: Option<String>,
     cors: Option<String>,
     proxy_url: Option<String>,
+    api_key_hosting: Option<String>,
     requests_per_second: Option<u32>,
     max_rounds: Option<u32>,
 }
@@ -109,31 +112,55 @@ pub fn parse_model_conf(text: &str, path: &str) -> Result<ModelConf, String> {
         api_key: raw.api_key.unwrap_or_default(),
         cors,
         proxy_url: raw.proxy_url.unwrap_or_default().trim().to_string(),
+        api_key_hosting: optional_url(raw.api_key_hosting),
         requests_per_second: raw.requests_per_second.filter(|n| *n > 0),
-        max_rounds: raw.max_rounds.filter(|n| *n > 0).unwrap_or(DEFAULT_MAX_ROUNDS),
+        max_rounds: raw
+            .max_rounds
+            .filter(|n| *n > 0)
+            .unwrap_or(DEFAULT_MAX_ROUNDS),
     })
 }
 
-/// JSON5 files directly under `ai-models/` (not `log/`). `(path, label)`.
-pub fn list_model_files(vfs: &Vfs) -> Vec<(String, String)> {
+fn optional_url(raw: Option<String>) -> Option<String> {
+    raw.map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
+/// One `ai-models/*.json5` as shown in the model selector.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModelFile {
+    /// VFS path (`ai-models/<id>.json5`).
+    pub path: String,
+    /// Name in the `<select>`.
+    pub label: String,
+    /// Vendor key page; `None` hides the request button.
+    pub api_key_hosting: Option<String>,
+}
+
+/// JSON5 files directly under `ai-models/` (not `log/`).
+pub fn list_model_files(vfs: &Vfs) -> Vec<ModelFile> {
     let mut out = Vec::new();
     for (name, is_dir) in vfs.children(wconf::ai::DIR) {
         if is_dir || !name.ends_with(".json5") {
             continue;
         }
         let path = format!("{}/{name}", wconf::ai::DIR);
-        let label = vfs
+        let (label, api_key_hosting) = vfs
             .read_file(&path)
             .and_then(|body| parse_model_conf(body, &path).ok())
-            .map(|c| c.label)
+            .map(|c| (c.label, c.api_key_hosting))
             .unwrap_or_else(|| {
-                name.strip_suffix(".json5")
-                    .unwrap_or(name)
-                    .to_string()
+                (
+                    name.strip_suffix(".json5").unwrap_or(name).to_string(),
+                    None,
+                )
             });
-        out.push((path, label));
+        out.push(ModelFile {
+            path,
+            label,
+            api_key_hosting,
+        });
     }
-    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out.sort_by(|a, b| a.path.cmp(&b.path));
     out
 }
 
@@ -163,6 +190,7 @@ mod tests {
         assert_eq!(c.cors, CorsKind::Browser);
         assert_eq!(c.max_rounds, DEFAULT_MAX_ROUNDS);
         assert_eq!(c.requests_per_second, None);
+        assert_eq!(c.api_key_hosting, None);
     }
 
     #[test]
@@ -216,5 +244,73 @@ mod tests {
         )
         .unwrap();
         assert_eq!(c.id, "x");
+    }
+
+    #[test]
+    fn parse_hosting_url() {
+        let c = parse_model_conf(
+            r#"{
+                kind: "gemini",
+                base_url: "https://example.com",
+                "api_key_hosting": "https://aistudio.google.com/apikey"
+            }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(
+            c.api_key_hosting.as_deref(),
+            Some("https://aistudio.google.com/apikey")
+        );
+    }
+
+    #[test]
+    fn parse_hosting_missing_or_empty_is_none() {
+        let missing = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x" }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(missing.api_key_hosting, None);
+
+        let empty = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x", "api_key_hosting": "" }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(empty.api_key_hosting, None);
+
+        let spaces = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x", "api_key_hosting": "  " }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(spaces.api_key_hosting, None);
+    }
+
+    #[test]
+    fn list_model_files_includes_hosting() {
+        let mut vfs = Vfs::default();
+        vfs.mkdir("ai-models").unwrap();
+        vfs.put_file(
+            "ai-models/with.json5",
+            r#"{ kind: "gemini", base_url: "http://x", label: "With", "api_key_hosting": "https://keys.example" }"#
+                .into(),
+        )
+        .unwrap();
+        vfs.put_file(
+            "ai-models/without.json5",
+            r#"{ kind: "gemini", base_url: "http://x", label: "Without" }"#.into(),
+        )
+        .unwrap();
+        let list = list_model_files(&vfs);
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].path, "ai-models/with.json5");
+        assert_eq!(list[0].label, "With");
+        assert_eq!(
+            list[0].api_key_hosting.as_deref(),
+            Some("https://keys.example")
+        );
+        assert_eq!(list[1].path, "ai-models/without.json5");
+        assert_eq!(list[1].api_key_hosting, None);
     }
 }

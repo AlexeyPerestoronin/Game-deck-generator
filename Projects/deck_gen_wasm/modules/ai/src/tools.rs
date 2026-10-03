@@ -244,10 +244,7 @@ mod tests {
     fn prepare_html_may_write_autogen() {
         let mut vfs = Vfs::default();
         let msg = execute_tool(&mut vfs, "prepare_html", &json!({}));
-        assert!(
-            msg.starts_with("prepare_html"),
-            "tool must run, got {msg}"
-        );
+        assert!(msg.starts_with("prepare_html"), "tool must run, got {msg}");
     }
 
     #[test]

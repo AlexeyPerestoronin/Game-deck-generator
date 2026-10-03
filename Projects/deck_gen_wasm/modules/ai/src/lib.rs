@@ -12,7 +12,7 @@ mod log;
 mod openai;
 mod tools;
 
-pub use crate::conf::{list_model_files, parse_model_conf, ModelConf, ModelKind};
+pub use crate::conf::{list_model_files, parse_model_conf, ModelConf, ModelFile, ModelKind};
 pub use crate::engine::{AiEngine, AiRequest};
 pub use crate::install::{install_ai_defaults, needs_ai_install};
 pub use crate::log::log_file_name;

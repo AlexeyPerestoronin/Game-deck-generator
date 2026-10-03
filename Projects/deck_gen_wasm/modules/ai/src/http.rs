@@ -52,7 +52,10 @@ mod tests {
 
     #[test]
     fn proxy_prefix_question_mark() {
-        let u = with_proxy("https://corsproxy.io/?", "https://api.deepseek.com/chat/completions");
+        let u = with_proxy(
+            "https://corsproxy.io/?",
+            "https://api.deepseek.com/chat/completions",
+        );
         assert_eq!(
             u,
             "https://corsproxy.io/?https://api.deepseek.com/chat/completions"

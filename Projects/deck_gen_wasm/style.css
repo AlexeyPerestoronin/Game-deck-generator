@@ -807,6 +807,65 @@ body {
   cursor: default;
 }
 
+.modal-ai .modal-actions {
+  align-items: stretch;
+}
+
+.modal-ai-model-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.modal-ai-model-row .modal-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-ai-hosting {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.modal-ai-key {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--editor);
+}
+
+.modal-ai-key-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.modal-ai-key-toggle {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+}
+
+.modal-ai-key-toggle:hover {
+  color: var(--fg);
+}
+
+.modal-ai-key-toggle svg {
+  display: block;
+}
+
 .context-backdrop {
   position: fixed;
   inset: 0;

@@ -53,13 +53,22 @@ pub struct AiEngine {
 }
 
 impl AiEngine {
-    /// Read and validate one model file. Empty `api_key` or blocked CORS without
-    /// `proxy_url` is an error before any network call.
-    pub fn from_conf(vfs: &Vfs, model_path: &str) -> Result<Self, String> {
+    /// Read and validate one model file. Empty `api_key` (after optional
+    /// override) or blocked CORS without `proxy_url` is an error before any
+    /// network call. Non-empty `api_key_override` replaces json5 `api_key`
+    /// for this engine only; the file is not written.
+    pub fn from_conf(
+        vfs: &Vfs,
+        model_path: &str,
+        api_key_override: Option<&str>,
+    ) -> Result<Self, String> {
         let body = vfs
             .read_file(model_path)
             .ok_or_else(|| format!("model config not found: {model_path}"))?;
-        let conf = parse_model_conf(body, model_path)?;
+        let mut conf = parse_model_conf(body, model_path)?;
+        if let Some(key) = api_key_override.map(str::trim).filter(|s| !s.is_empty()) {
+            conf.api_key = key.to_string();
+        }
         if conf.api_key.trim().is_empty() {
             return Err(format!(
                 "api_key is empty in {model_path}. Paste a key into that json5 file."
@@ -169,10 +178,7 @@ impl AiEngine {
             on_step(vfs, &log.path);
         }
 
-        let err = format!(
-            "stopped after {} rounds (max_rounds)",
-            self.conf.max_rounds
-        );
+        let err = format!("stopped after {} rounds (max_rounds)", self.conf.max_rounds);
         let _ = log.push(vfs, &format!("## Error\n\n{err}\n"));
         on_step(vfs, &log.path);
         Err(err)
@@ -243,7 +249,7 @@ mod tests {
     fn from_conf_rejects_empty_key() {
         let mut vfs = Vfs::default();
         install_ai_defaults(&mut vfs).unwrap();
-        let err = AiEngine::from_conf(&vfs, "ai-models/gemini-2.0-flash.json5").unwrap_err();
+        let err = AiEngine::from_conf(&vfs, "ai-models/gemini-2.0-flash.json5", None).unwrap_err();
         assert!(err.contains("api_key"), "{err}");
     }
 
@@ -264,7 +270,71 @@ mod tests {
             .into(),
         )
         .unwrap();
-        let err = AiEngine::from_conf(&vfs, "ai-models/deepseek-chat.json5").unwrap_err();
+        let err = AiEngine::from_conf(&vfs, "ai-models/deepseek-chat.json5", None).unwrap_err();
         assert!(err.contains("proxy") || err.contains("blocked"), "{err}");
+    }
+
+    #[test]
+    fn from_conf_override_fills_empty_json5() {
+        let mut vfs = Vfs::default();
+        install_ai_defaults(&mut vfs).unwrap();
+        let path = "ai-models/gemini-2.0-flash.json5";
+        let before = vfs.read_file(path).unwrap().to_string();
+        let engine = AiEngine::from_conf(&vfs, path, Some("from-modal")).unwrap();
+        assert_eq!(engine.conf.api_key, "from-modal");
+        assert_eq!(vfs.read_file(path).unwrap(), before);
+    }
+
+    #[test]
+    fn from_conf_both_empty_is_err() {
+        let mut vfs = Vfs::default();
+        install_ai_defaults(&mut vfs).unwrap();
+        let path = "ai-models/gemini-2.0-flash.json5";
+        let err = AiEngine::from_conf(&vfs, path, Some("  ")).unwrap_err();
+        assert!(err.contains("api_key"), "{err}");
+    }
+
+    #[test]
+    fn from_conf_override_wins_over_json5() {
+        let mut vfs = Vfs::default();
+        vfs.put_file(
+            "ai-models/gemini-2.0-flash.json5",
+            r#"{
+                id: "gemini-2.0-flash",
+                kind: "gemini",
+                base_url: "https://example.com",
+                auth: "query-key",
+                api_key: "file-key",
+                cors: "browser"
+            }"#
+            .into(),
+        )
+        .unwrap();
+        let engine =
+            AiEngine::from_conf(&vfs, "ai-models/gemini-2.0-flash.json5", Some("modal-key"))
+                .unwrap();
+        assert_eq!(engine.conf.api_key, "modal-key");
+        let body = vfs.read_file("ai-models/gemini-2.0-flash.json5").unwrap();
+        assert!(body.contains("file-key"));
+        assert!(!body.contains("modal-key"));
+    }
+
+    #[test]
+    fn from_conf_empty_override_keeps_json5_key() {
+        let mut vfs = Vfs::default();
+        vfs.put_file(
+            "ai-models/gemini-2.0-flash.json5",
+            r#"{
+                kind: "gemini",
+                base_url: "https://example.com",
+                api_key: "file-key",
+                cors: "browser"
+            }"#
+            .into(),
+        )
+        .unwrap();
+        let engine =
+            AiEngine::from_conf(&vfs, "ai-models/gemini-2.0-flash.json5", Some("")).unwrap();
+        assert_eq!(engine.conf.api_key, "file-key");
     }
 }

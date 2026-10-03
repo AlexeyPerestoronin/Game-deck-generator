@@ -140,15 +140,17 @@ mod tests {
     #[test]
     fn merge_writes_back_only_under_selected_roots() {
         let mut persist = Vfs::default();
-        persist.put_file("games/a/game.json5", "old".into()).unwrap();
+        persist
+            .put_file("games/a/game.json5", "old".into())
+            .unwrap();
         persist.put_file("games/b/game.json5", "b".into()).unwrap();
         persist.put_file("games/conf.json5", "conf".into()).unwrap();
         let mut working = Vfs::default();
-        working.put_file("games/a/game.json5", "new".into()).unwrap();
-        working.put_file("games/a/out.html", "html".into()).unwrap();
         working
-            .put_file("games/conf.json5", "nope".into())
+            .put_file("games/a/game.json5", "new".into())
             .unwrap();
+        working.put_file("games/a/out.html", "html".into()).unwrap();
+        working.put_file("games/conf.json5", "nope".into()).unwrap();
         merge_game_trees(&mut persist, &working, &["games/a".into()]);
         assert_eq!(persist.read_file("games/a/game.json5"), Some("new"));
         assert_eq!(persist.read_file("games/a/out.html"), Some("html"));

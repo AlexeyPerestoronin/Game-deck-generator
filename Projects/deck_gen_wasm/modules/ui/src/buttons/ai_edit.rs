@@ -41,7 +41,7 @@ pub fn AiEditButton(
             title=Signal::derive(move || locale::localize(keys::MODAL_AI_EDIT_TITLE))
             models=Signal::derive(move || workspace.vfs.with(list_ai_models))
             loading=Signal::derive(move || workspace.loading.get())
-            on_run=Callback::new(move |(prompt, model_path): (String, String)| {
+            on_run=Callback::new(move |(prompt, model_path, api_key): (String, String, String)| {
                 let Some((game, file)) = workspace.current_ai_edit_target() else {
                     return;
                 };
@@ -49,6 +49,7 @@ pub fn AiEditButton(
                 workspace.run_ai(
                     AiRequest::EditGame { game, file, prompt },
                     &model_path,
+                    &api_key,
                     warning,
                 );
             })

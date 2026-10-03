@@ -16,9 +16,9 @@ use deck_gen_wasm_conf as conf;
 #[cfg(not(test))]
 use leptos::prelude::*;
 #[cfg(not(test))]
-use web_sys::window;
-#[cfg(not(test))]
 use wasm_bindgen::JsValue;
+#[cfg(not(test))]
+use web_sys::window;
 
 pub mod keys;
 
@@ -90,7 +90,10 @@ mod store {
         }
     }
     pub fn set(l: super::Locale) {
-        CUR.store(if l == super::Locale::Ru { 1 } else { 0 }, Ordering::Relaxed);
+        CUR.store(
+            if l == super::Locale::Ru { 1 } else { 0 },
+            Ordering::Relaxed,
+        );
     }
     pub fn persist(_l: super::Locale) {}
     pub fn load_persisted() -> super::Locale {
@@ -244,6 +247,10 @@ mod tests {
             keys::MODAL_AI_PROMPT,
             keys::MODAL_AI_MODEL,
             keys::MODAL_AI_RUN,
+            keys::MODAL_AI_API_KEY,
+            keys::MODAL_AI_API_KEY_REQUEST,
+            keys::MODAL_AI_API_KEY_SHOW,
+            keys::MODAL_AI_API_KEY_HIDE,
             keys::CONFIRM_CLEAR_TITLE,
             keys::CONFIRM_CLEAR_MESSAGE,
             keys::CONFIRM_CLEAR_LABEL,

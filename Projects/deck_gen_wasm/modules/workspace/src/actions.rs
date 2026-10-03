@@ -13,22 +13,22 @@ use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
 use super::{OpenTab, TabKind, Workspace};
-use deck_gen_wasm_fs::VfsFs;
 use deck_gen_wasm_conf as conf;
-use deck_gen_wasm_locale as locale;
-use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_export::{save_zip_bytes, vfs_to_zip, ZIP_FILENAME};
+use deck_gen_wasm_fs::VfsFs;
 use deck_gen_wasm_import::{
     install_files, install_folder, pick_and_read_files, pick_and_read_folder, PickedFiles,
     PickedFolder,
 };
+use deck_gen_wasm_locale as locale;
+use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_persist::{save_binaries, save_session};
-use progress_viewer::{progress_block, progress_wrapper};
 use deck_gen_wasm_template as help;
 use deck_gen_wasm_template::{
     install_catalog_game, install_game, install_new_game, load_catalog, GameInfo,
     DEFAULT_PREVIEW_HTML,
 };
+use progress_viewer::{progress_block, progress_wrapper};
 
 use super::games::{isolate_game_trees, merge_game_trees};
 
@@ -80,7 +80,8 @@ impl Workspace {
                 return;
             }
             None => {
-                self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE));
+                self.status
+                    .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE));
                 return;
             }
             Some(Ok(())) => {}
@@ -118,7 +119,8 @@ impl Workspace {
         self.preview_tabs.set(Vec::new());
         self.active_preview_tab.set(None);
         self.expanded.set(HashSet::new());
-        self.status.set(locale::localize(keys::STATUS_WORKSPACE_CLEARED));
+        self.status
+            .set(locale::localize(keys::STATUS_WORKSPACE_CLEARED));
         let _ = save_session(&self.snapshot());
         spawn_local(async {
             let _ = save_binaries(&deck_gen_wasm_fs::Vfs::default()).await;
@@ -158,9 +160,10 @@ impl Workspace {
                                 workspace.expand_ancestors(&folder);
                                 workspace.set_primary_selection(Some(folder.clone()));
                                 let tmpl = locale::localize(keys::STATUS_LOADED_N_INTO);
-                                workspace
-                                    .status
-                                    .set(tmpl.replace("{n}", &n.to_string()).replace("{folder}", &folder));
+                                workspace.status.set(
+                                    tmpl.replace("{n}", &n.to_string())
+                                        .replace("{folder}", &folder),
+                                );
                             }
                             (_, Err(err)) => workspace.status.set(err),
                         }
@@ -184,7 +187,9 @@ impl Workspace {
                     workspace.take_pick(warning, pick_and_read_folder().await)
                 });
                 if let Some(PickedFolder { name, files, dirs }) = picked {
-                    workspace.status.set(locale::localize(keys::STATUS_LOADING_FOLDER));
+                    workspace
+                        .status
+                        .set(locale::localize(keys::STATUS_LOADING_FOLDER));
                     let installed = progress_block!(progress, 30.0, 90.0, {
                         workspace.flush_draft();
                         let mut vfs = workspace.vfs.get_untracked();
@@ -248,9 +253,10 @@ impl Workspace {
                             workspace.expand_ancestors(&path);
                             workspace.set_primary_selection(Some(path.clone()));
                             let tmpl = locale::localize(keys::STATUS_ADDED);
-                            workspace
-                                .status
-                                .set(tmpl.replace("{path}", &path).replace("{source}", &installed.source));
+                            workspace.status.set(
+                                tmpl.replace("{path}", &path)
+                                    .replace("{source}", &installed.source),
+                            );
                         }
                         (_, Err(err)) => {
                             warning.set(Some(err));
@@ -290,9 +296,10 @@ impl Workspace {
                             workspace.expand_ancestors(&path);
                             workspace.set_primary_selection(Some(path.clone()));
                             let tmpl = locale::localize(keys::STATUS_ADDED);
-                            workspace
-                                .status
-                                .set(tmpl.replace("{path}", &path).replace("{source}", &installed.source));
+                            workspace.status.set(
+                                tmpl.replace("{path}", &path)
+                                    .replace("{source}", &installed.source),
+                            );
                         }
                         (_, Err(err)) => {
                             warning.set(Some(err));
@@ -327,7 +334,9 @@ impl Workspace {
                             match save_zip_bytes(bytes, ZIP_FILENAME, subprocess).await {
                                 Ok(()) => {
                                     let tmpl = locale::localize(keys::STATUS_DOWNLOADED);
-                                    workspace.status.set(tmpl.replace("{filename}", ZIP_FILENAME))
+                                    workspace
+                                        .status
+                                        .set(tmpl.replace("{filename}", ZIP_FILENAME))
                                 }
                                 Err(err) => workspace.status.set(err),
                             }
@@ -347,7 +356,8 @@ impl Workspace {
         }
         self.catalog_loading.set(true);
         self.catalog_error.set(None);
-        self.status.set(locale::localize(keys::STATUS_LOADING_CATALOG));
+        self.status
+            .set(locale::localize(keys::STATUS_LOADING_CATALOG));
         let workspace = *self;
         spawn_local(async move {
             match load_catalog().await {
@@ -412,13 +422,17 @@ impl Workspace {
 
     /// Open an HTML preview tab for a game poster (persist or temp VFS).
     pub fn open_game_preview(&self, root: &str, info: &GameInfo, from_temp: bool) {
-        let candidate = info.preview.as_ref().filter(|name| !name.is_empty()).map(|name| {
-            if root.is_empty() {
-                format!("{}/{}", conf::catalog::PREVIEW_DIR, name)
-            } else {
-                format!("{root}/{}/{}", conf::catalog::PREVIEW_DIR, name)
-            }
-        });
+        let candidate = info
+            .preview
+            .as_ref()
+            .filter(|name| !name.is_empty())
+            .map(|name| {
+                if root.is_empty() {
+                    format!("{}/{}", conf::catalog::PREVIEW_DIR, name)
+                } else {
+                    format!("{root}/{}/{}", conf::catalog::PREVIEW_DIR, name)
+                }
+            });
         let found = candidate.as_ref().and_then(|path| {
             let exists = if from_temp {
                 self.temp_vfs.with(|vfs| vfs.is_file(path))
@@ -509,5 +523,3 @@ impl Workspace {
         });
     }
 }
-
-

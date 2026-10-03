@@ -3,7 +3,7 @@
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-use deck_gen_wasm_ai::{install_ai_defaults, needs_ai_install, AiEngine, AiRequest};
+use deck_gen_wasm_ai::{install_ai_defaults, needs_ai_install, AiEngine, AiRequest, ModelFile};
 use deck_gen_wasm_fs::{path_is_or_under, Vfs};
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
@@ -12,8 +12,8 @@ use progress_viewer::progress_wrapper;
 
 use super::{OpenTab, TabKind, Workspace};
 
-/// JSON5 files under `ai-models/` as `(path, label)`.
-pub fn list_ai_models(vfs: &Vfs) -> Vec<(String, String)> {
+/// JSON5 files under `ai-models/` (path, label, optional key-hosting URL).
+pub fn list_ai_models(vfs: &Vfs) -> Vec<ModelFile> {
     deck_gen_wasm_ai::list_model_files(vfs)
 }
 
@@ -49,7 +49,9 @@ impl Workspace {
         });
         match result {
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+            None => self
+                .status
+                .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
             Some(Ok(())) => {}
         }
     }
@@ -71,6 +73,7 @@ impl Workspace {
         &self,
         req: AiRequest,
         model_path: &str,
+        api_key_override: &str,
         warning: RwSignal<Option<String>>,
     ) {
         if !self.try_begin_async(locale::localize(keys::STATUS_AI_RUNNING)) {
@@ -78,12 +81,18 @@ impl Workspace {
         }
         let workspace = *self;
         let model_path = model_path.to_string();
+        let api_key_override = api_key_override.to_string();
         spawn_local(async move {
             let progress = workspace.progress_handle();
             progress_wrapper!(progress, {
                 workspace.flush_draft();
                 let mut vfs = workspace.vfs.get_untracked();
-                let engine = match AiEngine::from_conf(&vfs, &model_path) {
+                let key = api_key_override.trim();
+                let engine = match AiEngine::from_conf(
+                    &vfs,
+                    &model_path,
+                    (!key.is_empty()).then_some(key),
+                ) {
                     Ok(engine) => engine,
                     Err(err) => {
                         warning.set(Some(err));
@@ -113,9 +122,7 @@ impl Workspace {
                 workspace.vfs.set(vfs);
                 match result {
                     Ok(()) => {
-                        workspace
-                            .status
-                            .set(locale::localize(keys::STATUS_AI_DONE));
+                        workspace.status.set(locale::localize(keys::STATUS_AI_DONE));
                     }
                     Err(err) => {
                         warning.set(Some(err));

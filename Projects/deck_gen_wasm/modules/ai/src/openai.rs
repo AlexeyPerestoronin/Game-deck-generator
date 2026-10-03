@@ -137,7 +137,10 @@ fn parse_response(text: &str) -> Result<LlmTurn, String> {
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
-            let args_raw = func.get("arguments").and_then(Value::as_str).unwrap_or("{}");
+            let args_raw = func
+                .get("arguments")
+                .and_then(Value::as_str)
+                .unwrap_or("{}");
             let args = serde_json::from_str(args_raw).unwrap_or_else(|_| json!({}));
             tool_calls.push(ToolCall { id, name, args });
         }

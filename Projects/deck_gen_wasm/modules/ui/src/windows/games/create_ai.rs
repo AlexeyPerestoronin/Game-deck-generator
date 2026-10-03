@@ -29,9 +29,14 @@ pub fn CreateAiGameButton(
                 title=Signal::derive(move || locale::localize(keys::MODAL_AI_CREATE_TITLE))
                 models=Signal::derive(move || workspace.vfs.with(list_ai_models))
                 loading=Signal::derive(move || workspace.loading.get())
-                on_run=Callback::new(move |(prompt, model_path): (String, String)| {
+                on_run=Callback::new(move |(prompt, model_path, api_key): (String, String, String)| {
                     warning_title.set(locale::localize(keys::WARNING_CANNOT_RUN_AI));
-                    workspace.run_ai(AiRequest::CreateGame { prompt }, &model_path, warning);
+                    workspace.run_ai(
+                        AiRequest::CreateGame { prompt },
+                        &model_path,
+                        &api_key,
+                        warning,
+                    );
                 })
             />
         </>

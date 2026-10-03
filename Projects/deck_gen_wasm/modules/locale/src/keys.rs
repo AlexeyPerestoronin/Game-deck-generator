@@ -38,6 +38,10 @@ pub const MODAL_AI_EDIT_TITLE: &str = "modal-ai-edit-title";
 pub const MODAL_AI_PROMPT: &str = "modal-ai-prompt";
 pub const MODAL_AI_MODEL: &str = "modal-ai-model";
 pub const MODAL_AI_RUN: &str = "modal-ai-run";
+pub const MODAL_AI_API_KEY: &str = "modal-ai-api-key";
+pub const MODAL_AI_API_KEY_REQUEST: &str = "modal-ai-api-key-request";
+pub const MODAL_AI_API_KEY_SHOW: &str = "modal-ai-api-key-show";
+pub const MODAL_AI_API_KEY_HIDE: &str = "modal-ai-api-key-hide";
 
 pub const CONFIRM_CLEAR_TITLE: &str = "confirm-clear-title";
 pub const CONFIRM_CLEAR_MESSAGE: &str = "confirm-clear-message";

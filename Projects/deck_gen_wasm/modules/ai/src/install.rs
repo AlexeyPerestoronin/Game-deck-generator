@@ -21,7 +21,9 @@ fn bundled() -> [(&'static str, &'static str); 5] {
 
 /// True when any default AI file is missing or looks like the app HTML shell.
 pub fn needs_ai_install(vfs: &Vfs) -> bool {
-    bundled().iter().any(|(path, _)| file_needs_install(vfs, path))
+    bundled()
+        .iter()
+        .any(|(path, _)| file_needs_install(vfs, path))
 }
 
 /// Write missing / HTML-shell defaults. Does not overwrite a user-edited json5 (e.g. a key).

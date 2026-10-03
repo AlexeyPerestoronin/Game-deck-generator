@@ -41,7 +41,8 @@ impl Workspace {
     fn paste_into(&self, dest: &str) {
         let planned = self.copy_planned.get();
         if planned.is_empty() {
-            self.status.set(locale::localize(keys::STATUS_NOTHING_TO_PASTE));
+            self.status
+                .set(locale::localize(keys::STATUS_NOTHING_TO_PASTE));
             return;
         }
         self.flush_draft();
@@ -54,10 +55,13 @@ impl Workspace {
                 self.copy_planned.set(HashSet::new());
                 self.expand_ancestors(dest);
                 let tmpl = locale::localize(keys::STATUS_PASTED);
-                self.status.set(tmpl.replace("{n}", &n.to_string()).replace("{dest}", dest));
+                self.status
+                    .set(tmpl.replace("{n}", &n.to_string()).replace("{dest}", dest));
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+            None => self
+                .status
+                .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
@@ -70,7 +74,9 @@ impl Workspace {
                 self.status.set(tmpl.replace("{path}", path));
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+            None => self
+                .status
+                .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
@@ -86,7 +92,9 @@ impl Workspace {
                 self.status.set(tmpl.replace("{new_path}", &new_path));
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+            None => self
+                .status
+                .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 }

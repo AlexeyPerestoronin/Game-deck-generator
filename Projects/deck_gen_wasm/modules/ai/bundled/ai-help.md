@@ -21,6 +21,7 @@ Logs of each run are written to `ai-models/log/<date-time>-<model-id>.md` (Markd
 | Field | Meaning |
 |---|---|
 | `proxy_url` | CORS proxy **prefix**. The real API URL is appended. Example: `https://corsproxy.io/?` |
+| `api-key-hosting` | URL of the vendor page where you create an API key. Quote the field name (`"api-key-hosting"`) because of the hyphen. If set, the AI modal shows an **API key request** button that opens this URL. |
 | `requests_per_second` | Pause between HTTP calls. Omit for no throttle. |
 | `max_rounds` | Tool-calling rounds before the loop stops. Default in code if omitted. |
 
@@ -70,4 +71,4 @@ Grok (`https://api.x.ai/v1`) uses the same `kind`.
 
 ## Keys
 
-There is no server and no compile-time key. Paste the key into `api_key` in this file. The file stays in the browser workspace (Save / local storage). Do not commit real keys.
+There is no server and no compile-time key. Paste the key into `api_key` in this file, or into the API key field in the Create/Edit AI modal (that value is used for the run only and is **not** written back here). The file stays in the browser workspace (Save / local storage). Do not commit real keys.

@@ -210,7 +210,9 @@ impl Workspace {
                 self.status.set(String::new());
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+            None => self
+                .status
+                .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
@@ -228,7 +230,9 @@ impl Workspace {
                 self.status.set(String::new());
             }
             Some(Err(err)) => self.status.set(err),
-            None => self.status.set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+            None => self
+                .status
+                .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
         }
     }
 
@@ -329,8 +333,6 @@ impl Workspace {
         progress_viewer::Progress::new(move |pct| progress.set(pct))
             .with_paint(|| gloo_timers::future::TimeoutFuture::new(0))
     }
-
-
 
     pub(crate) fn take_pick<T>(
         &self,

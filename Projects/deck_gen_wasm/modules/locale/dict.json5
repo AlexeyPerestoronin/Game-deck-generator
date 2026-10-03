@@ -39,6 +39,10 @@
   "modal-ai-prompt": { EN: "Describe what you want", RU: "Опишите, что нужно" },
   "modal-ai-model": { EN: "Model", RU: "Модель" },
   "modal-ai-run": { EN: "Run", RU: "Запустить" },
+  "modal-ai-api-key": { EN: "API key", RU: "API-ключ" },
+  "modal-ai-api-key-request": { EN: "API key request", RU: "Запросить API-ключ" },
+  "modal-ai-api-key-show": { EN: "Show API key", RU: "Показать API-ключ" },
+  "modal-ai-api-key-hide": { EN: "Hide API key", RU: "Скрыть API-ключ" },
 
   "confirm-clear-title": { EN: "Clear workspace?", RU: "Очистить рабочую область?" },
   "confirm-clear-message": { EN: "This removes every file in the current browser session. It cannot be undone.", RU: "Это удалит все файлы в текущей сессии браузера. Действие нельзя отменить." },
