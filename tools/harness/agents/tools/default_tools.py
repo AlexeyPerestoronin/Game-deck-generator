@@ -569,3 +569,24 @@ class DefaultTools(i_tools.ITools):
             return input(f"{question}\n")
         except Exception as error:
             raise Exception(f"cannot ask user → {error}")
+
+    def request_read_access_for(self, reason: str, path: str) -> str:
+        # TODO: need to implement
+        # запрос у пользователя получения read–доступа к целевой папке/файлу с объяснением причины
+        # если запрос удовлетворён, то целевой объект добавляется в соответствующий список
+        # если запрос отклонён, то запрашивается input с котором будет объяснена причина отказа
+        ...
+
+    def request_write_access_for(self, reason: str, path: str) -> str:
+        # TODO: need to implement
+        # запрос у пользователя получения write–доступа к целевой папке/файлу с объяснением причины
+        # если запрос удовлетворён, то целевой объект добавляется в соответствующий список
+        # если запрос отклонён, то запрашивается input с котором будет объяснена причина отказа
+        ...
+
+    def request_command_shell_execution(self, reason: str, command: str, cwd: str) -> str:
+        # TODO: need to implement
+        # запрос у пользователя исполнения команды с объяснением причины
+        # если запрос удовлетворён, то команда выполняется и её результаты возвращаются в качестве ответа
+        # если запрос отклонён, то запрашивается input с котором будет объяснена причина отказа
+        ...
