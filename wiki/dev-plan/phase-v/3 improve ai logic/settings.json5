@@ -1,0 +1,46 @@
+{
+    // repo settings
+    "cwd": "C:/MyLife/Game-deck-generator",
+    "paths": {
+        "log-folder": ".log"
+    },
+    // agent's settings
+    "mode": "auto accept",
+    "vendor": "SpaceXAI",
+    "model": {
+        "name": "Grok 4.6",
+        "token-limit": 128000,
+        "USD-limit": 0.5
+    },
+    "tool-settings": {
+        // "cwd": "current working directory for tools"
+        // "temp-dir": "directory for temporary files collecting",
+        "shell": [
+            "r:findstr",
+        ],
+        dirs: [
+            // minimal scope
+            "r:projects/deck_gen_wasm",
+            // task dir
+            "w:WiKi/dev-plan/phase-v/3 improve ai logic",
+            // rules and roles
+            "r:WiKi/harness/rules",
+            "r:WiKi/harness/roles",
+        ],
+        "files": [
+            "r:projects/Trunk.toml",
+            "r:projects/Cargo.toml",
+            "r:WiKi/templates/development.md",
+            "r:WiKi/dev-plan/phase-v/2 implement ai abilities/todo.md"
+        ],
+        "available-file-extensions": [
+            // empty list meant allow all extensions
+            // ".md",
+            // ".py",
+        ]
+    },
+    "iteration-limit": 50,
+    "token-limit": 0,
+    // target prompt like entry point
+    "prompt": "Есть задача на планирование: см. WiKi/dev-plan/phase-v/3 improve ai logic/planning.md",
+}
