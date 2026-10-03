@@ -9,27 +9,24 @@
     "vendor": "SpaceXAI",
     "model": {
         "name": "Grok 4.6",
-        "token-limit": 256000,
-        "USD-limit": 1.5
+        "token-limit": 128000,
+        "USD-limit": 0.5
     },
     "tool-settings": {
         // "cwd": "current working directory for tools"
         // "temp-dir": "directory for temporary files collecting",
         "shell": [
-            "r:findstr",
         ],
         dirs: [
             // minimal scope
-            "w:projects/deck_gen_wasm",
+            "w:tools/harness/agents/tools",
             // task dir
-            "w:WiKi/dev-plan/phase-v/3 improve ai logic",
+            "w:WiKi/dev-plan/phase-v/4 implement find str",
             // rules and roles
             "r:WiKi/harness/rules",
             "r:WiKi/harness/roles",
         ],
         "files": [
-            "r:projects/Trunk.toml",
-            "r:projects/Cargo.toml",
         ],
         "available-file-extensions": [
             // empty list meant allow all extensions
@@ -40,5 +37,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Есть задача: см. WiKi/dev-plan/phase-v/3 improve ai logic/todo-ai-modal-api-key.md",
+    "prompt": "Есть задача: см. WiKi/dev-plan/phase-v/4 implement find str/todo.md",
 }
