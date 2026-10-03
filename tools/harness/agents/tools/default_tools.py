@@ -212,6 +212,45 @@ class DefaultTools(i_tools.ITools):
                     },
                     "required": ["question"]
                 }),
+                (DefaultTools.request_read_access_for.__name__, "Запрос у пользователя read-доступа к папке/файлу.", {
+                    "type": "object",
+                    "properties": {
+                        "reason": {
+                            "type": "string"
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["reason", "path"]
+                }),
+                (DefaultTools.request_write_access_for.__name__, "Запрос у пользователя write-доступа к папке/файлу.", {
+                    "type": "object",
+                    "properties": {
+                        "reason": {
+                            "type": "string"
+                        },
+                        "path": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["reason", "path"]
+                }),
+                (DefaultTools.request_command_shell_execution.__name__, "Запрос у пользователя исполнения shell-команды.", {
+                    "type": "object",
+                    "properties": {
+                        "reason": {
+                            "type": "string"
+                        },
+                        "command": {
+                            "type": "string"
+                        },
+                        "cwd": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["reason", "command", "cwd"]
+                }),
             ]
         ]
 
@@ -564,6 +603,46 @@ class DefaultTools(i_tools.ITools):
 
     # user communication
 
+    def _request_permission(self, prompt: str) -> str | None:
+        # None — согласие; иначе причина отказа
+        if input(f"{prompt}\n").strip().lower() in ("y", "yes", "д", "да"):
+            return None
+        return input("Причина отказа:\n")
+
+    def _grant_path_access(self, path: str, mode: str):
+        # существующая директория — префиксный доступ, иначе точечный доступ к файлу; w включает r
+        is_dir = os.path.isdir(path)
+        r_list = self._r_dirs if is_dir else self._r_files
+        if path not in r_list:
+            r_list.append(path)
+        if mode == 'w':
+            w_list = self._w_dirs if is_dir else self._w_files
+            if path not in w_list:
+                w_list.append(path)
+
+    def _run_approved_shell(self, command: str, cwd: str) -> str:
+        # одноразовый запуск без белого списка: пользователь уже подтвердил команду
+        try:
+            result = subprocess.run(
+                command,
+                cwd=cwd,
+                shell=True,
+                capture_output=True,
+                text=False,
+                timeout=self._command_execution_limit,
+            )
+            raw_output = result.stdout or result.stderr
+            if raw_output:
+                for encoding in ('utf-8', 'oem', 'cp1251'):
+                    try:
+                        return raw_output.decode(encoding)
+                    except UnicodeDecodeError:
+                        continue
+                return raw_output.decode('utf-8', errors='replace')
+            return "(command finished without output)"
+        except subprocess.TimeoutExpired:
+            raise Exception(f"execution of the '{command}' exceed the limit (available limit is {self._command_execution_limit}s)")
+
     def ask_user(self, question: str) -> str:
         try:
             return input(f"{question}\n")
@@ -571,22 +650,36 @@ class DefaultTools(i_tools.ITools):
             raise Exception(f"cannot ask user → {error}")
 
     def request_read_access_for(self, reason: str, path: str) -> str:
-        # TODO: need to implement
-        # запрос у пользователя получения read–доступа к целевой папке/файлу с объяснением причины
-        # если запрос удовлетворён, то целевой объект добавляется в соответствующий список
-        # если запрос отклонён, то запрашивается input с котором будет объяснена причина отказа
-        ...
+        try:
+            denial = self._request_permission(
+                f"Запрос read-доступа к '{path}'\nПричина: {reason}\nРазрешить? [y/n]"
+            )
+            if denial is None:
+                self._grant_path_access(path, 'r')
+                return f"read-access granted to '{path}'"
+            return f"read-access denied to '{path}': {denial}"
+        except Exception as error:
+            raise Exception(f"cannot request read access for '{path}' → {error}")
 
     def request_write_access_for(self, reason: str, path: str) -> str:
-        # TODO: need to implement
-        # запрос у пользователя получения write–доступа к целевой папке/файлу с объяснением причины
-        # если запрос удовлетворён, то целевой объект добавляется в соответствующий список
-        # если запрос отклонён, то запрашивается input с котором будет объяснена причина отказа
-        ...
+        try:
+            denial = self._request_permission(
+                f"Запрос write-доступа к '{path}'\nПричина: {reason}\nРазрешить? [y/n]"
+            )
+            if denial is None:
+                self._grant_path_access(path, 'w')
+                return f"write-access granted to '{path}'"
+            return f"write-access denied to '{path}': {denial}"
+        except Exception as error:
+            raise Exception(f"cannot request write access for '{path}' → {error}")
 
     def request_command_shell_execution(self, reason: str, command: str, cwd: str) -> str:
-        # TODO: need to implement
-        # запрос у пользователя исполнения команды с объяснением причины
-        # если запрос удовлетворён, то команда выполняется и её результаты возвращаются в качестве ответа
-        # если запрос отклонён, то запрашивается input с котором будет объяснена причина отказа
-        ...
+        try:
+            denial = self._request_permission(
+                f"Запрос исполнения команды\nКоманда: {command}\nКаталог: {cwd}\nПричина: {reason}\nРазрешить? [y/n]"
+            )
+            if denial is None:
+                return self._run_approved_shell(command, cwd)
+            return f"command execution denied: {denial}"
+        except Exception as error:
+            raise Exception(f"cannot request command shell execution → {error}")
