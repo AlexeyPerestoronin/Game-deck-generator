@@ -10,13 +10,12 @@
     "model": {
         "name": "Grok 4.6",
         "token-limit": 256000,
-        "USD-limit": 1.5
+        "USD-limit": 2.5
     },
     "tool-settings": {
         // "cwd": "current working directory for tools"
         // "temp-dir": "directory for temporary files collecting",
         "shell": [
-            "r:findstr",
         ],
         dirs: [
             // minimal scope
