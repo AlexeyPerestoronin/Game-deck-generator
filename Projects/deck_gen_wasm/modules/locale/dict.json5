@@ -7,6 +7,7 @@
   "tooltip-prepare-html": { EN: "Generate HTML preview for every deck in this workspace.", RU: "Сгенерировать HTML-превью для каждой колоды в этой рабочей области." },
   "tooltip-prepare-pdf": { EN: "Generate card PDFs and A4 duplex sheets for every deck in this workspace.", RU: "Сгенерировать PDF карт и двусторонние листы A4 для каждой колоды." },
   "tooltip-split-preview": { EN: "Split for preview. Files stay on the left; previews open on the right.", RU: "Разделить для предпросмотра. Файлы слева; предпросмотр справа." },
+  "tooltip-ai-edit": { EN: "Edit the current game file with AI.", RU: "Править текущий файл игры с помощью AI." },
   "tooltip-feedback": { EN: "Send feedback by email.", RU: "Отправить отзыв по email." },
   "tooltip-theme": { EN: "Color theme (dark / light / system).", RU: "Цветовая тема (тёмная / светлая / системная)." },
   "tooltip-locale": { EN: "UI language (EN / RU).", RU: "Язык интерфейса (EN / RU)." },
@@ -22,6 +23,7 @@
   "aria-prepare-html": { EN: "Prepare HTML", RU: "Подготовить HTML" },
   "aria-prepare-pdf": { EN: "Prepare PDF", RU: "Подготовить PDF" },
   "aria-split-preview": { EN: "Split for preview", RU: "Разделить предпросмотр" },
+  "aria-ai-edit": { EN: "AI edit", RU: "AI правка" },
   "aria-feedback": { EN: "Feedback", RU: "Отзыв" },
   "aria-theme": { EN: "Color theme", RU: "Цветовая тема" },
   "aria-locale": { EN: "Locale", RU: "Локаль" },
@@ -32,6 +34,11 @@
   // modals
   "modal-cancel": { EN: "Cancel", RU: "Отмена" },
   "modal-ok": { EN: "OK", RU: "ОК" },
+  "modal-ai-create-title": { EN: "Create a new game with AI", RU: "Создать новую игру с AI" },
+  "modal-ai-edit-title": { EN: "Edit this file with AI", RU: "Править этот файл с AI" },
+  "modal-ai-prompt": { EN: "Describe what you want", RU: "Опишите, что нужно" },
+  "modal-ai-model": { EN: "Model", RU: "Модель" },
+  "modal-ai-run": { EN: "Run", RU: "Запустить" },
 
   "confirm-clear-title": { EN: "Clear workspace?", RU: "Очистить рабочую область?" },
   "confirm-clear-message": { EN: "This removes every file in the current browser session. It cannot be undone.", RU: "Это удалит все файлы в текущей сессии браузера. Действие нельзя отменить." },
@@ -49,6 +56,7 @@
   "warning-cannot-load-files": { EN: "Cannot load files", RU: "Не удалось загрузить файлы" },
   "warning-no-games": { EN: "No games in the workspace.", RU: "В рабочей области нет игр." },
   "warning-no-game-selected": { EN: "Select at least one game.", RU: "Выберите хотя бы одну игру." },
+  "warning-cannot-run-ai": { EN: "Cannot run AI", RU: "Не удалось запустить AI" },
 
   // explorer
   "explorer-games": { EN: "Games", RU: "Игры" },
@@ -87,6 +95,7 @@
   "games-local": { EN: "Local", RU: "Локальные" },
   "games-global": { EN: "Global", RU: "Глобальные" },
   "games-load-local": { EN: "Load Local Games", RU: "Загрузить локальную игру" },
+  "games-create-ai": { EN: "Create new game with AI", RU: "Создать новую игру с AI" },
   "games-load": { EN: "Load Games", RU: "Загрузить игру" },
   "games-settings": { EN: "Settings", RU: "Настройки" },
   "games-name-undefined": { EN: "Name is not defined...", RU: "Имя не определено..." },
@@ -127,6 +136,8 @@
   "status-downloaded": { EN: "Downloaded {filename}", RU: "Скачано {filename}" },
   "status-not-a-folder": { EN: "'{path}' is not a folder", RU: "'{path}' не является папкой" },
   "status-loading-catalog": { EN: "Loading game catalog…", RU: "Загрузка каталога игр…" },
+  "status-ai-running": { EN: "Running AI…", RU: "Работает AI…" },
+  "status-ai-done": { EN: "AI finished", RU: "AI завершил работу" },
 
   // document
   "html-lang": { EN: "en", RU: "ru" },

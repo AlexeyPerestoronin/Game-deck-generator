@@ -13,16 +13,22 @@ flowchart TB
   WS --> IMP["import: папка и файлы с диска"]
   WS --> EXP["export: workspace.zip"]
   WS --> PER["persist: localStorage + IndexedDB"]
-  WS --> TPL["template: new-game, каталог Deck-Games, user-help"]
+  WS --> TPL["template: new-game, каталог Deck-Games, user-help, game-help"]
   WS --> TEMP["temp_vfs: сессионные preview каталога"]
   WS --> PREP["prepare_html / prepare_pdf"]
+  WS --> AI["ai: run_loop, tools, model json5"]
   PREP --> VFSFS["VfsFs: FileSystem над Vfs"]
   PREP --> DG["deck_gen без CLI"]
   DG --> WEB["prepare_pdf_web"]
   TPL --> BR["browser: HTTP и JS FFI"]
+  AI --> BR
+  AI --> VFS
+  AI --> PREP
 ```
 
 Каталог игр: Globals читает GitHub `AlexeyPerestoronin/Deck-Games` (ветка `master`, папка `Games`); афиши каталога живут в сессионном `temp_vfs` и не персистятся.
+
+AI: модели — файлы `ai-models/<id>.json5` в корне VFS (ключ вписывается в json5). Один запрос → цикл инструментов по VFS → лог `ai-models/log/`. Правила для агента — `game-help.md`.
 
 Технологии: Rust → wasm32, Leptos 0.8 (CSR), Trunk, wasm-bindgen; `deck_gen` без default-features; `prepare_pdf_web`; localStorage / IndexedDB.
 

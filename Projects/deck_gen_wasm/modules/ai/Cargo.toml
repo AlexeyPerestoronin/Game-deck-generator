@@ -1,0 +1,30 @@
+[package]
+name = "deck_gen_wasm_ai"
+version.workspace = true
+edition.workspace = true
+description = "AI agent: VFS tools, LLM clients, run_loop"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# VFS tree the agent reads and writes
+deck_gen_wasm_fs = { path = "../fs" }
+# Path constants for ai-models/ and game-help.md
+deck_gen_wasm_conf = { path = "../conf" }
+# Browser POST JSON (WASM); native tests do not call HTTP
+deck_gen_wasm_browser = { path = "../browser" }
+# prepare_html tool
+deck_gen = { path = "../../../deck_gen", default-features = false }
+# Noop progress for prepare_html
+progress_viewer = { path = "../../../progress_viewer" }
+# Model json5 and HTTP JSON
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+json5 = "0.4"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# UTC stamp for log file names
+js-sys = "0.3"
+# Delay between LLM requests when requests_per_second is set
+gloo-timers = { version = "0.3", features = ["futures"] }

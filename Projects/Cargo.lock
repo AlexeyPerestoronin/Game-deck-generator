@@ -623,6 +623,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "deck_gen_wasm_ai"
+version = "0.1.0"
+dependencies = [
+ "deck_gen",
+ "deck_gen_wasm_browser",
+ "deck_gen_wasm_conf",
+ "deck_gen_wasm_fs",
+ "gloo-timers",
+ "js-sys",
+ "json5",
+ "progress_viewer",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "deck_gen_wasm_browser"
 version = "0.1.0"
 dependencies = [
@@ -750,6 +766,7 @@ name = "deck_gen_wasm_workspace"
 version = "0.1.0"
 dependencies = [
  "deck_gen",
+ "deck_gen_wasm_ai",
  "deck_gen_wasm_conf",
  "deck_gen_wasm_export",
  "deck_gen_wasm_fs",

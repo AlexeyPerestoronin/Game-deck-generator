@@ -214,7 +214,6 @@ mod tests {
 
     #[test]
     fn all_keys_have_en_and_ru() {
-        // touch all pub keys
         let keys = [
             keys::TOOLTIP_CLEAR,
             keys::TOOLTIP_DOWNLOAD,
@@ -223,6 +222,7 @@ mod tests {
             keys::TOOLTIP_PREPARE_HTML,
             keys::TOOLTIP_PREPARE_PDF,
             keys::TOOLTIP_SPLIT_PREVIEW,
+            keys::TOOLTIP_AI_EDIT,
             keys::TOOLTIP_FEEDBACK,
             keys::TOOLTIP_THEME,
             keys::TOOLTIP_LOCALE,
@@ -233,11 +233,17 @@ mod tests {
             keys::ARIA_PREPARE_HTML,
             keys::ARIA_PREPARE_PDF,
             keys::ARIA_SPLIT_PREVIEW,
+            keys::ARIA_AI_EDIT,
             keys::ARIA_FEEDBACK,
             keys::ARIA_THEME,
             keys::ARIA_LOCALE,
             keys::MODAL_CANCEL,
             keys::MODAL_OK,
+            keys::MODAL_AI_CREATE_TITLE,
+            keys::MODAL_AI_EDIT_TITLE,
+            keys::MODAL_AI_PROMPT,
+            keys::MODAL_AI_MODEL,
+            keys::MODAL_AI_RUN,
             keys::CONFIRM_CLEAR_TITLE,
             keys::CONFIRM_CLEAR_MESSAGE,
             keys::CONFIRM_CLEAR_LABEL,
@@ -252,6 +258,7 @@ mod tests {
             keys::WARNING_CANNOT_LOAD_FILES,
             keys::WARNING_NO_GAMES,
             keys::WARNING_NO_GAME_SELECTED,
+            keys::WARNING_CANNOT_RUN_AI,
             keys::EXPLORER_GAMES,
             keys::EXPLORER_NEW_FILE,
             keys::EXPLORER_NEW_FOLDER,
@@ -297,6 +304,8 @@ mod tests {
             keys::STATUS_DOWNLOADED,
             keys::STATUS_NOT_A_FOLDER,
             keys::STATUS_LOADING_CATALOG,
+            keys::STATUS_AI_RUNNING,
+            keys::STATUS_AI_DONE,
             keys::GAMES_NAME_UNDEFINED,
             keys::GAMES_SEARCH_PLACEHOLDER,
             keys::GAMES_SEARCH,
@@ -304,6 +313,7 @@ mod tests {
             keys::GAMES_SEARCH_EMPTY,
             keys::GAMES_LOADING,
             keys::GAMES_LOADING_PREVIEW,
+            keys::GAMES_CREATE_AI,
             keys::HTML_LANG,
             keys::DOCUMENT_TITLE,
         ];
@@ -312,7 +322,6 @@ mod tests {
             let ru = lookup(k, Locale::Ru);
             assert!(!en.is_empty() && en != k, "missing EN for {k}");
             assert!(!ru.is_empty() && ru != k, "missing RU for {k}");
-            // both present and different or at least defined
         }
     }
 
@@ -328,7 +337,6 @@ mod tests {
         assert_eq!(a, Locale::En);
         assert_eq!(b, Locale::Ru);
         assert_eq!(c, Locale::En);
-        // restore
         let _ = set_locale(start);
     }
 

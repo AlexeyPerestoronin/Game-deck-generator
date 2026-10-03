@@ -771,6 +771,42 @@ body {
   background: #6e2424;
 }
 
+.modal.modal-ai {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+
+.modal-field-label {
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+
+.modal-select,
+.modal-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--editor);
+  color: var(--fg);
+  font: inherit;
+  padding: 6px 8px;
+}
+
+.modal-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.modal-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .context-backdrop {
   position: fixed;
   inset: 0;

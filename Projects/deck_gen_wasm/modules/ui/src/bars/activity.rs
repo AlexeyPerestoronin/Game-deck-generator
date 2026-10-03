@@ -8,8 +8,8 @@
 use leptos::prelude::*;
 
 use crate::buttons::{
-    ClearButton, DownloadButton, ExplorerButton, GamesButton, PrepareHtmlButton, PreparePdfButton,
-    SettingsButton, SplitPreviewButton,
+    AiEditButton, ClearButton, DownloadButton, ExplorerButton, GamesButton, PrepareHtmlButton,
+    PreparePdfButton, SettingsButton, SplitPreviewButton,
 };
 use crate::modals::{AlertModal, ConfirmModal};
 use crate::sidebar::SidebarMode;
@@ -55,6 +55,11 @@ pub fn ActivityBar(
             />
             <DownloadButton workspace=workspace />
             <SplitPreviewButton workspace=workspace />
+            <AiEditButton
+                workspace=workspace
+                warning=warning
+                warning_title=warning_title
+            />
             <div class="activity-spacer"></div>
             <ClearButton on_open=move |_| show_clear.set(true) />
             <SettingsButton />

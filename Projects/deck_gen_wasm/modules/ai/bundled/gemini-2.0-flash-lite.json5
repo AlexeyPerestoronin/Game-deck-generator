@@ -1,0 +1,12 @@
+{
+  id: "gemini-2.0-flash-lite",
+  label: "Gemini 2.0 Flash-Lite",
+  kind: "gemini",
+  base_url: "https://generativelanguage.googleapis.com/v1beta",
+  auth: "query-key",
+  api_key: "",
+  cors: "browser",
+  proxy_url: "",
+  requests_per_second: 1,
+  max_rounds: 12
+}

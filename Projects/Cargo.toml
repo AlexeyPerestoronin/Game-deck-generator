@@ -12,6 +12,7 @@ members = [
     "deck_gen_wasm/modules/export",
     "deck_gen_wasm/modules/import",
     "deck_gen_wasm/modules/template",
+    "deck_gen_wasm/modules/ai",
     "deck_gen_wasm/modules/workspace",
     "progress_viewer",
     "deck_gen_wasm/modules/feedback",

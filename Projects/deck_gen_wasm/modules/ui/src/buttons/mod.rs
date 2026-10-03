@@ -4,6 +4,7 @@
 //! compose them without embedding markup or click handlers.
 
 mod activity;
+mod ai_edit;
 mod clear;
 mod download;
 mod explorer;
@@ -22,6 +23,7 @@ mod split_preview;
 mod theme;
 
 pub use activity::ActivityButton;
+pub use ai_edit::AiEditButton;
 pub use clear::ClearButton;
 pub use download::DownloadButton;
 pub use explorer::ExplorerButton;

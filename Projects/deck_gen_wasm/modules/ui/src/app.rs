@@ -39,6 +39,7 @@ pub fn App() -> impl IntoView {
         }
         let workspace = Workspace::from_session(session);
         workspace.ensure_user_help();
+        workspace.ensure_ai_files();
         workspace_slot.set(Some(workspace));
     });
 

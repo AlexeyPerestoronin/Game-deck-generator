@@ -1,0 +1,12 @@
+{
+  id: "deepseek-chat",
+  label: "DeepSeek Chat",
+  kind: "openai-compat",
+  base_url: "https://api.deepseek.com",
+  auth: "bearer",
+  api_key: "",
+  cors: "blocked",
+  proxy_url: "",
+  requests_per_second: 1,
+  max_rounds: 12
+}

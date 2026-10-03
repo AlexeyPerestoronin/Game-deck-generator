@@ -55,6 +55,22 @@ pub mod help {
     pub const PATH: &str = "user-help.md";
 }
 
+/// Game-authoring rules for humans and the AI agent (workspace root).
+pub mod game_help {
+    /// Workspace-root path of the game-help Markdown.
+    pub const PATH: &str = "game-help.md";
+}
+
+/// AI model configs and run logs in the VFS root.
+pub mod ai {
+    /// Folder of one-json5-per-model files.
+    pub const DIR: &str = "ai-models";
+    /// How to write model json5 files.
+    pub const HELP: &str = "ai-models/ai-help.md";
+    /// Markdown logs of `run_loop`.
+    pub const LOG_DIR: &str = "ai-models/log";
+}
+
 /// Browser snapshot of the in-memory workspace.
 pub mod session {
     /// Key under which [`crate::persist::Session`] JSON is stored (text tree).

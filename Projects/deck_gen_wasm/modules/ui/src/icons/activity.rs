@@ -72,6 +72,18 @@ pub fn SplitPreviewIcon() -> impl IntoView {
     }
 }
 
+/// Placeholder: reuses prepare_html PNGs until dedicated ai_edit assets are added.
+#[component]
+pub fn AiEditIcon() -> impl IntoView {
+    view! {
+        <span class="activity-icon" aria-hidden="true">
+            <img class="state-off"   src="icons/buttons/prepare_html/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/prepare_html/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/prepare_html/click.drawio.png" width="40" height="40" />
+        </span>
+    }
+}
+
 #[component]
 pub fn ClearIcon() -> impl IntoView {
     view! {
@@ -113,8 +125,6 @@ pub fn ThemeIcon() -> impl IntoView {
 
 #[component]
 pub fn LocaleIcon() -> impl IntoView {
-    // Reactive: src chosen from current locale so icon flips without remount.
-    // CSS .state-* still drives off/on/click via parent button classes.
     view! {
         <span class="activity-icon" aria-hidden="true">
             {move || {

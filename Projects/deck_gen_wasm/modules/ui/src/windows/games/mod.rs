@@ -3,12 +3,15 @@
 //! Collapsible sections default to 50/50 height split of the sidebar. Vertical drag resizer
 //! between them adjusts proportions. Local lists persist-VFS games; Global lists Deck-Games.
 
+mod create_ai;
+
 use leptos::html;
 use leptos::prelude::*;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::JsCast;
 use web_sys::MouseEvent as WasmMouseEvent;
 
+use create_ai::CreateAiGameButton;
 use deck_gen_wasm_browser as js;
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::kind;
@@ -196,6 +199,11 @@ pub fn GamesPanel(
                             >
                                 {move || locale::localize(keys::GAMES_LOAD_LOCAL)}
                             </button>
+                            <CreateAiGameButton
+                                workspace=workspace
+                                warning=warning
+                                warning_title=warning_title
+                            />
                             <For
                                 each=move || workspace.vfs.with(|vfs| local_games(vfs))
                                 key=|g| g.root.clone()
