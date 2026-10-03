@@ -9,8 +9,8 @@
     "vendor": "SpaceXAI",
     "model": {
         "name": "Grok 4.6",
-        "token-limit": 128000,
-        "USD-limit": 0.5
+        "token-limit": 500000,
+        "USD-limit": 5.0
     },
     "tool-settings": {
         // "cwd": "current working directory for tools"
@@ -20,7 +20,7 @@
         ],
         dirs: [
             // minimal scope
-            "r:projects/deck_gen_wasm",
+            "w:projects/deck_gen_wasm",
             // task dir
             "w:WiKi/dev-plan/phase-v/2 implement ai abilities",
             // rules and roles
@@ -38,5 +38,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Прочитай файлы в `WiKi/dev-plan/phase-v/2 implement ai abilities`. В planning.md был составлен запрос-цель. В ideas.md сформулированы конкретные решения. Тебе необходимо написать файл todo.md в котором подробно сформулировать задачу на разработку с учётом принятых и отклонённых предложений из ideas.md.",
+    "prompt": "Есть задача: см. WiKi/dev-plan/phase-v/2 implement ai abilities/todo.md",
 }
