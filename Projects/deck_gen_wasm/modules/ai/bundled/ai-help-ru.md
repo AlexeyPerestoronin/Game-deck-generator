@@ -22,8 +22,8 @@
 |---|---|
 | `proxy_url` | **Префикс** CORS-прокси. К нему дописывается настоящий URL API. Пример: `https://corsproxy.io/?` |
 | `api-key-hosting` | URL страницы поставщика, где создают API-ключ. Имя поля берите в кавычки (`"api-key-hosting"`) из‑за дефиса. Если задано, в модалке AI появляется кнопка **Запросить API-ключ**, которая открывает этот URL. |
-| `requests_per_second` | Пауза между HTTP-вызовами. Не указывайте, если ограничение не нужно. |
-| `max_rounds` | Раунды вызова инструментов, после которых цикл останавливается. Если поле опущено — значение по умолчанию в коде. |
+| `requests_per_minute` | Потолок HTTP-вызовов к модели за 60 с и пауза не короче `60000 / N` мс. Опустите поле или `-1` — без троттлинга. `0` недопустим. |
+| `max_rounds` | Раунды вызова инструментов, после которых цикл останавливается. Если поле опущено — значение по умолчанию в коде. `-1` — без потолка раундов. |
 
 Лишние поля игнорируются.
 
@@ -41,7 +41,7 @@
   api_key: "YOUR_KEY",
   cors: "browser",
   proxy_url: "",
-  requests_per_second: 1,
+  requests_per_minute: 10,
   max_rounds: 12
 }
 ```
@@ -60,7 +60,7 @@ URL Gemini: `{base_url}/models/{id}:generateContent?key=...`
   api_key: "YOUR_KEY",
   cors: "blocked",
   proxy_url: "https://corsproxy.io/?",
-  requests_per_second: 1,
+  requests_per_minute: 10,
   max_rounds: 12
 }
 ```

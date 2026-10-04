@@ -1,4 +1,7 @@
 //! One JSON5 file = one model (`ai-models/<id>.json5`).
+//!
+//! Numeric knobs (`requests_per_minute`, `max_rounds`): omit → code default;
+//! `-1` → no limit; `requests_per_minute: 0` is an error (not “unlimited”).
 
 use deck_gen_wasm_conf as wconf;
 use deck_gen_wasm_fs::{file_name, Vfs};
@@ -40,8 +43,10 @@ pub struct ModelConf {
     pub proxy_url: String,
     /// Vendor page to create a key. Empty/missing in json5 → `None`.
     pub api_key_hosting: Option<String>,
-    pub requests_per_second: Option<u32>,
-    pub max_rounds: u32,
+    /// `None` = no throttle (`-1` or omitted).
+    pub requests_per_minute: Option<u32>,
+    /// `None` = no round cap (`max_rounds: -1`). Omitted json5 → default 12.
+    pub max_rounds: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -55,8 +60,8 @@ struct RawConf {
     cors: Option<String>,
     proxy_url: Option<String>,
     api_key_hosting: Option<String>,
-    requests_per_second: Option<u32>,
-    max_rounds: Option<u32>,
+    requests_per_minute: Option<i64>,
+    max_rounds: Option<i64>,
 }
 
 /// Parse one model JSON5. `path` is used when `id` is missing (file stem).
@@ -103,6 +108,8 @@ pub fn parse_model_conf(text: &str, path: &str) -> Result<ModelConf, String> {
             ))
         }
     };
+    let requests_per_minute = parse_rpm(raw.requests_per_minute, path)?;
+    let max_rounds = parse_max_rounds(raw.max_rounds, path)?;
     Ok(ModelConf {
         id,
         label,
@@ -113,16 +120,43 @@ pub fn parse_model_conf(text: &str, path: &str) -> Result<ModelConf, String> {
         cors,
         proxy_url: raw.proxy_url.unwrap_or_default().trim().to_string(),
         api_key_hosting: optional_url(raw.api_key_hosting),
-        requests_per_second: raw.requests_per_second.filter(|n| *n > 0),
-        max_rounds: raw
-            .max_rounds
-            .filter(|n| *n > 0)
-            .unwrap_or(DEFAULT_MAX_ROUNDS),
+        requests_per_minute,
+        max_rounds,
     })
 }
 
 fn optional_url(raw: Option<String>) -> Option<String> {
     raw.map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
+fn parse_rpm(raw: Option<i64>, path: &str) -> Result<Option<u32>, String> {
+    match raw {
+        None | Some(-1) => Ok(None),
+        Some(0) => Err(rpm_zero_err(path)),
+        Some(n) => positive_u32(n, path, "requests_per_minute").map(Some),
+    }
+}
+
+fn parse_max_rounds(raw: Option<i64>, path: &str) -> Result<Option<u32>, String> {
+    match raw {
+        None => Ok(Some(DEFAULT_MAX_ROUNDS)),
+        Some(-1) => Ok(None),
+        Some(0) => Ok(Some(DEFAULT_MAX_ROUNDS)),
+        Some(n) => positive_u32(n, path, "max_rounds").map(Some),
+    }
+}
+
+fn positive_u32(n: i64, path: &str, field: &str) -> Result<u32, String> {
+    match u32::try_from(n) {
+        Ok(v) if v > 0 => Ok(v),
+        _ => Err(format!("{path}: {field}: invalid value {n}")),
+    }
+}
+
+fn rpm_zero_err(path: &str) -> String {
+    format!(
+        "{path}: requests_per_minute: 0 is not valid / 0 недопустим (not unlimited / это не «без лимита»). Use -1 or omit the field / укажите -1 или опустите поле."
+    )
 }
 
 /// One `ai-models/*.json5` as shown in the model selector.
@@ -188,13 +222,13 @@ mod tests {
         assert_eq!(c.auth, AuthKind::QueryKey);
         assert_eq!(c.api_key, "abc");
         assert_eq!(c.cors, CorsKind::Browser);
-        assert_eq!(c.max_rounds, DEFAULT_MAX_ROUNDS);
-        assert_eq!(c.requests_per_second, None);
+        assert_eq!(c.max_rounds, Some(DEFAULT_MAX_ROUNDS));
+        assert_eq!(c.requests_per_minute, None);
         assert_eq!(c.api_key_hosting, None);
     }
 
     #[test]
-    fn parse_openai_bearer_and_rps() {
+    fn parse_openai_bearer_and_rpm() {
         let c = parse_model_conf(
             r#"{
                 id: "deepseek-chat",
@@ -205,7 +239,7 @@ mod tests {
                 api_key: "sk",
                 cors: "blocked",
                 proxy_url: "https://corsproxy.io/?",
-                requests_per_second: 1,
+                requests_per_minute: 1,
                 max_rounds: 8
             }"#,
             "ai-models/deepseek-chat.json5",
@@ -215,8 +249,8 @@ mod tests {
         assert_eq!(c.auth, AuthKind::Bearer);
         assert_eq!(c.cors, CorsKind::Blocked);
         assert_eq!(c.base_url, "https://api.deepseek.com");
-        assert_eq!(c.requests_per_second, Some(1));
-        assert_eq!(c.max_rounds, 8);
+        assert_eq!(c.requests_per_minute, Some(1));
+        assert_eq!(c.max_rounds, Some(8));
         assert_eq!(c.proxy_url, "https://corsproxy.io/?");
     }
 
@@ -312,5 +346,78 @@ mod tests {
         );
         assert_eq!(list[1].path, "ai-models/without.json5");
         assert_eq!(list[1].api_key_hosting, None);
+    }
+
+    #[test]
+    fn rpm_one_is_some() {
+        let c = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x", requests_per_minute: 1 }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(c.requests_per_minute, Some(1));
+    }
+
+    #[test]
+    fn rpm_omitted_is_no_throttle() {
+        let c = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x" }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(c.requests_per_minute, None);
+    }
+
+    #[test]
+    fn rpm_minus_one_is_no_throttle() {
+        let c = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x", requests_per_minute: -1 }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(c.requests_per_minute, None);
+    }
+
+    #[test]
+    fn max_rounds_minus_one_is_unlimited() {
+        let c = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x", max_rounds: -1 }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(c.max_rounds, None);
+    }
+
+    #[test]
+    fn max_rounds_omitted_is_default_12() {
+        let c = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x" }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(c.max_rounds, Some(DEFAULT_MAX_ROUNDS));
+    }
+
+    #[test]
+    fn old_rps_name_is_not_rpm() {
+        let c = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x", requests_per_second: 9 }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap();
+        assert_eq!(c.requests_per_minute, None);
+    }
+
+    #[test]
+    fn rpm_zero_is_localized_error() {
+        let err = parse_model_conf(
+            r#"{ kind: "gemini", base_url: "http://x", requests_per_minute: 0 }"#,
+            "ai-models/x.json5",
+        )
+        .unwrap_err();
+        assert!(err.contains("requests_per_minute"), "{err}");
+        assert!(err.contains("0"), "{err}");
+        assert!(err.contains("not valid"), "{err}");
+        assert!(err.contains("недопустим"), "{err}");
     }
 }

@@ -3,6 +3,8 @@
 //! Agent prompts are bundled markdown (`create-game-pt-*.md`, `edit-game-pt-*.md`)
 //! chosen by [`AiRequest`] kind and the active UI locale.
 
+use std::sync::Mutex;
+
 use deck_gen_wasm_conf as wconf;
 use deck_gen_wasm_fs::Vfs;
 use deck_gen_wasm_locale as locale;
@@ -59,6 +61,7 @@ pub(crate) struct LlmTurn {
 #[derive(Debug)]
 pub struct AiEngine {
     conf: ModelConf,
+    rpm_stamps: Mutex<Vec<u64>>,
 }
 
 impl AiEngine {
@@ -89,7 +92,10 @@ impl AiEngine {
                 conf.id
             ));
         }
-        Ok(Self { conf })
+        Ok(Self {
+            conf,
+            rpm_stamps: Mutex::new(Vec::new()),
+        })
     }
 
     /// Tool loop. Mutates `vfs` (game files + markdown log). `on_step` is called
@@ -115,8 +121,14 @@ impl AiEngine {
             tool_id: String::new(),
         }];
 
-        for round in 1..=self.conf.max_rounds {
-            crate::http::throttle(self.conf.requests_per_second, round > 1).await;
+        let mut round = 1u32;
+        loop {
+            if let Some(max) = self.conf.max_rounds {
+                if round > max {
+                    break;
+                }
+            }
+            crate::http::throttle(self.conf.requests_per_minute, &self.rpm_stamps).await;
             let turn = self.complete(&system, &messages).await;
             let turn = match turn {
                 Ok(t) => t,
@@ -187,9 +199,11 @@ impl AiEngine {
                 });
             }
             on_step(vfs, &log.path);
+            round = round.saturating_add(1);
         }
 
-        let err = format!("stopped after {} rounds (max_rounds)", self.conf.max_rounds);
+        let stopped = self.conf.max_rounds.unwrap_or(round.saturating_sub(1));
+        let err = format!("stopped after {stopped} rounds (max_rounds)");
         let _ = log.push(vfs, &format!("## Error\n\n{err}\n"));
         on_step(vfs, &log.path);
         Err(err)

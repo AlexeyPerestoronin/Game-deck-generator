@@ -22,8 +22,8 @@ Logs of each run are written to `ai-models/log/<date-time>-<model-id>.md` (Markd
 |---|---|
 | `proxy_url` | CORS proxy **prefix**. The real API URL is appended. Example: `https://corsproxy.io/?` |
 | `api-key-hosting` | URL of the vendor page where you create an API key. Quote the field name (`"api-key-hosting"`) because of the hyphen. If set, the AI modal shows an **API key request** button that opens this URL. |
-| `requests_per_second` | Pause between HTTP calls. Omit for no throttle. |
-| `max_rounds` | Tool-calling rounds before the loop stops. Default in code if omitted. |
+| `requests_per_minute` | Cap on LLM HTTP calls per 60s, and min gap `60000 / N` ms. Omit or `-1` = no throttle. `0` is invalid. |
+| `max_rounds` | Tool-calling rounds before the loop stops. Default in code if omitted. `-1` = no round cap. |
 
 Extra fields are ignored.
 
@@ -41,7 +41,7 @@ If `cors` is `"blocked"` and `proxy_url` is empty, the model cannot be used from
   api_key: "YOUR_KEY",
   cors: "browser",
   proxy_url: "",
-  requests_per_second: 1,
+  requests_per_minute: 10,
   max_rounds: 12
 }
 ```
@@ -60,7 +60,7 @@ Gemini URL: `{base_url}/models/{id}:generateContent?key=...`
   api_key: "YOUR_KEY",
   cors: "blocked",
   proxy_url: "https://corsproxy.io/?",
-  requests_per_second: 1,
+  requests_per_minute: 10,
   max_rounds: 12
 }
 ```

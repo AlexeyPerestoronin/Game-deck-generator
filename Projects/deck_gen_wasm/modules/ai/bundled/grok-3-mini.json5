@@ -8,6 +8,6 @@
   cors: "blocked",
   proxy_url: "",
   "api_key_hosting": "https://console.x.ai/",
-  requests_per_second: 1,
+  requests_per_minute: 10,
   max_rounds: 12
 }

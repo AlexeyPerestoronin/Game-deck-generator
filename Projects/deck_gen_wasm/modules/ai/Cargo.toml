@@ -28,5 +28,9 @@ json5 = "0.4"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # UTC stamp for log file names
 js-sys = "0.3"
-# Delay between LLM requests (RPS throttle) and between HTTP 503 retries
+# Delay between LLM requests (RPM throttle) and between HTTP 503 retries
 gloo-timers = { version = "0.3", features = ["futures"] }
+
+[dev-dependencies]
+# Ignored live model tests: native HTTPS POST (not used by the WASM app)
+ureq = "2"

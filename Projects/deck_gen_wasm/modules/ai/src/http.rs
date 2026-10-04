@@ -2,8 +2,13 @@
 //!
 //! One POST may be repeated when the provider answers HTTP 503 (peak load).
 //! Other failures, including 409, are returned as-is so the UI can warn.
+//! LLM calls are paced by `requests_per_minute` (gap + 60s sliding window).
+
+use std::sync::Mutex;
 
 use deck_gen_wasm_conf as wconf;
+
+const WINDOW_MS: u64 = 60_000;
 
 pub(crate) fn with_proxy(proxy_url: &str, url: &str) -> String {
     let proxy = proxy_url.trim();
@@ -80,15 +85,78 @@ async fn sleep_ms(ms: u32) {
     }
 }
 
-pub(crate) async fn throttle(requests_per_second: Option<u32>, not_first: bool) {
-    if !not_first {
-        return;
+fn now_ms() -> u64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now() as u64
     }
-    let Some(rps) = requests_per_second else {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0)
+    }
+}
+
+/// Minimum gap between LLM HTTP calls for RPM `n`.
+pub(crate) fn interval_ms(n: u32) -> u32 {
+    if n == 0 {
+        return 0;
+    }
+    (60_000 / n).max(1)
+}
+
+/// Whether another LLM HTTP call may start now under quota+gap for `n`.
+pub(crate) fn can_request(n: u32, now_ms: u64, stamps: &[u64]) -> bool {
+    throttle_wait_ms(n, now_ms, stamps) == 0
+}
+
+/// Ms to wait before the next LLM HTTP call. `0` = send now.
+pub(crate) fn throttle_wait_ms(n: u32, now_ms: u64, stamps: &[u64]) -> u64 {
+    if n == 0 {
+        return 0;
+    }
+    let mut wait = 0u64;
+    if let Some(&last) = stamps.last() {
+        let interval = u64::from(interval_ms(n));
+        let elapsed = now_ms.saturating_sub(last);
+        if elapsed < interval {
+            wait = interval - elapsed;
+        }
+    }
+    let start = now_ms.saturating_sub(WINDOW_MS);
+    let recent: Vec<u64> = stamps.iter().copied().filter(|&t| t > start).collect();
+    if recent.len() >= n as usize {
+        let oldest = recent[recent.len() - n as usize];
+        let free_at = oldest.saturating_add(WINDOW_MS);
+        if free_at > now_ms {
+            wait = wait.max(free_at - now_ms);
+        }
+    }
+    wait
+}
+
+pub(crate) async fn throttle(requests_per_minute: Option<u32>, stamps: &Mutex<Vec<u64>>) {
+    let Some(n) = requests_per_minute else {
         return;
     };
-    let ms = (1000u32 / rps.max(1)).max(1);
-    sleep_ms(ms).await;
+    loop {
+        let wait = {
+            let mut guard = stamps.lock().unwrap_or_else(|e| e.into_inner());
+            let now = now_ms();
+            let wait = throttle_wait_ms(n, now, &guard);
+            if wait == 0 {
+                let start = now.saturating_sub(WINDOW_MS);
+                guard.retain(|&t| t > start);
+                guard.push(now);
+                return;
+            }
+            wait
+        };
+        let ms = wait.min(u64::from(u32::MAX)) as u32;
+        sleep_ms(ms.max(1)).await;
+    }
 }
 
 #[cfg(test)]
@@ -189,5 +257,20 @@ mod tests {
         assert!(!should_retry_503(err, 20, 20));
         assert!(should_retry_503(err, 19, wconf::ai::HTTP_503_MAX_RETRIES));
         assert!(!should_retry_503(err, 20, wconf::ai::HTTP_503_MAX_RETRIES));
+    }
+
+    #[test]
+    fn interval_for_rpm_2_is_at_least_30s() {
+        assert!(interval_ms(2) >= 30_000);
+        assert_eq!(interval_ms(2), 30_000);
+        let wait = throttle_wait_ms(2, 0, &[0]);
+        assert!(wait >= 30_000, "{wait}");
+    }
+
+    #[test]
+    fn quota_rpm_1_blocks_second_in_window() {
+        let stamps = [10_000u64];
+        assert!(!can_request(1, 20_000, &stamps));
+        assert!(can_request(1, 10_000 + WINDOW_MS, &stamps));
     }
 }
