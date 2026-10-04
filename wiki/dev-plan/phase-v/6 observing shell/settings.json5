@@ -19,9 +19,9 @@
         ],
         dirs: [
             // minimal scope
-            "w:<code_scope>",
+            "w:WiKi/dev-plan/phase-v/6 observing shell",
             // task dir
-            "w:<task_dir>",
+            "w:tools/harness/agents/tools",
             // rules and roles
             "r:WiKi/harness/rules",
             "r:WiKi/harness/roles",
@@ -37,5 +37,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "what prompt???",
+    "prompt": "Есть задача: см. WiKi/dev-plan/phase-v/6 observing shell/development.md",
 }

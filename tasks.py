@@ -53,7 +53,7 @@ def make_task_template(ctx, type: str = None, name: str = None):
     src = cwd / "WiKi" / "templates" / templates[type]
     dst_dir = task_dir / f"{index} {name}"
     dst_dir.mkdir()
-    shutil.copy(src, dst_dir / "todo.md")
+    shutil.copy(src, dst_dir / templates[type])
 
     settings_template = cwd / "WiKi" / "templates" / "settings_template.json5"
     shutil.copy(settings_template, dst_dir / "settings.json5")
