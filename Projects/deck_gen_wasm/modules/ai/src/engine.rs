@@ -1,6 +1,6 @@
 //! `AiEngine`: load one model json5, then run the tool loop on a VFS.
 //!
-//! Agent prompts are bundled markdown (`create-game-pt-*.md`, `edit-game-pt-*.md`)
+//! Agent prompts are markdown in VFS `help/` (`create-game-pt-*.md`, `edit-game-pt-*.md`)
 //! chosen by [`AiRequest`] kind and the active UI locale.
 
 use std::sync::Mutex;
@@ -26,11 +26,6 @@ pub enum AiRequest {
     },
 }
 
-const CREATE_GAME_PT_EN: &str = include_str!("../bundled/create-game-pt-en.md");
-const CREATE_GAME_PT_RU: &str = include_str!("../bundled/create-game-pt-ru.md");
-const EDIT_GAME_PT_EN: &str = include_str!("../bundled/edit-game-pt-en.md");
-const EDIT_GAME_PT_RU: &str = include_str!("../bundled/edit-game-pt-ru.md");
-
 pub(crate) struct ToolCall {
     pub id: String,
     pub name: String,
@@ -49,6 +44,18 @@ pub(crate) struct Msg {
     pub tool_calls: Vec<ToolCall>,
     pub tool_name: String,
     pub tool_id: String,
+}
+
+impl Msg {
+    pub(crate) fn user(text: impl Into<String>) -> Self {
+        Self {
+            role: MsgRole::User,
+            text: text.into(),
+            tool_calls: Vec::new(),
+            tool_name: String::new(),
+            tool_id: String::new(),
+        }
+    }
 }
 
 pub(crate) struct LlmTurn {
@@ -108,18 +115,12 @@ impl AiEngine {
     ) -> Result<(), String> {
         // One filled template: system instruction, first user message, and log body
         // (so `ai-models/log` shows the chosen language and nested game-help).
-        let (title, user) = request_text(&req, vfs);
+        let (title, user) = request_text(&req, vfs)?;
         let system = user.clone();
         let mut log = RunLog::start(vfs, &self.conf.id, &title, &user)?;
         on_step(vfs, &log.path);
 
-        let mut messages = vec![Msg {
-            role: MsgRole::User,
-            text: user,
-            tool_calls: Vec::new(),
-            tool_name: String::new(),
-            tool_id: String::new(),
-        }];
+        let mut messages = vec![Msg::user(user)];
 
         let mut round = 1u32;
         loop {
@@ -217,27 +218,43 @@ impl AiEngine {
     }
 }
 
+/// One user message using the same URL, body shape, and response parse as [`AiEngine::run_loop`].
+pub async fn complete_user_text(conf: &ModelConf, question: &str) -> Result<String, String> {
+    let turn = match conf.kind {
+        ModelKind::Gemini => crate::gemini::complete_plain(conf, question).await?,
+        ModelKind::OpenAiCompat => crate::openai::complete_plain(conf, question).await?,
+    };
+    let text = turn.text.trim();
+    if text.is_empty() {
+        let extra = if turn.tool_calls.is_empty() {
+            String::new()
+        } else {
+            format!(" ({} tool call(s))", turn.tool_calls.len())
+        };
+        return Err(format!("empty model reply{extra}"));
+    }
+    Ok(turn.text)
+}
+
 fn active_locale_code() -> &'static str {
     locale::get_active_locale().as_str()
 }
 
-fn bundled_prompt_template(req: &AiRequest, locale: &str) -> &'static str {
-    let ru = locale.eq_ignore_ascii_case("ru");
+fn prompt_template_path(req: &AiRequest, locale: &str) -> String {
     match req {
-        AiRequest::CreateGame { .. } => {
-            if ru {
-                CREATE_GAME_PT_RU
-            } else {
-                CREATE_GAME_PT_EN
-            }
-        }
-        AiRequest::EditGame { .. } => {
-            if ru {
-                EDIT_GAME_PT_RU
-            } else {
-                EDIT_GAME_PT_EN
-            }
-        }
+        AiRequest::CreateGame { .. } => wconf::ai::create_game_pt(locale),
+        AiRequest::EditGame { .. } => wconf::ai::edit_game_pt(locale),
+    }
+}
+
+fn read_prompt_template(req: &AiRequest, vfs: &Vfs, locale: &str) -> Result<String, String> {
+    let path = prompt_template_path(req, locale);
+    match vfs.read_file(&path) {
+        None => Err(format!("prompt template not found: {path}")),
+        Some(body) if crate::install::looks_like_html_document(body) => Err(format!(
+            "prompt template is not markdown (HTML shell): {path}"
+        )),
+        Some(body) => Ok(body.to_string()),
     }
 }
 
@@ -261,14 +278,14 @@ fn fill_prompt_template(template: &str, req: &AiRequest, vfs: &Vfs, locale: &str
         .replace("{game}", game)
 }
 
-fn request_text(req: &AiRequest, vfs: &Vfs) -> (String, String) {
+fn request_text(req: &AiRequest, vfs: &Vfs) -> Result<(String, String), String> {
     let title = match req {
         AiRequest::CreateGame { .. } => "CreateGame".into(),
         AiRequest::EditGame { file, .. } => format!("EditGame {file}"),
     };
     let locale = active_locale_code();
-    let template = bundled_prompt_template(req, locale);
-    (title, fill_prompt_template(template, req, vfs, locale))
+    let template = read_prompt_template(req, vfs, locale)?;
+    Ok((title, fill_prompt_template(&template, req, vfs, locale)))
 }
 
 pub(crate) fn bearer_headers(conf: &ModelConf) -> Vec<(&'static str, String)> {
@@ -282,12 +299,32 @@ pub(crate) fn bearer_headers(conf: &ModelConf) -> Vec<(&'static str, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::install::install_ai_defaults;
+
+    const EMPTY_GEMINI: &str = r#"{
+        id: "gemini-2.0-flash",
+        kind: "gemini",
+        base_url: "https://example.com",
+        auth: "query-key",
+        api_key: "",
+        cors: "browser"
+    }"#;
+
+    fn put_empty_gemini(vfs: &mut Vfs) {
+        vfs.put_file("ai-models/gemini-2.0-flash.json5", EMPTY_GEMINI.into())
+            .unwrap();
+    }
+
+    fn put_pt(vfs: &mut Vfs, locale: &str, create: &str, edit: &str) {
+        vfs.put_file(&wconf::ai::create_game_pt(locale), create.into())
+            .unwrap();
+        vfs.put_file(&wconf::ai::edit_game_pt(locale), edit.into())
+            .unwrap();
+    }
 
     #[test]
     fn from_conf_rejects_empty_key() {
         let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs, "en").unwrap();
+        put_empty_gemini(&mut vfs);
         let err = AiEngine::from_conf(&vfs, "ai-models/gemini-2.0-flash.json5", None).unwrap_err();
         assert!(err.contains("api_key"), "{err}");
     }
@@ -316,7 +353,7 @@ mod tests {
     #[test]
     fn from_conf_override_fills_empty_json5() {
         let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs, "en").unwrap();
+        put_empty_gemini(&mut vfs);
         let path = "ai-models/gemini-2.0-flash.json5";
         let before = vfs.read_file(path).unwrap().to_string();
         let engine = AiEngine::from_conf(&vfs, path, Some("from-modal")).unwrap();
@@ -327,7 +364,7 @@ mod tests {
     #[test]
     fn from_conf_both_empty_is_err() {
         let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs, "en").unwrap();
+        put_empty_gemini(&mut vfs);
         let path = "ai-models/gemini-2.0-flash.json5";
         let err = AiEngine::from_conf(&vfs, path, Some("  ")).unwrap_err();
         assert!(err.contains("api_key"), "{err}");
@@ -378,7 +415,8 @@ mod tests {
     }
 
     fn render(req: &AiRequest, loc: &str, vfs: &Vfs) -> String {
-        fill_prompt_template(bundled_prompt_template(req, loc), req, vfs, loc)
+        let template = read_prompt_template(req, vfs, loc).unwrap();
+        fill_prompt_template(&template, req, vfs, loc)
     }
 
     #[test]
@@ -386,6 +424,12 @@ mod tests {
         let mut vfs = Vfs::default();
         vfs.put_file(&wconf::game_help::path("en"), "# help body".into())
             .unwrap();
+        put_pt(
+            &mut vfs,
+            "en",
+            "Create a new card game\n{user_prompt}\n{game_help}\n{tools}",
+            "edit {file}",
+        );
         let req = AiRequest::CreateGame {
             prompt: "make uno".into(),
         };
@@ -404,7 +448,13 @@ mod tests {
 
     #[test]
     fn edit_game_substitutes_game_and_file() {
-        let vfs = Vfs::default();
+        let mut vfs = Vfs::default();
+        put_pt(
+            &mut vfs,
+            "en",
+            "create {user_prompt}",
+            "Edit `{file}` in `{game}`.\n{user_prompt}",
+        );
         let req = AiRequest::EditGame {
             game: "games/poker".into(),
             file: "games/poker/decks/d/data.json5".into(),
@@ -421,9 +471,9 @@ mod tests {
 
     #[test]
     fn ru_templates_are_not_en() {
-        assert_ne!(CREATE_GAME_PT_EN, CREATE_GAME_PT_RU);
-        assert_ne!(EDIT_GAME_PT_EN, EDIT_GAME_PT_RU);
-        let vfs = Vfs::default();
+        let mut vfs = Vfs::default();
+        put_pt(&mut vfs, "en", "EN create {user_prompt}", "EN edit {file}");
+        put_pt(&mut vfs, "ru", "RU create {user_prompt}", "RU edit {file}");
         let create = AiRequest::CreateGame {
             prompt: "make uno".into(),
         };
@@ -440,10 +490,6 @@ mod tests {
         assert_ne!(edit_en, edit_ru);
         assert!(create_ru.contains("make uno"));
         assert!(edit_ru.contains("games/poker/rules.md"));
-        assert!(CREATE_GAME_PT_EN.contains("{user_prompt}"));
-        assert!(CREATE_GAME_PT_RU.contains("{user_prompt}"));
-        assert!(EDIT_GAME_PT_EN.contains("{file}"));
-        assert!(EDIT_GAME_PT_RU.contains("{file}"));
     }
 
     #[test]
@@ -453,6 +499,8 @@ mod tests {
             .unwrap();
         vfs.put_file(&wconf::game_help::path("ru"), "# RU HELP".into())
             .unwrap();
+        put_pt(&mut vfs, "en", "{game_help} {user_prompt}", "en {file}");
+        put_pt(&mut vfs, "ru", "{game_help} {user_prompt}", "ru {file}");
         let req = AiRequest::CreateGame { prompt: "x".into() };
         let en = render(&req, "en", &vfs);
         let ru = render(&req, "ru", &vfs);
@@ -460,5 +508,27 @@ mod tests {
         assert!(ru.contains("# RU HELP"), "{ru}");
         assert!(!en.contains("# RU HELP"), "{en}");
         assert!(!ru.contains("# EN HELP"), "{ru}");
+    }
+
+    #[test]
+    fn missing_prompt_template_is_err() {
+        let vfs = Vfs::default();
+        let req = AiRequest::CreateGame { prompt: "x".into() };
+        let err = read_prompt_template(&req, &vfs, "en").unwrap_err();
+        assert!(err.contains("help/create-game-pt-en.md"), "{err}");
+    }
+
+    #[test]
+    fn html_shell_prompt_template_is_err() {
+        let mut vfs = Vfs::default();
+        vfs.put_file(
+            &wconf::ai::create_game_pt("en"),
+            "<!DOCTYPE html>\n<html></html>".into(),
+        )
+        .unwrap();
+        let req = AiRequest::CreateGame { prompt: "x".into() };
+        let err = read_prompt_template(&req, &vfs, "en").unwrap_err();
+        assert!(err.contains("HTML"), "{err}");
+        assert!(err.contains("help/create-game-pt-en.md"), "{err}");
     }
 }

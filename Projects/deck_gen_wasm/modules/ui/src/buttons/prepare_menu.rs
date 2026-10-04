@@ -85,7 +85,12 @@ pub fn PrepareScopedButton(
             let rect = el.get_bounding_client_rect();
             let left = rect.right() + 8.0;
             let top = rect.top();
-            pos.set(clamp_menu(left, top, 220.0, (games().len() as f64) * 28.0 + 8.0));
+            pos.set(clamp_menu(
+                left,
+                top,
+                220.0,
+                (games().len() as f64) * 28.0 + 8.0,
+            ));
         }
         hide_gen.update(|n| *n = n.wrapping_add(1));
         menu_open.set(true);

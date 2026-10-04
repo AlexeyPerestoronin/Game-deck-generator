@@ -1,0 +1,14 @@
+[package]
+name = "deck_gen_wasm_ai_tests"
+version.workspace = true
+edition.workspace = true
+description = "Manual ignored live tests for AI models (not part of WASM)"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# Same URL/body/parse as the browser client
+deck_gen_wasm_ai = { path = "../ai" }
+# Drive async complete_user_text from native tests
+pollster = "0.4"

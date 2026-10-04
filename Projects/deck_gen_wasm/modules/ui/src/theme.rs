@@ -84,7 +84,11 @@ fn effective_str(t: ColorTheme) -> &'static str {
             } else {
                 true
             };
-            if dark { "dark" } else { "light" }
+            if dark {
+                "dark"
+            } else {
+                "light"
+            }
         }
     }
 }
@@ -118,7 +122,9 @@ pub fn apply() {
                 "q",
                 "try { return window.matchMedia(q); } catch(e){ return null; }",
             );
-            if let Ok(mql) = get_mql.call1(&JsValue::UNDEFINED, &"(prefers-color-scheme: dark)".into()) {
+            if let Ok(mql) =
+                get_mql.call1(&JsValue::UNDEFINED, &"(prefers-color-scheme: dark)".into())
+            {
                 if !mql.is_null() {
                     let cb = Closure::<dyn FnMut()>::new(move || {
                         // Re-read; if still System, update to current effective.
@@ -131,11 +137,14 @@ pub fn apply() {
                     // addEventListener via Reflect to avoid needing MediaQueryList type
                     if let Ok(add_fn) = Reflect::get(&mql, &JsValue::from_str("addEventListener")) {
                         if let Ok(add_fn) = add_fn.dyn_into::<Function>() {
-                            let _ = add_fn.call2(&mql, &"change".into(), cb.as_ref().unchecked_ref());
+                            let _ =
+                                add_fn.call2(&mql, &"change".into(), cb.as_ref().unchecked_ref());
                         }
                     }
                     // keep the closure from being dropped
-                    unsafe { MEDIA_LISTENER = Some(cb); }
+                    unsafe {
+                        MEDIA_LISTENER = Some(cb);
+                    }
                 }
             }
         }

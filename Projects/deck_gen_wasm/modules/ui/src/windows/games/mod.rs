@@ -18,14 +18,19 @@ use deck_gen_wasm_fs::kind;
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
 use deck_gen_wasm_template::{info_matches_query, CatalogEntry, GameInfo, DEFAULT_ICON_PNG};
-use deck_gen_wasm_workspace::{
-    game_card_name, local_games, TabKind, Workspace,
-};
+use deck_gen_wasm_workspace::{game_card_name, local_games, TabKind, Workspace};
 
 /// Returns CSS `flex` values for Local/Global sections depending on collapse flags and split ratio.
 fn section_flex(local_collapsed: bool, global_collapsed: bool, ratio: f32) -> (String, String) {
     if local_collapsed {
-        ("0 0 auto".to_string(), if global_collapsed { "0 0 auto".to_string() } else { "1 1 0".to_string() })
+        (
+            "0 0 auto".to_string(),
+            if global_collapsed {
+                "0 0 auto".to_string()
+            } else {
+                "1 1 0".to_string()
+            },
+        )
     } else if global_collapsed {
         (format!("{} 1 0", ratio), "0 0 auto".to_string())
     } else {
@@ -120,7 +125,11 @@ pub fn GamesPanel(
                     return;
                 }
                 let dy = ev.client_y() - sy.get_untracked();
-                let h = cref.get().map(|c| c.offset_height() as f32).unwrap_or(300.0).max(50.0);
+                let h = cref
+                    .get()
+                    .map(|c| c.offset_height() as f32)
+                    .unwrap_or(300.0)
+                    .max(50.0);
                 let r = (sr.get_untracked() + (dy as f32) / h).clamp(0.1, 0.9);
                 ratio.set(r);
             });
@@ -447,7 +456,9 @@ fn GameIcon(workspace: Workspace, path: Option<String>, from_temp: bool) -> impl
         let (bytes, mime) = match &path {
             Some(p) => {
                 let data = if from_temp {
-                    workspace.temp_vfs.with(|vfs| vfs.read_bytes(p).map(Vec::from))
+                    workspace
+                        .temp_vfs
+                        .with(|vfs| vfs.read_bytes(p).map(Vec::from))
                 } else {
                     workspace.vfs.with(|vfs| vfs.read_bytes(p).map(Vec::from))
                 };

@@ -13,8 +13,7 @@ use deck_gen_wasm_fs::{file_name, Vfs};
 use progress_viewer::{progress_block, progress_loop, progress_wrapper, Progress};
 
 /// Bundled poster used when a game has no `preview` file.
-pub const DEFAULT_PREVIEW_HTML: &str =
-    include_str!("../../../template/default-preview.html");
+pub const DEFAULT_PREVIEW_HTML: &str = include_str!("../../../template/default-preview.html");
 
 /// Bundled 1×1 gray PNG used when a game has no icon file.
 ///
@@ -191,7 +190,11 @@ fn preview_prefix(root: &str) -> String {
 
 fn info_path(root: &str) -> String {
     if root.is_empty() {
-        format!("{}/{}", conf::catalog::PREVIEW_DIR, conf::catalog::INFO_FILE)
+        format!(
+            "{}/{}",
+            conf::catalog::PREVIEW_DIR,
+            conf::catalog::INFO_FILE
+        )
     } else {
         format!(
             "{}/{}/{}",
@@ -276,13 +279,7 @@ async fn fetch_one_catalog_game(
         BlobBody::Bytes(_) => return None,
     };
     let parsed = parse_info_json5(text)?;
-    Some((
-        out,
-        CatalogEntry {
-            root,
-            info: parsed,
-        },
-    ))
+    Some((out, CatalogEntry { root, info: parsed }))
 }
 
 /// Download every blob under `game_root` into persist-VFS as `games/{unique}/…`.
@@ -355,10 +352,7 @@ mod tests {
             "Games/game.json5",
         ];
         let roots = game_roots_from_paths(paths);
-        assert_eq!(
-            roots,
-            vec!["Games", "Games/a", "Games/nested/b", "other"]
-        );
+        assert_eq!(roots, vec!["Games", "Games/a", "Games/nested/b", "other"]);
         assert_eq!(
             catalog_game_roots(&paths.iter().map(|s| s.to_string()).collect::<Vec<_>>()),
             vec!["Games", "Games/a", "Games/nested/b"]

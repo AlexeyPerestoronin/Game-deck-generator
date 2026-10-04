@@ -641,6 +641,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "deck_gen_wasm_ai_tests"
+version = "0.1.0"
+dependencies = [
+ "deck_gen_wasm_ai",
+ "pollster",
+]
+
+[[package]]
 name = "deck_gen_wasm_browser"
 version = "0.1.0"
 dependencies = [

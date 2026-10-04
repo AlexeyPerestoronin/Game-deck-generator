@@ -20,6 +20,19 @@ pub(crate) async fn complete(
     parse_response(&text)
 }
 
+/// One user turn: same URL, headers, and response parse as [`complete`], no tools.
+pub(crate) async fn complete_plain(conf: &ModelConf, question: &str) -> Result<LlmTurn, String> {
+    let url = openai_url(conf);
+    let body = json!({
+        "model": conf.id,
+        "messages": openai_messages(&[Msg::user(question)])
+    });
+    let headers = bearer_headers(conf);
+    let header_refs: Vec<(&str, &str)> = headers.iter().map(|(k, v)| (*k, v.as_str())).collect();
+    let text = post_json(&url, &header_refs, &body.to_string()).await?;
+    parse_response(&text)
+}
+
 fn openai_url(conf: &ModelConf) -> String {
     let base = conf.base_url.trim_end_matches('/');
     let url = if base.ends_with("/chat/completions") {

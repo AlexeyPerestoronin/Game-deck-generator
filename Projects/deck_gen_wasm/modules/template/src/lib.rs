@@ -11,6 +11,6 @@ pub use crate::catalog::{
     load_catalog, parse_info_json5, CatalogEntry, GameInfo, DEFAULT_ICON_PNG, DEFAULT_PREVIEW_HTML,
 };
 pub use crate::game_help::{install_game_help, needs_game_help};
-pub use crate::github::list_game_folders;
+pub use crate::github::{fetch_listed_blobs_for, fetch_tree_blob_paths, list_game_folders};
 pub use crate::help::{install_user_help, needs_install};
 pub use crate::template::{install_game, install_new_game, InstalledGame};

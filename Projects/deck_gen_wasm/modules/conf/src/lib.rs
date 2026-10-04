@@ -77,9 +77,19 @@ pub mod game_help {
 pub mod ai {
     /// Folder of one-json5-per-model files.
     pub const DIR: &str = "ai-models";
+    /// Folder in Deck-Games with model json5 and AI markdown.
+    pub const GITHUB_SETTINGS: &str = "Templates/ai-settings";
     /// VFS path of the AI help Markdown for `locale` (`en` / `ru`).
     pub fn help(locale: &str) -> String {
         super::help::file("ai-help", locale)
+    }
+    /// VFS path of the create-game agent prompt for `locale` (`en` / `ru`).
+    pub fn create_game_pt(locale: &str) -> String {
+        super::help::file("create-game-pt", locale)
+    }
+    /// VFS path of the edit-game agent prompt for `locale` (`en` / `ru`).
+    pub fn edit_game_pt(locale: &str) -> String {
+        super::help::file("edit-game-pt", locale)
     }
     /// Markdown logs of `run_loop`.
     pub const LOG_DIR: &str = "ai-models/log";
@@ -203,6 +213,11 @@ mod tests {
         assert_eq!(super::game_help::path("ru"), "help/game-help-ru.md");
         assert_eq!(super::ai::help("en"), "help/ai-help-en.md");
         assert_eq!(super::ai::help("ru"), "help/ai-help-ru.md");
+        assert_eq!(super::ai::GITHUB_SETTINGS, "Templates/ai-settings");
+        assert_eq!(super::ai::create_game_pt("en"), "help/create-game-pt-en.md");
+        assert_eq!(super::ai::create_game_pt("ru"), "help/create-game-pt-ru.md");
+        assert_eq!(super::ai::edit_game_pt("en"), "help/edit-game-pt-en.md");
+        assert_eq!(super::ai::edit_game_pt("ru"), "help/edit-game-pt-ru.md");
     }
 
     #[test]

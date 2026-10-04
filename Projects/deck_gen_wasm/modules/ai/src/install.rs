@@ -1,56 +1,49 @@
-//! Copy bundled model json5 + locale ai-help into the VFS when missing or HTML-shell.
+//! Install AI files fetched from GitHub `Templates/ai-settings` into the VFS.
+//!
+//! Mapping is pure: `*.json5` → `ai-models/<name>`, `*.md` → `help/<name>`.
+//! Writes only when the path is missing or the stored body is the app HTML shell.
 
 use deck_gen_wasm_conf as wconf;
-use deck_gen_wasm_fs::Vfs;
+use deck_gen_wasm_fs::{file_name, Vfs};
 
-const GEMINI_FLASH: &str = include_str!("../bundled/gemini-2.0-flash.json5");
-const GEMINI_LITE: &str = include_str!("../bundled/gemini-2.0-flash-lite.json5");
-const DEEPSEEK: &str = include_str!("../bundled/deepseek-chat.json5");
-const GROK: &str = include_str!("../bundled/grok-3-mini.json5");
-const AI_HELP_EN: &str = include_str!("../bundled/ai-help-en.md");
-const AI_HELP_RU: &str = include_str!("../bundled/ai-help-ru.md");
-
-fn bundled_models() -> [(&'static str, &'static str); 4] {
-    [
-        ("ai-models/gemini-2.0-flash.json5", GEMINI_FLASH),
-        ("ai-models/gemini-2.0-flash-lite.json5", GEMINI_LITE),
-        ("ai-models/deepseek-chat.json5", DEEPSEEK),
-        ("ai-models/grok-3-mini.json5", GROK),
-    ]
-}
-
-fn bundled_ai_help(locale: &str) -> Option<&'static str> {
-    match locale {
-        "en" => Some(AI_HELP_EN),
-        "ru" => Some(AI_HELP_RU),
-        _ => None,
+/// Map a GitHub blob path under [`wconf::ai::GITHUB_SETTINGS`] to a VFS path.
+fn vfs_path_for_remote(remote_path: &str) -> Option<String> {
+    let prefix = format!("{}/", wconf::ai::GITHUB_SETTINGS);
+    let rest = remote_path.strip_prefix(&prefix)?;
+    let name = file_name(rest);
+    if name.is_empty() {
+        return None;
+    }
+    if name.ends_with(".json5") {
+        Some(format!("{}/{name}", wconf::ai::DIR))
+    } else if name.ends_with(".md") {
+        Some(format!("{}/{name}", wconf::help::DIR))
+    } else {
+        None
     }
 }
 
-/// True when any default model json5 is missing/HTML-shell, or the current
-/// locale's ai-help needs a copy. Other locales are ignored.
-pub fn needs_ai_install(vfs: &Vfs, locale: &str) -> bool {
-    bundled_models()
-        .iter()
-        .any(|(path, _)| file_needs_install(vfs, path))
-        || bundled_ai_help(locale)
-            .is_some_and(|_| file_needs_install(vfs, &wconf::ai::help(locale)))
+/// True when any non-HTML model json5 already lives under `ai-models/`.
+pub fn has_installed_ai_files(vfs: &Vfs) -> bool {
+    vfs.children(wconf::ai::DIR).any(|(name, is_dir)| {
+        !is_dir
+            && name.ends_with(".json5")
+            && vfs
+                .read_file(&format!("{}/{name}", wconf::ai::DIR))
+                .is_some_and(|body| !looks_like_html_document(body))
+    })
 }
 
-/// Write missing / HTML-shell defaults. Does not overwrite a user-edited json5
-/// (e.g. a key) or a user-edited help file. Does not remove other locales.
-pub fn install_ai_defaults(vfs: &mut Vfs, locale: &str) -> Result<(), String> {
+/// Create `ai-models/` (+ `log/`) and write fetched files that still need install.
+pub fn install_ai_files(vfs: &mut Vfs, files: &[(String, String)]) -> Result<(), String> {
     vfs.mkdir(wconf::ai::DIR)?;
     vfs.mkdir(wconf::ai::LOG_DIR)?;
-    for (path, body) in bundled_models() {
-        if file_needs_install(vfs, path) {
-            vfs.put_file(path, body.to_string())?;
-        }
-    }
-    if let Some(body) = bundled_ai_help(locale) {
-        let path = wconf::ai::help(locale);
+    for (remote, body) in files {
+        let Some(path) = vfs_path_for_remote(remote) else {
+            continue;
+        };
         if file_needs_install(vfs, &path) {
-            vfs.put_file(&path, body.to_string())?;
+            vfs.put_file(&path, body.clone())?;
         }
     }
     Ok(())
@@ -63,7 +56,7 @@ fn file_needs_install(vfs: &Vfs, path: &str) -> bool {
     }
 }
 
-fn looks_like_html_document(body: &str) -> bool {
+pub(crate) fn looks_like_html_document(body: &str) -> bool {
     let t = body.trim_start();
     let n = t.len().min(32);
     let prefix = t.get(..n).unwrap_or(t).to_ascii_lowercase();
@@ -74,64 +67,109 @@ fn looks_like_html_document(body: &str) -> bool {
 mod tests {
     use super::*;
 
-    #[test]
-    fn missing_files_are_copied_for_current_locale_only() {
-        let mut vfs = Vfs::default();
-        assert!(needs_ai_install(&vfs, "en"));
-        install_ai_defaults(&mut vfs, "en").unwrap();
-        assert!(vfs.is_file("ai-models/gemini-2.0-flash.json5"));
-        assert!(vfs.is_file("ai-models/gemini-2.0-flash-lite.json5"));
-        assert!(vfs.is_file("ai-models/deepseek-chat.json5"));
-        assert!(vfs.is_file("ai-models/grok-3-mini.json5"));
-        assert!(vfs.is_file(&wconf::ai::help("en")));
-        assert!(!vfs.is_file(&wconf::ai::help("ru")));
-        assert!(!vfs.is_file("ai-models/ai-help.md"));
-        assert!(vfs.is_dir(wconf::ai::LOG_DIR));
-        assert!(!needs_ai_install(&vfs, "en"));
-        assert!(needs_ai_install(&vfs, "ru"));
-        let key_file = vfs.read_file("ai-models/gemini-2.0-flash.json5").unwrap();
-        assert!(key_file.contains("api_key: \"\"") || key_file.contains("api_key: ''"));
+    fn remote(name: &str) -> String {
+        format!("{}/{name}", wconf::ai::GITHUB_SETTINGS)
     }
 
     #[test]
-    fn other_locale_help_is_kept() {
-        let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs, "en").unwrap();
-        install_ai_defaults(&mut vfs, "ru").unwrap();
-        assert!(vfs.is_file(&wconf::ai::help("en")));
-        assert!(vfs.is_file(&wconf::ai::help("ru")));
-        assert_ne!(
-            vfs.read_file(&wconf::ai::help("en")),
-            vfs.read_file(&wconf::ai::help("ru"))
+    fn maps_json5_to_ai_models_and_md_to_help() {
+        assert_eq!(
+            vfs_path_for_remote(&remote("gemini-2.0-flash.json5")).as_deref(),
+            Some("ai-models/gemini-2.0-flash.json5")
         );
-        assert!(vfs
-            .read_file(&wconf::ai::help("ru"))
-            .is_some_and(|body| body.contains("Конфиги моделей")));
-        assert!(!needs_ai_install(&vfs, "ru"));
+        assert_eq!(
+            vfs_path_for_remote(&remote("gemini-3.1-flash-lite.json5")).as_deref(),
+            Some("ai-models/gemini-3.1-flash-lite.json5")
+        );
+        assert_eq!(
+            vfs_path_for_remote(&remote("create-game-pt-en.md")).as_deref(),
+            Some("help/create-game-pt-en.md")
+        );
+        assert_eq!(
+            vfs_path_for_remote(&remote("edit-game-pt-ru.md")).as_deref(),
+            Some("help/edit-game-pt-ru.md")
+        );
+        assert_eq!(
+            vfs_path_for_remote(&remote("ai-help-en.md")).as_deref(),
+            Some("help/ai-help-en.md")
+        );
+        assert_eq!(vfs_path_for_remote(&remote("notes.txt")), None);
+        assert_eq!(vfs_path_for_remote("Games/x.json5"), None);
+        assert_eq!(
+            vfs_path_for_remote(&format!(
+                "{}/nested/grok-3-mini.json5",
+                wconf::ai::GITHUB_SETTINGS
+            ))
+            .as_deref(),
+            Some("ai-models/grok-3-mini.json5")
+        );
+    }
+
+    #[test]
+    fn missing_files_are_written_and_dirs_created() {
+        let mut vfs = Vfs::default();
+        assert!(!has_installed_ai_files(&vfs));
+        install_ai_files(
+            &mut vfs,
+            &[
+                (
+                    remote("gemini-2.0-flash.json5"),
+                    "{ id: \"gemini-2.0-flash\" }".into(),
+                ),
+                (remote("ai-help-en.md"), "# help en\n".into()),
+                (remote("ai-help-ru.md"), "# help ru\n".into()),
+                (
+                    remote("create-game-pt-en.md"),
+                    "create en {user_prompt}".into(),
+                ),
+                (remote("skip.txt"), "nope".into()),
+            ],
+        )
+        .unwrap();
+        assert!(vfs.is_file("ai-models/gemini-2.0-flash.json5"));
+        assert!(vfs.is_file("help/ai-help-en.md"));
+        assert!(vfs.is_file("help/ai-help-ru.md"));
+        assert!(vfs.is_file("help/create-game-pt-en.md"));
+        assert!(!vfs.is_file("ai-models/skip.txt"));
+        assert!(!vfs.is_file("help/skip.txt"));
+        assert!(vfs.is_dir(wconf::ai::LOG_DIR));
+        assert!(has_installed_ai_files(&vfs));
     }
 
     #[test]
     fn user_key_is_not_overwritten() {
         let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs, "en").unwrap();
+        install_ai_files(
+            &mut vfs,
+            &[(remote("gemini-2.0-flash.json5"), "{ api_key: \"\" }".into())],
+        )
+        .unwrap();
         vfs.put_file(
             "ai-models/gemini-2.0-flash.json5",
             "{ id: \"gemini-2.0-flash\", api_key: \"SECRET\" }".into(),
         )
         .unwrap();
-        assert!(!needs_ai_install(&vfs, "en"));
-        install_ai_defaults(&mut vfs, "en").unwrap();
+        install_ai_files(
+            &mut vfs,
+            &[(remote("gemini-2.0-flash.json5"), "{ overwritten }".into())],
+        )
+        .unwrap();
         let body = vfs.read_file("ai-models/gemini-2.0-flash.json5").unwrap();
         assert!(body.contains("SECRET"));
+        assert!(!body.contains("overwritten"));
     }
 
     #[test]
-    fn custom_ai_help_is_not_overwritten() {
+    fn custom_markdown_is_not_overwritten() {
         let mut vfs = Vfs::default();
-        let path = wconf::ai::help("en");
-        vfs.put_file(&path, "# my help\n".into()).unwrap();
-        install_ai_defaults(&mut vfs, "en").unwrap();
-        assert_eq!(vfs.read_file(&path), Some("# my help\n"));
+        let path = "help/create-game-pt-en.md";
+        vfs.put_file(path, "# my prompt\n".into()).unwrap();
+        install_ai_files(
+            &mut vfs,
+            &[(remote("create-game-pt-en.md"), "bundled".into())],
+        )
+        .unwrap();
+        assert_eq!(vfs.read_file(path), Some("# my prompt\n"));
     }
 
     #[test]
@@ -142,32 +180,29 @@ mod tests {
             "<!DOCTYPE html>\n<html></html>".into(),
         )
         .unwrap();
+        assert!(!has_installed_ai_files(&vfs));
         assert!(file_needs_install(&vfs, "ai-models/gemini-2.0-flash.json5"));
-        install_ai_defaults(&mut vfs, "en").unwrap();
+        install_ai_files(
+            &mut vfs,
+            &[(
+                remote("gemini-2.0-flash.json5"),
+                "{ id: \"gemini-2.0-flash\" }".into(),
+            )],
+        )
+        .unwrap();
         let body = vfs.read_file("ai-models/gemini-2.0-flash.json5").unwrap();
         assert!(body.contains("gemini-2.0-flash"));
         assert!(!looks_like_html_document(body));
+        assert!(has_installed_ai_files(&vfs));
     }
 
     #[test]
-    fn html_shell_ai_help_is_reinstalled() {
+    fn html_shell_markdown_is_reinstalled() {
         let mut vfs = Vfs::default();
-        let path = wconf::ai::help("en");
-        vfs.put_file(&path, "<!DOCTYPE html>\n<html></html>".into())
+        let path = "help/ai-help-en.md";
+        vfs.put_file(path, "<!DOCTYPE html>\n<html></html>".into())
             .unwrap();
-        assert!(needs_ai_install(&vfs, "en"));
-        install_ai_defaults(&mut vfs, "en").unwrap();
-        assert!(vfs
-            .read_file(&path)
-            .is_some_and(|body| body.starts_with('#')));
-    }
-
-    #[test]
-    fn unknown_locale_does_not_invent_help() {
-        let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs, "de").unwrap();
-        assert!(vfs.is_file("ai-models/gemini-2.0-flash.json5"));
-        assert!(!vfs.is_file("help/ai-help-de.md"));
-        assert!(!vfs.is_file(&wconf::ai::help("en")));
+        install_ai_files(&mut vfs, &[(remote("ai-help-en.md"), "# help\n".into())]).unwrap();
+        assert_eq!(vfs.read_file(path), Some("# help\n"));
     }
 }

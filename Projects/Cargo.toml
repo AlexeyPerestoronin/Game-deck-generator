@@ -14,6 +14,7 @@ members = [
     "deck_gen_wasm/modules/template",
     "deck_gen_wasm/modules/ai",
     "deck_gen_wasm/modules/workspace",
+    "deck_gen_wasm/modules/ai_tests",
     "progress_viewer",
     "deck_gen_wasm/modules/feedback",
     "deck_gen_wasm/modules/locale",

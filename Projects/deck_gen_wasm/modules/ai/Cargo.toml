@@ -12,9 +12,9 @@ path = "src/lib.rs"
 deck_gen_wasm_fs = { path = "../fs" }
 # Path constants for ai-models/ and help/
 deck_gen_wasm_conf = { path = "../conf" }
-# Active UI locale (en/ru) for bundled prompt templates
+# Active UI locale (en/ru) for prompt template paths in help/
 deck_gen_wasm_locale = { path = "../locale" }
-# Browser POST JSON (WASM); native tests do not call HTTP
+# Browser POST JSON (WASM)
 deck_gen_wasm_browser = { path = "../browser" }
 # prepare_html tool
 deck_gen = { path = "../../../deck_gen", default-features = false }
@@ -31,6 +31,6 @@ js-sys = "0.3"
 # Delay between LLM requests (RPM throttle) and between HTTP 503 retries
 gloo-timers = { version = "0.3", features = ["futures"] }
 
-[dev-dependencies]
-# Ignored live model tests: native HTTPS POST (not used by the WASM app)
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Native HTTPS POST for live tests (not linked into WASM)
 ureq = "2"

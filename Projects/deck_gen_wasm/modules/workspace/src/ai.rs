@@ -1,13 +1,17 @@
-//! AI orchestration: install defaults, list models, edit-target predicate, run_loop.
+//! AI orchestration: GitHub AI files, list models, edit-target predicate, run_loop.
 
 use leptos::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-use deck_gen_wasm_ai::{install_ai_defaults, needs_ai_install, AiEngine, AiRequest, ModelFile};
+use deck_gen_wasm_ai::{has_installed_ai_files, install_ai_files, AiEngine, AiRequest, ModelFile};
+use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::{path_is_or_under, Vfs};
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
-use deck_gen_wasm_template::{game_roots_from_paths, install_game_help, needs_game_help};
+use deck_gen_wasm_template::{
+    fetch_listed_blobs_for, fetch_tree_blob_paths, game_roots_from_paths, install_game_help,
+    needs_game_help,
+};
 use progress_viewer::progress_wrapper;
 
 use super::{OpenTab, TabKind, Workspace};
@@ -36,24 +40,66 @@ pub fn ai_edit_target(vfs: &Vfs, file: Option<&str>) -> Option<(String, String)>
 }
 
 impl Workspace {
-    /// Copy bundled game-help (current locale) and default AI model files if missing / HTML-shell.
-    pub fn ensure_ai_files(&self) {
+    /// Copy bundled game-help (current locale) and fetch AI files from GitHub if missing / HTML-shell.
+    pub async fn ensure_ai_files(&self) {
         let loc = locale::get_active_locale().as_str();
         let result = self.vfs.try_update(|vfs| {
             if needs_game_help(vfs, loc) {
                 install_game_help(vfs, loc)?;
             }
-            if needs_ai_install(vfs, loc) {
-                install_ai_defaults(vfs, loc)?;
-            }
+            vfs.mkdir(conf::ai::DIR)?;
+            vfs.mkdir(conf::ai::LOG_DIR)?;
             Ok(())
         });
         match result {
-            Some(Err(err)) => self.status.set(err),
-            None => self
-                .status
-                .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+            Some(Err(err)) => {
+                self.status.set(err);
+                return;
+            }
+            None => {
+                self.status
+                    .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE));
+                return;
+            }
             Some(Ok(())) => {}
+        }
+
+        let prefix = format!("{}/", conf::ai::GITHUB_SETTINGS);
+        let fetched = match fetch_tree_blob_paths(conf::catalog::REPO, conf::catalog::BRANCH).await
+        {
+            Ok(blobs) => {
+                let paths: Vec<String> = blobs
+                    .into_iter()
+                    .filter(|path| path.starts_with(&prefix))
+                    .collect();
+                fetch_listed_blobs_for(conf::catalog::REPO, conf::catalog::BRANCH, &paths).await
+            }
+            Err(err) => Err(err),
+        };
+
+        match fetched {
+            Ok(files) => {
+                let result = self.vfs.try_update(|vfs| install_ai_files(vfs, &files));
+                match result {
+                    Some(Err(err)) => self.status.set(err),
+                    None => self
+                        .status
+                        .set(locale::localize(keys::STATUS_COULD_NOT_UPDATE)),
+                    Some(Ok(())) => {
+                        if !self.vfs.with(has_installed_ai_files) {
+                            self.status.set(format!(
+                                "failed to install AI files from GitHub {}",
+                                conf::ai::GITHUB_SETTINGS
+                            ));
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                if !self.vfs.with(has_installed_ai_files) {
+                    self.status.set(err);
+                }
+            }
         }
     }
 

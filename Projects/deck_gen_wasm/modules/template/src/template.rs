@@ -25,7 +25,11 @@ pub async fn install_new_game(vfs: &mut Vfs, progress: Progress) -> Result<Insta
 /// Install any game folder from under `games/{source_game}/` (e.g. "new-game", "monopoly-2.0").
 /// The installed folder name may get -N suffix for uniqueness.
 /// `games/conf.json5` is copied only if missing (shared).
-pub async fn install_game(source_game: &str, vfs: &mut Vfs, progress: Progress) -> Result<InstalledGame, String> {
+pub async fn install_game(
+    source_game: &str,
+    vfs: &mut Vfs,
+    progress: Progress,
+) -> Result<InstalledGame, String> {
     progress_wrapper!(progress, {
         let (source, files) =
             progress_block!(progress, 0.0, 40.0, { load_game_files(source_game).await? });
@@ -60,7 +64,9 @@ pub(crate) fn retarget_game_id(content: &str, from: &str, to: &str) -> String {
     content.replace(&format!("\"{from}."), &format!("\"{to}."))
 }
 
-async fn load_game_files(source_game: &str) -> Result<(&'static str, Vec<(String, String)>), String> {
+async fn load_game_files(
+    source_game: &str,
+) -> Result<(&'static str, Vec<(String, String)>), String> {
     let paths = github::list_game_blob_paths(source_game).await?;
     let files = finish_game_files(source_game, github::fetch_listed_blobs(&paths).await?)?;
     Ok((conf::template::GITHUB_SOURCE_LABEL, files))
@@ -75,7 +81,10 @@ fn has_game_components(source_game: &str, files: &[(String, String)]) -> bool {
     conf_ok && game
 }
 
-fn finish_game_files(source_game: &str, files: Vec<(String, String)>) -> Result<Vec<(String, String)>, String> {
+fn finish_game_files(
+    source_game: &str,
+    files: Vec<(String, String)>,
+) -> Result<Vec<(String, String)>, String> {
     if !has_game_components(source_game, &files) {
         return Err(format!("missing games/{} or games/conf.json5", source_game));
     }
@@ -109,17 +118,20 @@ mod tests {
     #[test]
     fn both_components_are_conf_and_folder() {
         assert!(!has_game_components("new-game", &[]));
-        assert!(!has_game_components("new-game", &[(
-            conf::template::GAMES_CONF.to_string(),
-            String::new()
-        )]));
-        assert!(!has_game_components("new-game", &[(
-            "games/new-game/help.md".into(),
-            String::new()
-        )]));
-        assert!(has_game_components("new-game", &[
-            (conf::template::GAMES_CONF.to_string(), String::new()),
-            ("games/new-game/help.md".into(), String::new()),
-        ]));
+        assert!(!has_game_components(
+            "new-game",
+            &[(conf::template::GAMES_CONF.to_string(), String::new())]
+        ));
+        assert!(!has_game_components(
+            "new-game",
+            &[("games/new-game/help.md".into(), String::new())]
+        ));
+        assert!(has_game_components(
+            "new-game",
+            &[
+                (conf::template::GAMES_CONF.to_string(), String::new()),
+                ("games/new-game/help.md".into(), String::new()),
+            ]
+        ));
     }
 }

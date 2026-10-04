@@ -39,7 +39,7 @@ pub fn App() -> impl IntoView {
         }
         let workspace = Workspace::from_session(session);
         workspace.ensure_user_help();
-        workspace.ensure_ai_files();
+        workspace.ensure_ai_files().await;
         workspace_slot.set(Some(workspace));
     });
 
@@ -65,7 +65,9 @@ pub fn App() -> impl IntoView {
 #[component]
 fn LoadedApp(workspace: Workspace) -> impl IntoView {
     // Apply persisted (or default System) theme once on mount. Also sets up OS listener for System.
-    Effect::new(|_| { theme::apply(); });
+    Effect::new(|_| {
+        theme::apply();
+    });
 
     // Locale: ensure reactive signal (inside owner) and set <html lang> + document.title from persisted (default EN).
     Effect::new(|_| {
@@ -192,7 +194,8 @@ fn LoadedApp(workspace: Workspace) -> impl IntoView {
                     warning=warn
                     warning_title=warn_t
                 />
-            }.into_any(),
+            }
+            .into_any(),
         }
     };
 

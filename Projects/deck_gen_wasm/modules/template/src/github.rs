@@ -22,11 +22,6 @@ pub(crate) struct GithubTreeItem {
     kind: String,
 }
 
-/// `raw.githubusercontent.com` URL for `path` on the configured branch.
-pub fn raw_url(path: &str) -> String {
-    raw_url_for(conf::github::REPO, conf::github::BRANCH, path)
-}
-
 /// `raw.githubusercontent.com` URL for `path` on `repo`/`branch`.
 pub fn raw_url_for(repo: &str, branch: &str, path: &str) -> String {
     format!("https://raw.githubusercontent.com/{repo}/{branch}/{path}")
@@ -57,17 +52,29 @@ pub async fn list_game_blob_paths(game_folder: &str) -> Result<Vec<String>, Stri
 
 /// Fetch each listed path from GitHub raw; skip individual HTTP failures.
 pub async fn fetch_listed_blobs(paths: &[String]) -> Result<Vec<(String, String)>, String> {
-    let results = deck_gen_wasm_browser::map_join(
-        paths.iter().cloned(),
-        conf::io::FETCH_PARALLEL,
-        |path| async move {
-            fetch_text(&raw_url(&path))
-                .await
-                .ok()
-                .map(|content| (path, content))
-        },
-    )
-    .await;
+    fetch_listed_blobs_for(conf::github::REPO, conf::github::BRANCH, paths).await
+}
+
+/// Fetch each listed path from `repo`/`branch` raw; skip individual HTTP failures.
+pub async fn fetch_listed_blobs_for(
+    repo: &str,
+    branch: &str,
+    paths: &[String],
+) -> Result<Vec<(String, String)>, String> {
+    let repo = repo.to_string();
+    let branch = branch.to_string();
+    let results =
+        deck_gen_wasm_browser::map_join(paths.iter().cloned(), conf::io::FETCH_PARALLEL, |path| {
+            let repo = repo.clone();
+            let branch = branch.clone();
+            async move {
+                fetch_text(&raw_url_for(&repo, &branch, &path))
+                    .await
+                    .ok()
+                    .map(|content| (path, content))
+            }
+        })
+        .await;
     Ok(results.into_iter().flatten().collect())
 }
 
@@ -103,12 +110,17 @@ mod tests {
 
     #[test]
     fn ignores_blobs_and_nested() {
-        let t = make_tree(&[
-            ("games/foo/bar", "tree"),
-            ("games/foo", "blob"),
-        ]);
+        let t = make_tree(&[("games/foo/bar", "tree"), ("games/foo", "blob")]);
         let folders = filter_game_folders_from_tree(&t);
         assert!(folders.is_empty());
+    }
+
+    #[test]
+    fn raw_url_for_builds_raw_githubusercontent() {
+        assert_eq!(
+            raw_url_for("owner/repo", "main", "a/b.md"),
+            "https://raw.githubusercontent.com/owner/repo/main/a/b.md"
+        );
     }
 }
 

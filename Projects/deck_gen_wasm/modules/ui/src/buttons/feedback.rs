@@ -4,9 +4,9 @@ use leptos::prelude::*;
 
 use crate::icons::FeedbackIcon;
 use crate::tooltips::DelayedTooltip;
+use deck_gen_wasm_feedback::send_feedback_via_email;
 use deck_gen_wasm_locale as locale;
 use deck_gen_wasm_locale::keys;
-use deck_gen_wasm_feedback::send_feedback_via_email;
 
 /// Open default email client with prefilled feedback (from conf).
 #[component]

@@ -44,7 +44,8 @@
                 "-m",
                     "invoke",
                         "tools.harness.run-loop",
-                            "--settings=${file}"
+                            "--settings=${file}",
+                            // "--dump=.log/2026-10-04 17-47_SpaceXAI_Grok 4.6 (продолжить)/dump.json",
             ],
         },
     ]

@@ -31,8 +31,7 @@ pub fn SettingsButton() -> impl IntoView {
     let menu_pos = RwSignal::new(MenuPos::default());
     let host: NodeRef<html::Div> = NodeRef::new();
 
-    let tip: &'static str =
-        Box::leak(locale::localize(keys::TOOLTIP_SETTINGS).into_boxed_str());
+    let tip: &'static str = Box::leak(locale::localize(keys::TOOLTIP_SETTINGS).into_boxed_str());
 
     let open_menu = move |_| {
         if let Some(el) = host.get() {

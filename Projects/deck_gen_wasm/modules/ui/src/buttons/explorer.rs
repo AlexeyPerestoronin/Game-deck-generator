@@ -17,8 +17,7 @@ pub fn ExplorerButton(
     explorer_width: RwSignal<i32>,
     last_explorer_width: RwSignal<i32>,
 ) -> impl IntoView {
-    let tip: &'static str =
-        Box::leak(locale::localize(keys::TOOLTIP_EXPLORER).into_boxed_str());
+    let tip: &'static str = Box::leak(locale::localize(keys::TOOLTIP_EXPLORER).into_boxed_str());
     view! {
         <DelayedTooltip text=tip>
             <button

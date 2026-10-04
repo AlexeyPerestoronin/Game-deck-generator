@@ -18,6 +18,16 @@ pub(crate) async fn complete(
     parse_response(&text)
 }
 
+/// One user turn: same URL and response parse as [`complete`], no tools.
+pub(crate) async fn complete_plain(conf: &ModelConf, question: &str) -> Result<LlmTurn, String> {
+    let url = gemini_url(conf);
+    let body = json!({
+        "contents": gemini_contents(&[Msg::user(question)])
+    });
+    let text = post_json(&url, &[], &body.to_string()).await?;
+    parse_response(&text)
+}
+
 fn gemini_url(conf: &ModelConf) -> String {
     let mut url = format!(
         "{}/models/{}:generateContent",

@@ -1,4 +1,4 @@
-//! POST JSON via the browser crate (WASM) or a native stub.
+//! POST JSON via the browser crate (WASM) or ureq (native live tests).
 //!
 //! One POST may be repeated when the provider answers HTTP 503 (peak load).
 //! Other failures, including 409, are returned as-is so the UI can warn.
@@ -54,8 +54,34 @@ async fn post_json_once(
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let _ = (url, extra_headers, body);
-        Err("HTTP is only available in the browser WASM build".into())
+        native_post_json(url, extra_headers, body)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn native_post_json(
+    url: &str,
+    extra_headers: &[(&str, &str)],
+    body: &str,
+) -> Result<String, String> {
+    let mut req = ureq::post(url).timeout(std::time::Duration::from_secs(120));
+    for (k, v) in extra_headers {
+        req = req.set(k, v);
+    }
+    match req
+        .set("Content-Type", "application/json")
+        .send_string(body)
+    {
+        Ok(resp) => resp.into_string().map_err(|err| format!("{url}: {err}")),
+        Err(ureq::Error::Status(code, resp)) => {
+            let text = resp.into_string().unwrap_or_default();
+            if text.is_empty() {
+                Err(format!("{url}: HTTP {code}"))
+            } else {
+                Err(format!("{url}: HTTP {code}: {text}"))
+            }
+        }
+        Err(err) => Err(format!("{url}: {err}")),
     }
 }
 
