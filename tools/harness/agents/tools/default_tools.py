@@ -5,6 +5,7 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+import threading
 
 from typing import Callable, Tuple
 from classproperties import classproperty
@@ -667,58 +668,73 @@ class DefaultTools(i_tools.ITools):
 
     # command tools
 
+    def _decode_command_output(self, raw_output: bytes) -> str:
+        # utf-8 / oem / cp1251 — как в прежнем захвате вывода subprocess.run
+        if not raw_output:
+            return "(command finished without output)"
+        for encoding in ('utf-8', 'oem', 'cp1251'):
+            try:
+                return raw_output.decode(encoding)
+            except UnicodeDecodeError:
+                continue
+        return raw_output.decode('utf-8', errors='replace')
+
+    def _run_observed_command(self, cmd: str, cwd: str, timeout: int) -> str:
+        # вывод транслируется в консоль сразу, а не после завершения процесса
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        process = subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=0,
+            env=env,
+        )
+        chunks = []
+
+        def _pump():
+            stream = process.stdout
+            if stream is None:
+                return
+            fd = stream.fileno()
+            while True:
+                data = os.read(fd, 4096)
+                if not data:
+                    break
+                chunks.append(data)
+                buffer = getattr(sys.stdout, "buffer", None)
+                if buffer is not None:
+                    buffer.write(data)
+                    buffer.flush()
+                else:
+                    sys.stdout.write(data.decode("utf-8", errors="replace"))
+                    sys.stdout.flush()
+
+        reader = threading.Thread(target=_pump, daemon=True)
+        reader.start()
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            reader.join(timeout=1)
+            raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {timeout}s)")
+        reader.join()
+        return self._decode_command_output(b"".join(chunks))
+
     def run_shell(self, cwd: str, command: str, arguments: str) -> str:
         if command not in self._r_shell: raise Exception(f"'{command}'-command is not available (available command list is {self._r_shell})")
         if command in self._w_shell: self._check_access(cwd, 'w', f"'{cwd}'-cwd is denied for '{command}'-command (allowed cwd for '{command}'-command is {self._w_dirs})")
         if command in self._r_shell: self._check_access(cwd, 'r', f"'{cwd}'-cwd is denied for '{command}'-command (allowed cwd for '{command}'-command is {self._r_dirs})")
 
-        try:
-            cmd = command + " " + arguments
-            result = subprocess.run(
-                cmd,
-                cwd=cwd,
-                shell=True,
-                capture_output=True,
-                text=False,
-                timeout=self._command_execution_limit,
-            )
-            raw_output = result.stdout or result.stderr
-            if raw_output:
-                encodings_to_try = ['utf-8', 'oem', 'cp1251']
-                for encoding in encodings_to_try:
-                    try:
-                        return raw_output.decode(encoding)
-                    except UnicodeDecodeError:
-                        continue
-                return raw_output.decode('utf-8', errors='replace')
-            return "(command finished without output)"
-        except subprocess.TimeoutExpired:
-            raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._command_execution_limit}s)")
+        cmd = command + " " + arguments
+        return self._run_observed_command(cmd, cwd, self._command_execution_limit)
 
     def run_invoke(self, command: str) -> str:
-        try:
-            # invoke с переданными аргументами в рабочей директории агента
-            cmd = f"{self._cwd}/.venv/Scripts/python.exe -m invoke {command}"
-            result = subprocess.run(
-                cmd,
-                cwd=self._cwd,
-                shell=True,
-                capture_output=True,
-                text=False,
-                timeout=self._invoke_execution_limit,
-            )
-            raw_output = result.stdout or result.stderr
-            if raw_output:
-                encodings_to_try = ['utf-8', 'oem', 'cp1251']
-                for encoding in encodings_to_try:
-                    try:
-                        return raw_output.decode(encoding)
-                    except UnicodeDecodeError:
-                        continue
-                return raw_output.decode('utf-8', errors='replace')
-            return "(command finished without output)"
-        except subprocess.TimeoutExpired:
-            raise Exception(f"execution of the '{cmd}' exceed the limit (available limit is {self._invoke_execution_limit}s)")
+        # invoke с переданными аргументами в рабочей директории агента
+        cmd = f"{self._cwd}/.venv/Scripts/python.exe -m invoke {command}"
+        return self._run_observed_command(cmd, self._cwd, self._invoke_execution_limit)
 
     # user communication
 
@@ -741,26 +757,7 @@ class DefaultTools(i_tools.ITools):
 
     def _run_approved_shell(self, command: str, cwd: str) -> str:
         # одноразовый запуск без белого списка: пользователь уже подтвердил команду
-        try:
-            result = subprocess.run(
-                command,
-                cwd=cwd,
-                shell=True,
-                capture_output=True,
-                text=False,
-                timeout=self._command_execution_limit,
-            )
-            raw_output = result.stdout or result.stderr
-            if raw_output:
-                for encoding in ('utf-8', 'oem', 'cp1251'):
-                    try:
-                        return raw_output.decode(encoding)
-                    except UnicodeDecodeError:
-                        continue
-                return raw_output.decode('utf-8', errors='replace')
-            return "(command finished without output)"
-        except subprocess.TimeoutExpired:
-            raise Exception(f"execution of the '{command}' exceed the limit (available limit is {self._command_execution_limit}s)")
+        return self._run_observed_command(command, cwd, self._command_execution_limit)
 
     def ask_user(self, question: str) -> str:
         try:
