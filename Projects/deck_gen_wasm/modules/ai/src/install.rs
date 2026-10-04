@@ -33,7 +33,8 @@ pub fn needs_ai_install(vfs: &Vfs, locale: &str) -> bool {
     bundled_models()
         .iter()
         .any(|(path, _)| file_needs_install(vfs, path))
-        || bundled_ai_help(locale).is_some_and(|_| file_needs_install(vfs, &wconf::ai::help(locale)))
+        || bundled_ai_help(locale)
+            .is_some_and(|_| file_needs_install(vfs, &wconf::ai::help(locale)))
 }
 
 /// Write missing / HTML-shell defaults. Does not overwrite a user-edited json5
@@ -156,7 +157,9 @@ mod tests {
             .unwrap();
         assert!(needs_ai_install(&vfs, "en"));
         install_ai_defaults(&mut vfs, "en").unwrap();
-        assert!(vfs.read_file(&path).is_some_and(|body| body.starts_with('#')));
+        assert!(vfs
+            .read_file(&path)
+            .is_some_and(|body| body.starts_with('#')));
     }
 
     #[test]

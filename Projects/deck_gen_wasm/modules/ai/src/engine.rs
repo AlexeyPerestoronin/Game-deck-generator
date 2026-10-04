@@ -439,9 +439,7 @@ mod tests {
             .unwrap();
         vfs.put_file(&wconf::game_help::path("ru"), "# RU HELP".into())
             .unwrap();
-        let req = AiRequest::CreateGame {
-            prompt: "x".into(),
-        };
+        let req = AiRequest::CreateGame { prompt: "x".into() };
         let en = render(&req, "en", &vfs);
         let ru = render(&req, "ru", &vfs);
         assert!(en.contains("# EN HELP"), "{en}");

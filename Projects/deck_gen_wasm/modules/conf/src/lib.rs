@@ -1,8 +1,8 @@
 //! Compile-time knobs for the browser editor.
 //!
 //! Central place for constants that control GitHub template install,
-//! session storage keys, import allow-lists (text + images), I/O
-//! parallelism, and UI timing. Values are never mutated at runtime.
+//! session storage keys, import allow-lists (text + images), I/O parallelism,
+//! AI HTTP 503 retry, and UI timing. Values are never mutated at runtime.
 //! Both direct file loads and folder loads consult the lists here
 //! (via ALLOWED_EXTENSIONS) so *.js, *.j2 (and future types) are enabled
 //! in one place.
@@ -83,6 +83,10 @@ pub mod ai {
     }
     /// Markdown logs of `run_loop`.
     pub const LOG_DIR: &str = "ai-models/log";
+    /// Max POSTs of the same JSON when the provider answers HTTP 503.
+    pub const HTTP_503_MAX_RETRIES: u32 = 20;
+    /// Wait this long after a 503 before repeating the same POST.
+    pub const HTTP_503_RETRY_DELAY_MS: u32 = 3000;
 }
 
 /// Browser snapshot of the in-memory workspace.
@@ -199,5 +203,11 @@ mod tests {
         assert_eq!(super::game_help::path("ru"), "help/game-help-ru.md");
         assert_eq!(super::ai::help("en"), "help/ai-help-en.md");
         assert_eq!(super::ai::help("ru"), "help/ai-help-ru.md");
+    }
+
+    #[test]
+    fn ai_http_503_retry_defaults() {
+        assert_eq!(super::ai::HTTP_503_MAX_RETRIES, 20);
+        assert_eq!(super::ai::HTTP_503_RETRY_DELAY_MS, 3000);
     }
 }
