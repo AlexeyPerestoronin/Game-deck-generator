@@ -36,14 +36,15 @@ pub fn ai_edit_target(vfs: &Vfs, file: Option<&str>) -> Option<(String, String)>
 }
 
 impl Workspace {
-    /// Copy bundled game-help and default AI model files if missing / HTML-shell.
+    /// Copy bundled game-help (current locale) and default AI model files if missing / HTML-shell.
     pub fn ensure_ai_files(&self) {
+        let loc = locale::get_active_locale().as_str();
         let result = self.vfs.try_update(|vfs| {
-            if needs_game_help(vfs) {
-                install_game_help(vfs)?;
+            if needs_game_help(vfs, loc) {
+                install_game_help(vfs, loc)?;
             }
-            if needs_ai_install(vfs) {
-                install_ai_defaults(vfs)?;
+            if needs_ai_install(vfs, loc) {
+                install_ai_defaults(vfs, loc)?;
             }
             Ok(())
         });

@@ -1,3 +1,4 @@
+import time
 import pathlib
 import datetime
 
@@ -78,10 +79,12 @@ class AgentLoop:
             .log_line(f"- agent: {self._agent.vendor} {self._agent.model}")\
             .log_line(f"- iteration limit: {self._iteration_limit}")\
             .log_line(f"- tokens limit: {self._agent.tokens_limit}")\
+            .log_line(f"- usd limit: {self._agent.limit_usd}")\
             .log_line(f"- start time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")\
             .log_line()\
             .log_line("# Iterations:")\
 
+        start_time = time.perf_counter()
         while True:
             self._iteration += 1
 
@@ -106,3 +109,6 @@ class AgentLoop:
                 break
             # one prompt per loop
             prompt = None
+        stop_time = time.perf_counter()
+        formatted_time = str(datetime.timedelta(seconds=int(stop_time - start_time)))
+        self._logger.log_line(f"# Execution time: {formatted_time}")

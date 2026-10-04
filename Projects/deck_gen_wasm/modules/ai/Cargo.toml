@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 # VFS tree the agent reads and writes
 deck_gen_wasm_fs = { path = "../fs" }
-# Path constants for ai-models/ and game-help.md
+# Path constants for ai-models/ and help/
 deck_gen_wasm_conf = { path = "../conf" }
 # Active UI locale (en/ru) for bundled prompt templates
 deck_gen_wasm_locale = { path = "../locale" }

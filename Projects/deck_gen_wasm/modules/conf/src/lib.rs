@@ -49,24 +49,38 @@ pub mod template {
     pub const GITHUB_SOURCE_LABEL: &str = "GitHub master";
 }
 
-/// Help Markdown compiled into the WASM and copied to the VFS root.
+/// Help Markdown compiled into the WASM and copied under `help/` in the VFS.
 pub mod help {
-    /// Workspace-root path of the help Markdown.
-    pub const PATH: &str = "user-help.md";
+    /// Workspace folder that holds all help Markdown files.
+    pub const DIR: &str = "help";
+
+    /// `help/<stem>-<locale>.md`
+    pub(crate) fn file(stem: &str, locale: &str) -> String {
+        format!("{DIR}/{stem}-{locale}.md")
+    }
+
+    /// VFS path of the user-help file for `locale` (`en` / `ru`).
+    pub fn path(locale: &str) -> String {
+        file("user-help", locale)
+    }
 }
 
-/// Game-authoring rules for humans and the AI agent (workspace root).
+/// Game-authoring rules for humans and the AI agent.
 pub mod game_help {
-    /// Workspace-root path of the game-help Markdown.
-    pub const PATH: &str = "game-help.md";
+    /// VFS path of the game-help file for `locale` (`en` / `ru`).
+    pub fn path(locale: &str) -> String {
+        super::help::file("game-help", locale)
+    }
 }
 
 /// AI model configs and run logs in the VFS root.
 pub mod ai {
     /// Folder of one-json5-per-model files.
     pub const DIR: &str = "ai-models";
-    /// How to write model json5 files.
-    pub const HELP: &str = "ai-models/ai-help.md";
+    /// VFS path of the AI help Markdown for `locale` (`en` / `ru`).
+    pub fn help(locale: &str) -> String {
+        super::help::file("ai-help", locale)
+    }
     /// Markdown logs of `run_loop`.
     pub const LOG_DIR: &str = "ai-models/log";
 }
@@ -172,4 +186,18 @@ pub mod feedback {
     pub const SUBJECT: &str = "Game-Deck-Generator Feedback";
     /// Email body template (loaded at compile time).
     pub const TEMPLATE: &str = include_str!("../forms/feedback-template.md");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn help_paths_use_help_dir_and_locale() {
+        assert_eq!(super::help::DIR, "help");
+        assert_eq!(super::help::path("en"), "help/user-help-en.md");
+        assert_eq!(super::help::path("ru"), "help/user-help-ru.md");
+        assert_eq!(super::game_help::path("en"), "help/game-help-en.md");
+        assert_eq!(super::game_help::path("ru"), "help/game-help-ru.md");
+        assert_eq!(super::ai::help("en"), "help/ai-help-en.md");
+        assert_eq!(super::ai::help("ru"), "help/ai-help-ru.md");
+    }
 }

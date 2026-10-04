@@ -63,12 +63,13 @@ impl Workspace {
         }
     }
 
-    /// Copy bundled help into the VFS root if missing; preview if no tab is open.
+    /// Copy bundled user-help for the current locale into `help/` if missing; preview if no tab is open.
     pub fn ensure_user_help(&self) {
         let open_preview = self.tabs.with(|tabs| tabs.is_empty());
+        let loc = locale::get_active_locale().as_str();
         let result = self.vfs.try_update(|vfs| {
-            if help::needs_install(vfs) {
-                help::install_user_help(vfs)
+            if help::needs_install(vfs, loc) {
+                help::install_user_help(vfs, loc)
             } else {
                 Ok(())
             }
@@ -91,15 +92,15 @@ impl Workspace {
     }
 
     fn open_help_preview(&self) {
-        let path = conf::help::PATH.to_string();
+        let path = conf::help::path(locale::get_active_locale().as_str());
         self.expand_ancestors(&path);
         self.set_primary_selection(Some(path.clone()));
         self.open_tab(OpenTab {
-            path,
+            path: path.clone(),
             kind: TabKind::Preview,
         });
         let tmpl = locale::localize(keys::STATUS_OPENED);
-        self.status.set(tmpl.replace("{path}", conf::help::PATH));
+        self.status.set(tmpl.replace("{path}", &path));
     }
 
     /// Delete everything under `games/`, keep the rest of the VFS, persist.

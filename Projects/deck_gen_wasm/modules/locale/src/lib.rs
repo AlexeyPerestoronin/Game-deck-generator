@@ -30,7 +30,8 @@ pub enum Locale {
 }
 
 impl Locale {
-    fn as_str(self) -> &'static str {
+    /// `en` or `ru`.
+    pub fn as_str(self) -> &'static str {
         match self {
             Locale::En => "en",
             Locale::Ru => "ru",

@@ -2,8 +2,8 @@
 //!
 //! Session restore waits for IndexedDB binaries (PDF / images) so they are
 //! present before the tree renders. Text state comes from localStorage. If
-//! [`deck_gen_wasm_conf::help::PATH`] is missing from the VFS the bundled help file
-//! is copied to the workspace root; if no editor tab is open, that file is
+//! [`deck_gen_wasm_conf::help::path`] for the current locale is missing from the VFS
+//! the bundled help file is copied under `help/`; if no editor tab is open, that file is
 //! shown as a preview. An effect writes the text snapshot back to localStorage
 //! whenever VFS/selection/expanded change (debounced after the editor flush),
 //! and rewrites IndexedDB only when the binary fingerprint changes.

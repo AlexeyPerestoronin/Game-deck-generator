@@ -1,6 +1,6 @@
 # AI model configs
 
-Put one JSON5 file per model in this folder (`ai-models/<id>.json5`). The file name without `.json5` should match the `id` field. New files show up in the model selector without rebuilding the app.
+Put one JSON5 file per model in `ai-models/<id>.json5`. The file name without `.json5` should match the `id` field. New files show up in the model selector without rebuilding the app.
 
 Logs of each run are written to `ai-models/log/<date-time>-<model-id>.md` (Markdown, open in Preview).
 

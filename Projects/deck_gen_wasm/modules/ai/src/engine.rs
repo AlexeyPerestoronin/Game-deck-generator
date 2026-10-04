@@ -204,10 +204,7 @@ impl AiEngine {
 }
 
 fn active_locale_code() -> &'static str {
-    match locale::get_active_locale() {
-        locale::Locale::Ru => "ru",
-        locale::Locale::En => "en",
-    }
+    locale::get_active_locale().as_str()
 }
 
 fn bundled_prompt_template(req: &AiRequest, locale: &str) -> &'static str {
@@ -230,9 +227,9 @@ fn bundled_prompt_template(req: &AiRequest, locale: &str) -> &'static str {
     }
 }
 
-fn fill_prompt_template(template: &str, req: &AiRequest, vfs: &Vfs) -> String {
+fn fill_prompt_template(template: &str, req: &AiRequest, vfs: &Vfs, locale: &str) -> String {
     let help = vfs
-        .read_file(wconf::game_help::PATH)
+        .read_file(&wconf::game_help::path(locale))
         .unwrap_or("(game-help.md is missing)");
     let tools = tool_declarations().to_string();
     let (user_prompt, game, file) = match req {
@@ -255,8 +252,9 @@ fn request_text(req: &AiRequest, vfs: &Vfs) -> (String, String) {
         AiRequest::CreateGame { .. } => "CreateGame".into(),
         AiRequest::EditGame { file, .. } => format!("EditGame {file}"),
     };
-    let template = bundled_prompt_template(req, active_locale_code());
-    (title, fill_prompt_template(template, req, vfs))
+    let locale = active_locale_code();
+    let template = bundled_prompt_template(req, locale);
+    (title, fill_prompt_template(template, req, vfs, locale))
 }
 
 pub(crate) fn bearer_headers(conf: &ModelConf) -> Vec<(&'static str, String)> {
@@ -275,7 +273,7 @@ mod tests {
     #[test]
     fn from_conf_rejects_empty_key() {
         let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs).unwrap();
+        install_ai_defaults(&mut vfs, "en").unwrap();
         let err = AiEngine::from_conf(&vfs, "ai-models/gemini-2.0-flash.json5", None).unwrap_err();
         assert!(err.contains("api_key"), "{err}");
     }
@@ -304,7 +302,7 @@ mod tests {
     #[test]
     fn from_conf_override_fills_empty_json5() {
         let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs).unwrap();
+        install_ai_defaults(&mut vfs, "en").unwrap();
         let path = "ai-models/gemini-2.0-flash.json5";
         let before = vfs.read_file(path).unwrap().to_string();
         let engine = AiEngine::from_conf(&vfs, path, Some("from-modal")).unwrap();
@@ -315,7 +313,7 @@ mod tests {
     #[test]
     fn from_conf_both_empty_is_err() {
         let mut vfs = Vfs::default();
-        install_ai_defaults(&mut vfs).unwrap();
+        install_ai_defaults(&mut vfs, "en").unwrap();
         let path = "ai-models/gemini-2.0-flash.json5";
         let err = AiEngine::from_conf(&vfs, path, Some("  ")).unwrap_err();
         assert!(err.contains("api_key"), "{err}");
@@ -366,13 +364,13 @@ mod tests {
     }
 
     fn render(req: &AiRequest, loc: &str, vfs: &Vfs) -> String {
-        fill_prompt_template(bundled_prompt_template(req, loc), req, vfs)
+        fill_prompt_template(bundled_prompt_template(req, loc), req, vfs, loc)
     }
 
     #[test]
     fn create_game_en_has_new_card_game_and_user_prompt() {
         let mut vfs = Vfs::default();
-        vfs.put_file(wconf::game_help::PATH, "# help body".into())
+        vfs.put_file(&wconf::game_help::path("en"), "# help body".into())
             .unwrap();
         let req = AiRequest::CreateGame {
             prompt: "make uno".into(),
@@ -432,5 +430,23 @@ mod tests {
         assert!(CREATE_GAME_PT_RU.contains("{user_prompt}"));
         assert!(EDIT_GAME_PT_EN.contains("{file}"));
         assert!(EDIT_GAME_PT_RU.contains("{file}"));
+    }
+
+    #[test]
+    fn fill_reads_game_help_for_locale() {
+        let mut vfs = Vfs::default();
+        vfs.put_file(&wconf::game_help::path("en"), "# EN HELP".into())
+            .unwrap();
+        vfs.put_file(&wconf::game_help::path("ru"), "# RU HELP".into())
+            .unwrap();
+        let req = AiRequest::CreateGame {
+            prompt: "x".into(),
+        };
+        let en = render(&req, "en", &vfs);
+        let ru = render(&req, "ru", &vfs);
+        assert!(en.contains("# EN HELP"), "{en}");
+        assert!(ru.contains("# RU HELP"), "{ru}");
+        assert!(!en.contains("# RU HELP"), "{en}");
+        assert!(!ru.contains("# EN HELP"), "{ru}");
     }
 }

@@ -1,23 +1,37 @@
-//! Bundled help Markdown copied into the workspace root.
+//! Bundled user-help Markdown copied into `help/` in the VFS.
 //!
-//! [`crate::conf::help::PATH`] is `user-help.md` at the VFS root. The text is
-//! the crate file compiled in with [`include_str`]; there is no GitHub GET.
-//! The UI copies it when the path is missing or when the stored body is the
-//! app HTML shell. Opening the preview tab stays in [`crate::workspace`].
+//! [`deck_gen_wasm_conf::help::path`] is `help/user-help-<locale>.md`. The text is
+//! compiled in with [`include_str`]; there is no GitHub GET.
+//! Copy when the path is missing or the stored body is the app HTML shell.
 
 use deck_gen_wasm_conf as conf;
 use deck_gen_wasm_fs::Vfs;
 
-const BUNDLED_HELP: &str = include_str!("../user-help.md");
+const BUNDLED_EN: &str = include_str!("../user-help-en.md");
+const BUNDLED_RU: &str = include_str!("../user-help-ru.md");
 
-/// Write the bundled help at [`conf::help::PATH`] (workspace root).
-pub fn install_user_help(vfs: &mut Vfs) -> Result<(), String> {
-    vfs.put_file(conf::help::PATH, BUNDLED_HELP.to_string())
+fn bundled(locale: &str) -> Option<&'static str> {
+    match locale {
+        "en" => Some(BUNDLED_EN),
+        "ru" => Some(BUNDLED_RU),
+        _ => None,
+    }
 }
 
-/// Whether the VFS still needs a copy of the bundled help file.
-pub fn needs_install(vfs: &Vfs) -> bool {
-    match vfs.read_file(conf::help::PATH) {
+/// Write the bundled user help for `locale` at [`conf::help::path`].
+pub fn install_user_help(vfs: &mut Vfs, locale: &str) -> Result<(), String> {
+    match bundled(locale) {
+        Some(body) => vfs.put_file(&conf::help::path(locale), body.to_string()),
+        None => Ok(()),
+    }
+}
+
+/// Whether the VFS still needs a copy of the bundled user-help for `locale`.
+pub fn needs_install(vfs: &Vfs, locale: &str) -> bool {
+    if bundled(locale).is_none() {
+        return false;
+    }
+    match vfs.read_file(&conf::help::path(locale)) {
         Some(body) => looks_like_html_document(body),
         None => true,
     }
@@ -36,24 +50,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn installs_at_workspace_root() {
+    fn installs_only_current_locale() {
         let mut vfs = Vfs::default();
-        install_user_help(&mut vfs).unwrap();
+        assert!(needs_install(&vfs, "en"));
+        assert!(!needs_install(&vfs, "de"));
+        install_user_help(&mut vfs, "en").unwrap();
         assert!(vfs
-            .read_file("user-help.md")
+            .read_file("help/user-help-en.md")
             .is_some_and(|body| body.starts_with('#')));
         assert_eq!(
-            vfs.read_file(conf::help::PATH),
-            vfs.read_file("user-help.md")
+            vfs.read_file(&conf::help::path("en")),
+            vfs.read_file("help/user-help-en.md")
         );
-        assert!(!vfs.is_dir("deck_gen_wasm"));
-        assert!(!needs_install(&vfs));
+        assert!(!vfs.is_file("help/user-help-ru.md"));
+        assert!(!vfs.is_file("user-help.md"));
+        assert!(!needs_install(&vfs, "en"));
+        assert!(needs_install(&vfs, "ru"));
     }
 
     #[test]
-    fn install_when_missing() {
-        let vfs = Vfs::default();
-        assert!(needs_install(&vfs));
+    fn other_locale_is_kept() {
+        let mut vfs = Vfs::default();
+        install_user_help(&mut vfs, "en").unwrap();
+        install_user_help(&mut vfs, "ru").unwrap();
+        assert!(vfs.is_file("help/user-help-en.md"));
+        assert!(vfs.is_file("help/user-help-ru.md"));
+        assert_ne!(
+            vfs.read_file("help/user-help-en.md"),
+            vfs.read_file("help/user-help-ru.md")
+        );
+        assert!(vfs
+            .read_file("help/user-help-ru.md")
+            .is_some_and(|body| body.contains("рабочая область")));
+        assert!(!needs_install(&vfs, "en"));
+        assert!(!needs_install(&vfs, "ru"));
+    }
+
+    #[test]
+    fn unknown_locale_does_not_invent_help() {
+        let mut vfs = Vfs::default();
+        install_user_help(&mut vfs, "de").unwrap();
+        assert!(!vfs.is_file("help/user-help-de.md"));
+        assert!(!vfs.is_dir("help"));
     }
 
     #[test]
@@ -63,14 +101,30 @@ mod tests {
         ));
         assert!(looks_like_html_document("  <html>"));
         assert!(!looks_like_html_document("# Deck generator (browser)\n"));
-        assert!(!looks_like_html_document(BUNDLED_HELP));
+        assert!(!looks_like_html_document(BUNDLED_EN));
+        assert!(!looks_like_html_document(BUNDLED_RU));
     }
 
     #[test]
     fn reinstall_if_stored_help_is_html() {
         let mut vfs = Vfs::default();
-        vfs.put_file(conf::help::PATH, "<!DOCTYPE html>\n<html></html>".into())
+        vfs.put_file(
+            &conf::help::path("en"),
+            "<!DOCTYPE html>\n<html></html>".into(),
+        )
+        .unwrap();
+        assert!(needs_install(&vfs, "en"));
+        install_user_help(&mut vfs, "en").unwrap();
+        assert!(vfs
+            .read_file(&conf::help::path("en"))
+            .is_some_and(|body| body.starts_with('#')));
+    }
+
+    #[test]
+    fn user_edits_are_kept() {
+        let mut vfs = Vfs::default();
+        vfs.put_file(&conf::help::path("en"), "# custom\n".into())
             .unwrap();
-        assert!(needs_install(&vfs));
+        assert!(!needs_install(&vfs, "en"));
     }
 }
