@@ -111,4 +111,4 @@ class AgentLoop:
             prompt = None
         stop_time = time.perf_counter()
         formatted_time = str(datetime.timedelta(seconds=int(stop_time - start_time)))
-        self._logger.log_line(f"# Execution time: {formatted_time}")
+        self._logger.log_line(f"# Execution time: {formatted_time}").log_line()
