@@ -77,9 +77,9 @@ pub fn SplitPreviewIcon() -> impl IntoView {
 pub fn AiEditIcon() -> impl IntoView {
     view! {
         <span class="activity-icon" aria-hidden="true">
-            <img class="state-off"   src="icons/buttons/prepare_html/off.drawio.png"   width="40" height="40" />
-            <img class="state-on"    src="icons/buttons/prepare_html/on.drawio.png"    width="40" height="40" />
-            <img class="state-click" src="icons/buttons/prepare_html/click.drawio.png" width="40" height="40" />
+            <img class="state-off"   src="icons/buttons/ai_edit/off.drawio.png"   width="40" height="40" />
+            <img class="state-on"    src="icons/buttons/ai_edit/on.drawio.png"    width="40" height="40" />
+            <img class="state-click" src="icons/buttons/ai_edit/click.drawio.png" width="40" height="40" />
         </span>
     }
 }
