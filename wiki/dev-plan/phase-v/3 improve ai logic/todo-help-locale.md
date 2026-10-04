@@ -40,10 +40,6 @@ EN: текущий английский текст (поправить внут�
 - Агент (`system_prompt` или шаблон) читает game-help **текущей локали** из VFS (`help/game-help-<locale>.md`), не старый `game-help.md`.
 - Константы путей — в `deck_gen_wasm_conf` (сейчас `help::PATH`, `game_help::PATH`, `ai::HELP`). Сделать locale-aware хелперы, не размазывать `"help/user-help-en.md"` по UI.
 
-### Не входит
-- Вынос `request_text` / `system_prompt` в `create-game-pt-*.md` / `edit-game-*.md` — другая задача. Здесь только путь чтения game-help, если он ещё захардкожен.
-- Поля json5 (`api-key-hosting`, RPM) не добавлять; если они уже есть в тексте help — перенести в оба языка как есть.
-
 ## Scope
 - `projects/deck_gen_wasm/modules/conf/src/lib.rs` — пути `help/`
 - `projects/deck_gen_wasm/modules/ai/src/install.rs` + bundled `ai-help-*.md` (удалить старый `ai-help.md` после замены)
