@@ -73,16 +73,28 @@ class AgentLoop:
                 return user_decision in ("y", "yes")
         return True
 
-    def start(self, prompt: str, dump_file: pathlib.Path):
-        self._logger\
+    def start(self, prompt: str | None, dump_file: pathlib.Path, *, source_dump: pathlib.Path | None = None):
+        """Run the agent loop, optionally restoring state from ``source_dump``.
+
+        Args:
+            prompt: Initial user prompt. Ignored when ``source_dump`` is set
+                because the original prompt is already part of the dumped history.
+            dump_file: Path where session snapshots are written after each iteration.
+            source_dump: Optional dump file to resume after an interruption.
+        """
+        if source_dump is not None:
+            self._agent.reload_session(source_dump)
+            prompt = None
+        log = self._logger\
             .log_line(f"# Agent-loop session:")\
             .log_line(f"- agent: {self._agent.vendor} {self._agent.model}")\
             .log_line(f"- iteration limit: {self._iteration_limit}")\
             .log_line(f"- tokens limit: {self._agent.tokens_limit}")\
             .log_line(f"- usd limit: {self._agent.limit_usd}")\
-            .log_line(f"- start time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")\
-            .log_line()\
-            .log_line("# Iterations:")\
+            .log_line(f"- start time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        if source_dump is not None:
+            log = log.log_line(f"- continue from dump: {source_dump}")
+        log.log_line().log_line("# Iterations:")
 
         start_time = time.perf_counter()
         while True:

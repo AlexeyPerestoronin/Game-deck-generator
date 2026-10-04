@@ -16,12 +16,10 @@ def _get_log_folder(settings) -> pathlib.Path:
 
 @invoke.task()
 def run_loop(ctx, settings: str | None = None, dump: str | None = None):
-    """Run AI agent loop."""
-    # TODO: необходимо реализовать
-    # 
-    # Необходимо поддержать возможность продолжить работу после прерывания.
-    # Для продолжения работы необходимо использовать файл дампа (dump), который пишется в процессе выполнения работы и продолжать работу с него.
+    """Run AI agent loop.
 
+    Pass ``dump`` to resume an interrupted session from its dump file.
+    """
     with open(pathlib.Path(settings), "r", encoding="utf-8") as file:
         settings = json5.load(file)
 
@@ -37,7 +35,8 @@ def run_loop(ctx, settings: str | None = None, dump: str | None = None):
     if "temp-dir" not in tool_settings.keys():
         tool_settings["temp-dir"] = log_dir
     loop = agent_loop.AgentLoop(safe_mode, logger.DoubleLogger(log_file), settings)
-    loop.start(settings["prompt"], dump_file)
+    source_dump = pathlib.Path(dump) if dump else None
+    loop.start(settings["prompt"], dump_file, source_dump=source_dump)
 
 
 collection = invoke.Collection("harness")
