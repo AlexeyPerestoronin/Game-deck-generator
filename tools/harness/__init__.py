@@ -15,8 +15,13 @@ def _get_log_folder(settings) -> pathlib.Path:
 
 
 @invoke.task()
-def run_loop(ctx, settings: str):
+def run_loop(ctx, settings: str | None = None, dump: str | None = None):
     """Run AI agent loop."""
+    # TODO: необходимо реализовать
+    # 
+    # Необходимо поддержать возможность продолжить работу после прерывания.
+    # Для продолжения работы необходимо использовать файл дампа (dump), который пишется в процессе выполнения работы и продолжать работу с него.
+
     with open(pathlib.Path(settings), "r", encoding="utf-8") as file:
         settings = json5.load(file)
 
