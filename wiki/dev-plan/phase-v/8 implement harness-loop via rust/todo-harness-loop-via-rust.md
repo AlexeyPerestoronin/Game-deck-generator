@@ -43,7 +43,7 @@ harness/
       src/agents/                     # xAI / Google
     logger/
       Cargo.toml                      # package name: logger
-      src/lib.rs                      # trait Logger + реализации
+      src/lib.rs                      # trait Logger + реализации (реализации в отдельных файлах)
     tools/
       Cargo.toml                      # package name: tools, зависит от logger
       src/lib.rs                      # registry + сборка модулей из конфига
@@ -116,7 +116,7 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
         },
         "git": {
             // обязателен. Код не подставляет "git" сам.
-            "executable": "git",
+            "executable": "path to git-executable file",
             "execution-limit": 120
         },
         "search": {},
@@ -128,8 +128,11 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
                 "findstr",
                 "cargo",
             ],
-            "command-execution-limit": 120,
-            "invoke-execution-limit": 120
+            "execution-limit": 120,
+        },
+        "invoke": {
+          "cwd": "path to tasks.py for invoke",
+          "execution-limit": 120
         },
         "meta": {},
         "user": {}
