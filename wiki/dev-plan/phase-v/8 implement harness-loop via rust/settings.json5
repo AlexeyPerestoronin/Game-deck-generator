@@ -39,5 +39,5 @@
     "iteration-limit": 50,
     "token-limit": 0,
     // target prompt like entry point
-    "prompt": "Есть задача на исследование: см. WiKi/dev-plan/phase-v/8 implement harness-loop via rust/investigation.md",
+    "prompt": "Необходимо доработать задачу WiKi/dev-plan/phase-V/8 implement harness-loop via rust/todo-harness-loop-via-rust.md на основании правок в WiKi/dev-plan/phase-v/8 implement harness-loop via rust/investigation.md",
 }

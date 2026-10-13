@@ -15,7 +15,7 @@
         "shell": [
             "r:findstr",
         ],
-        dirs: [
+        "dirs": [
             // minimal scope
             "w:tools/harness/agents/tools",
             // minimal scope
