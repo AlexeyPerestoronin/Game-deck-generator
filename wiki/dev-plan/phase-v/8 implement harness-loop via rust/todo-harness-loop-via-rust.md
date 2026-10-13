@@ -22,7 +22,7 @@ Python-код (`tools/harness/**`) — эталон поведения. Его �
 ## Функциональные требования
 
 ### 1. Расположение и границы
-- Новый crate: `tools/harness-rs/` (binary name: `harness`).
+- Новый crate: `./harness` (binary name: `harness`).
 - Эталон (read-only): `tools/harness/**`, `harness/harness.json5`, `harness/grok-4.6.json5`.
 - Python не модифицировать.
 - `harness/*.json5` менять только если текущей схемы не хватает для обязательных полей; любое расширение — минимальное, описать в `result.md`.
@@ -38,8 +38,8 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 
 Правила:
 - `--help` — справка по всем флагам и завершение с кодом 0.
-- `--conf` — опционален. По умолчанию: `<process-cwd>/harness/harness.json5` (cwd запуска процесса, не `settings.cwd`).
-- `--prompt` — стартовый запрос новой сессии. Поле `prompt` в json5 **игнорировать** (источник промпта — только CLI).
+- `--conf` — опционален. По умолчанию: `<process-cwd>/harness.json5` (cwd запуска процесса, не `settings.cwd`).
+- `--prompt` — стартовый запрос новой сессии.
 - `--dump` — продолжение сессии из dump-файла. Промпт из dump-истории, `--prompt` не используется.
 - `--prompt` и `--dump` взаимоисключающие. Заданы оба → ошибка CLI и ненулевой код.
 - Не задан ни один → ошибка CLI («нужен --prompt или --dump») и ненулевой код.
@@ -57,7 +57,7 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 
 ```json5
 {
-    "cwd": "<workspace агента>",
+    "cwd": "<workspace агента>",      // должен быть явно задан, иначе ошибка
     "paths": { "log-folder": ".log" },
     "agent-setting": {
         "config": "grok-4.6.json5",   // путь относительно директории файла --conf
@@ -76,8 +76,9 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 
 ```json5
 {
-    "name": "Grok 4.6",
-    "iteration-limit": 50,
+    "vendor": "SpaceXAI",
+    "model": "grok-4.6",
+    "iteration-limit": 50, // -1 = без лимита
     "token-limit": -1,     // -1 = без лимита
     "USD-limit": 0.5       // -1 = без лимита
 }
@@ -86,21 +87,17 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 Правила загрузки:
 - `cwd` в конфиге — workspace агента (tools, логи, invoke). Не путать с process-cwd.
 - Путь модели резолвить относительно директории файла `--conf`.
-- Vendor **не** хранить отдельным полем: выводить из `name` модели так же, как Python `AgentLoop` + `from_str`:
-  - `"Grok 4.6"` → SpaceXAI / xAI, api model `grok-4.6`;
-  - `"Gemini 3.8 Flash"` → GoogleAI, `gemini-3.8-flash`;
-  - `"Gemini 3.5 Flash Lite"` → `gemini-3.5-flash-lite`;
-  - `"Gemini 3.1 Flash Lite"` → `gemini-3.1-flash-lite`;
-  - неизвестное имя → ошибка старта.
-- `mode`: `safe` → подтверждения лимитов включены; `auto-accept` (алиас `auto accept`) → без подтверждений. Иное значение → ошибка старта.
-- Дефолты, которые Python подставляет в runtime и которых может не быть в json5:
+- `vendor` + `model` определяют целевого агента для harness-loop.
+  - для целевая модель требует определение лимитов, которые не заданы в конфигурации, выдавать ошибку с просьбой определения целевых лимитов в конф-файле (лимиты и ограничения не должны храниться в коде).
+  - неизвестный агент → ошибка старта.
+- `mode`: `safe` → подтверждения лимитов включены; `auto-accept` → без подтверждений. Иное значение → ошибка старта.
+- Дефолты, которые Python подставляет в runtime и которых может не быть в harness.json5, необходимо прописать в conf-файле (код не должен владеть лимитами).
   - `tool-settings.cwd` = `settings.cwd`;
   - `tool-settings.temp-dir` = каталог текущей log-сессии;
   - `command-execution-limit` = 120 с;
   - `invoke-execution-limit` = 120 с.
-- Дубли ключей JSON5: последнее значение побеждает (в эталоне `grok-4.6.json5` `token-limit` записан дважды).
 
-Hardcoded spec моделей (как в Python, с override из файла модели):
+Для известных моделей создать файлы конфигурации с лимитами в ./harness/<model-name.json5> (как в Python, с override из файла модели):
 
 | name | api model | tls default | usd default | rpm | tpm | rpd |
 |---|---|---|---|---|---|---|
@@ -210,11 +207,12 @@ Registry:
 - registry: dispatch по имени, unknown tool;
 - git patch path extraction;
 - взаимное исключение CLI-аргументов.
+- unit-тесты для каждого tools.
 
 ## Scope
 Создать:
-- `tools/harness-rs/Cargo.toml`
-- `tools/harness-rs/src/**` (CLI, config, logger, agent_loop, agents, tools-категории, tests)
+- `harness/Cargo.toml`
+- `harness/src/**` (CLI, config, logger, agent_loop, agents, tools-категории, tests)
 
 Читать как эталон, не менять:
 - `tools/harness/__init__.py`

@@ -32,7 +32,4 @@
             // ".py",
         ]
     },
-
-    // target prompt like entry point
-    "prompt": "Есть задача: см. WiKi/dev-plan/phase-IV/15 implement run invoke tool/todo.md",
 }
