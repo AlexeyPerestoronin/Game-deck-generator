@@ -4,24 +4,28 @@
 # Задача на разработку: перенос harness-loop с Python на чистый Rust
 Реализовать нативный Rust-бинарник `harness.exe`, эквивалентный текущему Python-harness (`tools/harness`) по поведению agent-loop, с сохранением базовой архитектуры и целевыми изменениями:
 
-1. Cargo workspace: бинарник + отдельные крейты `logger` и `tools`.
+1. Cargo workspace: бинарник + отдельные крейты `conf`, `logger` и `tools`.
 2. Tools — отдельные модули (`один tool-набор = один модуль = одна запись в конфиге`), каждый со своими настройками и unit-тестами в конце файла.
-3. Отдельный модуль чтения конфигурации; основной файл — `./harness/harness.json5`.
+3. Отдельный крейт `conf` (`harness/crates/conf`) — единственный, кто читает файлы конфигурации (`harness.json5` и вложенный model-файл); основной файл — `./harness/harness.json5`. Все ключи json5 и default-значения — только в `harness/crates/conf/src/str/keys.rs`.
 4. Путь до исполняемого файла `git` — только из конфига, не хардкод.
-5. Запуск только через CLI `harness.exe` (не через `invoke`).
+5. API-ключ модели — только из обязательного поля `api-key` файла модели (путь к файлу с ключом **или** сам ключ строкой). Хардкод имён `API_KEY_XAI` / `API_KEY_GEMINI` запрещён.
+6. Запуск только через CLI `harness.exe` (не через `invoke`).
+7. `harness.exe --conf-new <path>` создаёт новый файл конфигурации в максимально полном наполнении (все модули, комментарии, дефолты, заглушки для ручных полей).
 
 Python-код (`tools/harness/**`) — эталон поведения. Его не менять и не удалять.
 
-Зачем: уйти от Python/invoke-обвязки к одному нативному бинарнику; разнести tools по модулям с явной записью в конфиге; вынести логирование в отдельный крейт; сделать конфигурацию и CLI явным слоем, а не словарями внутри `invoke.task`.
+Зачем: уйти от Python/invoke-обвязки к одному нативному бинарнику; вынести чтение конфигурации в отдельный крейт с единой таблицей ключей; разнести tools по модулям с явной записью в конфиге; вынести логирование в отдельный крейт; сделать конфигурацию и CLI явным слоем, а не словарями внутри `invoke.task`; не хранить API-ключи и пути к ним в коде агентов.
 
 Ожидаемый результат:
 - Cargo workspace в `./harness`, собирающий `harness.exe`.
+- Крейт `harness/crates/conf`: загрузка/валидация json5, типизированные настройки, таблица ключей/дефолтов, генерация шаблона `--conf-new`. Никакой другой крейт не открывает `harness.json5` / model-файлы.
 - Крейт `harness/crates/logger` с интерфейсом логирования, который передаётся в loop и во все tools.
 - Крейт `harness/crates/tools` с модулем на каждый tool-набор и тестами в конце каждого модуля.
-- `harness.exe --help` печатает справку.
+- `harness.exe --help` печатает справку (включая `--conf-new`).
 - `harness.exe --prompt "..."` стартует новую сессию по конфигу.
 - `harness.exe --dump <path>` продолжает сессию из dump-файла.
-- Поведение loop / sandbox / tools / лимитов / логов совпадает с Python-эталоном (кроме формата dump: совместимость с Python-dump не требуется; кроме новой схемы `tools` в json5 и пути к git из конфига).
+- `harness.exe --conf-new <path>` пишет полный шаблон json5 и завершается, loop не стартует.
+- Поведение loop / sandbox / tools / лимитов / логов совпадает с Python-эталоном (кроме формата dump: совместимость с Python-dump не требуется; кроме новой схемы `tools` в json5, пути к git из конфига и `api-key` из файла модели).
 
 ## Функциональные требования
 
@@ -32,20 +36,23 @@ Cargo workspace `./harness`:
 harness/
   Cargo.toml                          # [workspace], members = crates/*
   harness.json5                       # основной conf (схема — см. §3)
-  grok-4.6.json5                      # файл модели (эталон формата)
+  grok-4.6.json5                      # файл модели (эталон формата, уже содержит api-key)
   crates/
     harness/                          # bin crate, package/bin name: harness
-      Cargo.toml
+      Cargo.toml                      # зависит от conf, logger, tools
       src/main.rs                     # CLI entry
       src/cli.rs
-      src/config.rs                   # загрузка/валидация json5
       src/agent_loop.rs
       src/agents/                     # xAI / Google
+    conf/
+      Cargo.toml                      # package name: conf
+      src/lib.rs                      # загрузка/валидация json5, типы настроек, генерация шаблона
+      src/str/keys.rs                 # все ключи json5 и значения по умолчанию
     logger/
       Cargo.toml                      # package name: logger
       src/lib.rs                      # trait Logger + реализации (реализации в отдельных файлах)
     tools/
-      Cargo.toml                      # package name: tools, зависит от logger
+      Cargo.toml                      # package name: tools, зависит от logger и conf (типы настроек)
       src/lib.rs                      # registry + сборка модулей из конфига
       src/sandbox.rs                  # общий access-control (не tool, без записи в conf)
       src/fs.rs
@@ -60,6 +67,7 @@ harness/
 - Эталон формата модели (read-only, кроме создания недостающих model-файлов): `harness/grok-4.6.json5`.
 - Python не модифицировать.
 - `harness/harness.json5` **обязательно** мигрировать со схемы `tool-settings` на схему `tools` (§3). Фактические allow-list пути текущего файла сохранить, только переложить в новые ключи. Прочие `harness/*.json5` менять только если текущей схемы модели не хватает для обязательных полей; любое расширение — минимальное, описать в `result.md`.
+- Единственный крейт, которому разрешено читать файлы конфигурации (`harness.json5` и вложенный model json5) — `conf`. Бинарник, `logger`, `tools`, агенты получают уже разобранные типизированные настройки из `conf` и сами json5 не парсят.
 
 ### 2. CLI
 Интерфейс (clap или эквивалент):
@@ -68,24 +76,56 @@ harness/
 harness.exe --help
 harness.exe [--conf <path>] --prompt "<user prompt>"
 harness.exe [--conf <path>] --dump "<path to dump file>"
+harness.exe --conf-new "<path to new conf file>"
 ```
 
 Правила:
-- `--help` — справка по всем флагам и завершение с кодом 0.
-- `--conf` — опционален. По умолчанию: `<process-cwd>/harness.json5` (cwd запуска процесса, не `settings.cwd`).
+- `--help` — справка по всем флагам (включая `--conf-new`) и завершение с кодом 0.
+- `--conf` — опционален. По умолчанию: `<process-cwd>/harness.json5` (cwd запуска процесса, не `settings.cwd`). Не используется вместе с `--conf-new`.
 - `--prompt` — стартовый запрос новой сессии.
 - `--dump` — продолжение сессии из dump-файла. Промпт из dump-истории, `--prompt` не используется.
-- `--prompt` и `--dump` взаимоисключающие. Заданы оба → ошибка CLI и ненулевой код.
-- Не задан ни один → ошибка CLI («нужен --prompt или --dump») и ненулевой код.
+- `--conf-new` — создать новый файл конфигурации по пути и выйти (loop / агент / сеть не трогать).
+- `--prompt`, `--dump` и `--conf-new` взаимоисключающие. Заданы двое или трое → ошибка CLI и ненулевой код.
+- Не задан ни один из `--prompt` / `--dump` / `--conf-new` → ошибка CLI («нужен --prompt, --dump или --conf-new») и ненулевой код.
+- `--conf` вместе с `--conf-new` → ошибка CLI и ненулевой код.
 - Бинарник не должен требовать `invoke` для запуска.
 
-### 3. Конфигурация
-Отдельный модуль бинарного крейта (например `config`) отвечает за:
-- поиск файла (`--conf` / default);
-- разбор JSON5;
-- загрузку вложенного файла модели;
+`--conf-new <path>`:
+- Генерация живёт в крейте `conf` (функция записи шаблона); CLI только передаёт путь.
+- Писать **текстовый JSON5-шаблон с комментариями**, не round-trip через serde (комментарии иначе потеряются).
+- Максимально полное наполнение:
+  - все известные tool-модули в объекте `tools` (включённые, с полным набором полей);
+  - комментарий-подпись у каждого поля / блока (смысл ключа, ограничения, примеры);
+  - значения по умолчанию, если они есть в `src/str/keys.rs`;
+  - заглушки для полей, которые пользователь обязан задать вручную (`cwd`, `tools.git.executable`, `agent-setting.config`, пути allow-list и т.п.) — явные placeholder-строки, не пустые «угадайки».
+- Если файл по `path` уже существует → ошибка, не перезаписывать.
+- Если родительской директории нет → создать (`mkdir -p`) и записать файл.
+- Успех → код 0. Шаблон model-файла эта команда не создаёт.
+
+### 3. Конфигурация (крейт `harness/crates/conf`)
+Крейт `conf` — единственная точка чтения конфигурации. Остальные крейты используют его публичный API, чтобы получить типизированные настройки.
+
+Отвечает за:
+- поиск файла (`--conf` / default) — по запросу бинарника;
+- разбор JSON5 основного файла и вложенного файла модели;
 - дефолты и валидацию;
-- выдачу **типизированных** структур (не `HashMap`/`serde_json::Value` как основной контракт наружу).
+- выдачу **типизированных** структур (не `HashMap`/`serde_json::Value` как основной контракт наружу);
+- генерацию шаблона `--conf-new`.
+
+Зависимости:
+- `conf` не зависит от `logger`, `tools`, бинарника;
+- `tools` зависит от `conf` только ради типов настроек tool-модулей (сами json5-файлы не открывает);
+- бинарник зависит от `conf` и передаёт настройки в loop / агентов / tools.
+
+#### 3.1. Ключи и дефолты — `src/str/keys.rs`
+Все строковые ключи, по которым читаются значения из `harness.json5` и model-файла, а также все значения по умолчанию (если они есть), живут **только** в модуле `harness/crates/conf/src/str/keys.rs`.
+
+Правила:
+- в `lib.rs` и прочих файлах крейта запрещены «голые» литералы ключей вроде `"cwd"`, `"api-key"`, `"tools"` — только константы из `str::keys`;
+- default-значения (например `log-folder`, лимиты-заглушки шаблона) тоже только оттуда;
+- смена имени ключа в json5 = правка одного модуля.
+
+#### 3.2. Схема `harness/harness.json5`
 
 Целевая схема `harness/harness.json5`:
 
@@ -146,6 +186,7 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 {
     "vendor": "SpaceXAI",
     "name": "Grok 4.6",
+    "api-key": "api-key or path to file with api-key",
     "token-limit": 128000,
     "iteration-limit": 50,
     "USD-limit": 0.5
@@ -158,6 +199,7 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 - `vendor` + `name` определяют целевого агента для harness-loop.
   - если целевая модель требует лимиты, которые не заданы в конфигурации, выдавать ошибку с просьбой определить целевые лимиты в conf-файле (лимиты и ограничения не должны храниться в коде).
   - неизвестный агент → ошибка старта.
+- `api-key` в файле модели **обязателен** (см. §3.3). Отсутствие ключа или пустая строка → ошибка старта с просьбой задать `api-key` в model-файле.
 - `mode`: `safe` → подтверждения лимитов включены; `auto-accept` → без подтверждений. Иное значение → ошибка старта.
 - Runtime-подстановки (как Python, но без словаря `tool-settings`):
   - workspace tools = `settings.cwd`;
@@ -171,7 +213,7 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
   - отсутствие ключа = модуль выключен;
   - неизвестное имя модуля → ошибка старта.
 
-Для известных моделей создать файлы конфигурации с лимитами в `./harness/<model-name>.json5` (как в Python, с override из файла модели):
+Для известных моделей создать файлы конфигурации с лимитами в `./harness/<model-name>.json5` (как в Python, с override из файла модели). Каждый файл **обязан** содержать `api-key` (заглушка пути/ключа, как в `harness/grok-4.6.json5`; реальный секрет в репозиторий не класть):
 
 | name | api model | tls default | usd default | rpm | tpm | rpd |
 |---|---|---|---|---|---|---|
@@ -192,13 +234,23 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 - добавить `tools.git.executable` (обязательный путь/имя бинаря git);
 - включить остальные модули (`search`, `meta`, `user`) пустыми объектами, если они нужны для паритета с Python-эталоном.
 
+#### 3.3. `api-key` в файле модели
+Во **всех** файлах конфигурации моделей обязателен ключ `api-key`: путь к файлу с ключом **либо** сам ключ строкой.
+
+Правила:
+- нет ключа / значение не строка / пустая строка после trim → ошибка старта;
+- если значение указывает на **существующий файл** (абсолютный путь или относительно process-cwd) — прочитать содержимое файла как UTF-8, trim whitespace по краям, это и есть секрет;
+- иначе значение используется как ключ целиком;
+- агенты получают уже разрешённую строку ключа из настроек `conf`, сами файлы ключей и json5 не открывают;
+- имена `API_KEY_XAI` / `API_KEY_GEMINI` в коде не фигурируют.
+
 ### 4. Базовая архитектура (сохранить)
 Слои те же, что в Python, в idiomatic Rust (traits + composition, не классы ради классов):
 
 ```
-CLI → config → AgentLoop → Agent (xAI | Google)
-                           ↘ Logger (crate logger, Arc<dyn Logger>)
-                           ↘ ToolRegistry (crate tools: fs | git | search | terminal | meta | user)
+CLI → conf (crate) → AgentLoop → Agent (xAI | Google)
+                                 ↘ Logger (crate logger, Arc<dyn Logger>)
+                                 ↘ ToolRegistry (crate tools: fs | git | search | terminal | meta | user)
 ```
 
 Контракты:
@@ -221,9 +273,7 @@ CLI → config → AgentLoop → Agent (xAI | Google)
 - Iteration limit срабатывает на итерации `limit+1` (сравнение `consumed > limit` после инкремента).
 - В конце: `# Execution time: H:MM:SS`.
 
-**API-ключи** (как в Python, relative к process-cwd):
-- xAI: файл `API_KEY_XAI`;
-- Google: файл `API_KEY_GEMINI`.
+**API-ключ** — из `api-key` файла модели через крейт `conf` (§3.3). В конструктор агента передаётся уже прочитанная строка, не путь и не имя vendor-файла.
 
 Официальных Rust SDK нет — HTTP (`reqwest` или аналог):
 - xAI: OpenAI-compatible `https://api.x.ai/v1/chat/completions`, header `x-grok-conv-id`, tools = function calling. Счётчики: `consumed_tokens = input + output - cached`; `consumed_usd` из ответа, если есть.
@@ -327,13 +377,16 @@ Registry (`src/lib.rs`):
 - Idiomatic Rust: traits, статический dispatch где возможно; `dyn` — для гетерогенного списка tool-модулей и для `Logger`.
 - Комментарий-шапка у каждого модуля; rustdoc на публичных типах/функциях/трейтах.
 - `Cargo.toml` (workspace и каждого крейта): короткий комментарий над каждой зависимостью, зачем она; висячие не оставлять.
-- Секреты, лимиты и путь к git не хардкодить — только конфиг / файлы ключей / CLI.
+- Секреты, лимиты и путь к git не хардкодить — только конфиг (`api-key` модели / `tools.git.executable` / лимиты json5) / CLI.
 - Рефакторинг после рабочего минимума: `WiKi/harness/rules/refactoring-base.md` + `WiKi/harness/rules/refactoring-rust.md`.
 - Этап-1: прямой рабочий код + unit-тесты на нетривиальную логику. Этап-2: рефакторинг. Оба этапа в одном прогоне задачи.
 
 Минимальные тесты (без живых LLM-вызовов):
 - парсинг json5 + вложенный model-файл + дефолты + объект `tools` (включён/выключен модуль, неизвестный ключ);
-- CLI: xor `--prompt`/`--dump`, default `--conf`, `--help`;
+- ключи чтения json5 берутся из `conf::str::keys`, а не из литералов в тестах загрузчика (хотя бы smoke: переименование константы ломает разбор ожидаемым образом / константы совпадают с ключами схемы);
+- CLI: xor `--prompt`/`--dump`/`--conf-new`, default `--conf`, `--help` содержит `--conf-new`;
+- `--conf-new`: создаёт файл с комментариями и всеми tool-модулями; повтор по существующему пути — ошибка;
+- `api-key`: отсутствует → ошибка; строка-ключ; путь к существующему файлу (читается содержимое);
 - sandbox: prefix dir / exact file / w⊃r / extensions;
 - registry: dispatch по имени, unknown tool, сборка только из ключей conf;
 - git: path extraction патча; вызов идёт в `executable` из конфига (не в хардкод);
@@ -343,7 +396,8 @@ Registry (`src/lib.rs`):
 ## Scope
 Создать:
 - `harness/Cargo.toml` (workspace)
-- `harness/crates/harness/**` (CLI, config, logger-wiring, agent_loop, agents)
+- `harness/crates/harness/**` (CLI, logger-wiring, agent_loop, agents)
+- `harness/crates/conf/**` (загрузка json5, `src/str/keys.rs`, типы, `--conf-new`)
 - `harness/crates/logger/**`
 - `harness/crates/tools/**` (registry, sandbox, fs, git, search, terminal, meta, user + tests в конце модулей)
 
@@ -358,7 +412,7 @@ Registry (`src/lib.rs`):
 - `tools/harness/agents/tools/default_tools.py`
 - `tools/harness/agents/tools/i_tools.py`
 - `tools/harness/agents/tools/tool_help.md`
-- `harness/grok-4.6.json5` (кроме создания соседних model-файлов по таблице)
+- `harness/grok-4.6.json5` (кроме создания соседних model-файлов по таблице; `api-key` в эталоне уже есть — в новых model-файлах повторить)
 - `WiKi/harness/rules/refactoring-base.md`
 - `WiKi/harness/rules/refactoring-rust.md`
 
@@ -367,19 +421,21 @@ Registry (`src/lib.rs`):
 - совместимость dump с Python;
 - новые tools / новые vendor сверх перечисленных модулей;
 - GUI / TUI;
-- хардкод пути `git` / лимитов в коде.
+- хардкод пути `git` / лимитов / имён файлов API-ключей в коде.
 
 ## Проверка корректности решения
-1. `cargo test --workspace` в `./harness` — зелёный (включая тесты в конце каждого tool-модуля).
-2. `cargo run -p harness -- --help` — справка, код 0.
-3. Без `--prompt`/`--dump` — ненулевой код и понятная ошибка.
-4. `--prompt` вместе с `--dump` — ненулевой код.
+1. `cargo test --workspace` в `./harness` — зелёный (включая тесты в конце каждого tool-модуля и тесты крейта `conf`).
+2. `cargo run -p harness -- --help` — справка с `--conf-new`, код 0.
+3. Без `--prompt`/`--dump`/`--conf-new` — ненулевой код и понятная ошибка.
+4. `--prompt` вместе с `--dump` (и любая другая пара из `--prompt`/`--dump`/`--conf-new`) — ненулевой код.
 5. Конфиг без `tools.git.executable` при включённом `git` — ошибка старта (не молчаливый fallback на `"git"`).
-6. Ручной шаг (если есть ключ):
+6. Model-файл без `api-key` — ошибка старта. Агенты не обращаются к `API_KEY_XAI` / `API_KEY_GEMINI`.
+7. `harness.exe --conf-new <несуществующий-путь.json5>` — файл создан, внутри комментарии + все tool-модули + заглушки; код 0. Повтор с тем же путём — ошибка, файл не затёрт.
+8. Ручной шаг (если есть ключ):
    `harness.exe --conf harness/harness.json5 --prompt "ping"`
    → создан `.log/<date>_<vendor>_<model>/` с `log.md` и `dump.json`; в логе шапка, итерации, finish/stats.
    Повтор с `--dump <тот dump.json>` — в логе `continue from dump`, история восстановлена.
-7. Живой вызов LLM для merge не обязателен, если пункты 1–5 зелёные и модули агента покрыты разбором ответа/tool-call на фикстурах. Если живой вызов делается — не жечь лимиты: один короткий prompt.
+9. Живой вызов LLM для merge не обязателен, если пункты 1–7 зелёные и модули агента покрыты разбором ответа/tool-call на фикстурах. Если живой вызов делается — не жечь лимиты: один короткий prompt.
 
 # Дополнительные указания
 1. Экономь токены: читай минимум необходимого; правки вноси через patch.
