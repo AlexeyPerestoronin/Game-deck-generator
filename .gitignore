@@ -6,8 +6,12 @@ dist/
 .venv
 __pycache__
 
-#API_KEYs
+# harness env
+harness.exe
+harness.json5
+agent.json5
 API_KEY*
-
-# Logs
 .log
+
+# build results
+deck_gen.exe
