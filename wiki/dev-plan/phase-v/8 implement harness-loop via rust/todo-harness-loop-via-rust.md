@@ -81,6 +81,7 @@ harness.exe --conf-new "<path to new conf file>"
 
 Правила:
 - `--help` — справка по всем флагам (включая `--conf-new`) и завершение с кодом 0.
+  - справка должна быть записана в `/harness/crates/harness/help.txt` и добавляться в код через `include_str` на этапе компиляции.
 - `--conf` — опционален. По умолчанию: `<process-cwd>/harness.json5` (cwd запуска процесса, не `settings.cwd`). Не используется вместе с `--conf-new`.
 - `--prompt` — стартовый запрос новой сессии.
 - `--dump` — продолжение сессии из dump-файла. Промпт из dump-истории, `--prompt` не используется.
@@ -134,8 +135,13 @@ harness.exe --conf-new "<path to new conf file>"
     "cwd": "<workspace агента>",      // должен быть явно задан, иначе ошибка
     "paths": { "log-folder": ".log" },
     "agent-setting": {
+        // model
         "config": "grok-4.6.json5",   // путь относительно директории файла --conf
-        "mode": "safe"                // "safe" | "auto-accept"
+        "mode": "safe",                // "safe" | "auto-accept"
+        // limits
+        "token-limit": 128000,
+        "iteration-limit": 50,
+        "USD-limit": 0.5
     },
     // ключ объекта = имя tool-модуля (harness/crates/tools/src/<name>.rs).
     // нет ключа → модуль не регистрируется, его tools агенту недоступны.
@@ -171,7 +177,7 @@ harness.exe --conf-new "<path to new conf file>"
             "execution-limit": 120,
         },
         "invoke": {
-          "cwd": "path to tasks.py for invoke",
+          "tasks-py-path": "path to tasks.py for invoke",
           "execution-limit": 120
         },
         "meta": {},
@@ -187,6 +193,7 @@ harness.exe --conf-new "<path to new conf file>"
     "vendor": "SpaceXAI",
     "name": "Grok 4.6",
     "api-key": "api-key or path to file with api-key",
+    // limits
     "token-limit": 128000,
     "iteration-limit": 50,
     "USD-limit": 0.5
@@ -222,7 +229,7 @@ harness.exe --conf-new "<path to new conf file>"
 | Gemini 3.5 Flash Lite | gemini-3.5-flash-lite | -1 | -1 | 15 | 250000 | 500 |
 | Gemini 3.1 Flash Lite | gemini-3.1-flash-lite | -1 | -1 | 15 | 250000 | 500 |
 
-Файл модели перекрывает `token-limit` / `USD-limit` / `iteration-limit`. Для Google `limit_usd` в runtime всегда `-1`, `consumed_usd` всегда `0.0` (как `GoogleAI` в Python).
+Файл модели НЕ перекрывает `token-limit` / `USD-limit` / `iteration-limit` из файла конфигурации → базовая конфигурация важнее, т.к. эта конфигурация на сессию → в конфигурации для моделей по сути записываются не рабочие, а рекомендованные параметры.
 
 Миграция текущего `harness/harness.json5`:
 - блок `tool-settings` удалить;
@@ -307,7 +314,6 @@ pub trait Logger: Send + Sync {
 - `NullLogger` — no-op для unit-тестов tools.
 
 Правила:
-- Цепочка вызовов в Rust **не** fluent: методы возвращают `()`. Поведение записи — 1:1 с Python.
 - В tools/loop логгер хранить как `Arc<dyn Logger>` (гетерогенная передача в модули).
 - Исключения, которые **не** идут через `Logger` (как в Python):
   - стриминг stdout дочернего процесса (`run_shell` / `run_invoke`);
