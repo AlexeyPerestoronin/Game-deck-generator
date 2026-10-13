@@ -2,30 +2,64 @@
 Ты профессиональный разработчик (`см. WiKi/harness/roles/senior-developer.md`).
 
 # Задача на разработку: перенос harness-loop с Python на чистый Rust
-Реализовать нативный Rust-бинарник `harness.exe`, эквивалентный текущему Python-harness (`tools/harness`) по поведению agent-loop, с сохранением базовой архитектуры и тремя целевыми изменениями:
+Реализовать нативный Rust-бинарник `harness.exe`, эквивалентный текущему Python-harness (`tools/harness`) по поведению agent-loop, с сохранением базовой архитектуры и целевыми изменениями:
 
-1. Tools — отдельные подключаемые модули, классифицированные по категориям.
-2. Отдельный модуль чтения конфигурации; основной файл — `./harness/harness.json5`.
-3. Запуск только через CLI `harness.exe` (не через `invoke`).
+1. Cargo workspace: бинарник + отдельные крейты `logger` и `tools`.
+2. Tools — отдельные модули (`один tool-набор = один модуль = одна запись в конфиге`), каждый со своими настройками и unit-тестами в конце файла.
+3. Отдельный модуль чтения конфигурации; основной файл — `./harness/harness.json5`.
+4. Путь до исполняемого файла `git` — только из конфига, не хардкод.
+5. Запуск только через CLI `harness.exe` (не через `invoke`).
 
 Python-код (`tools/harness/**`) — эталон поведения. Его не менять и не удалять.
 
-Зачем: уйти от Python/invoke-обвязки к одному нативному бинарнику; разнести tools по категориям; сделать конфигурацию и CLI явным слоем, а не словарями внутри `invoke.task`.
+Зачем: уйти от Python/invoke-обвязки к одному нативному бинарнику; разнести tools по модулям с явной записью в конфиге; вынести логирование в отдельный крейт; сделать конфигурацию и CLI явным слоем, а не словарями внутри `invoke.task`.
 
 Ожидаемый результат:
-- Cargo-проект, собирающий `harness.exe`.
+- Cargo workspace в `./harness`, собирающий `harness.exe`.
+- Крейт `harness/crates/logger` с интерфейсом логирования, который передаётся в loop и во все tools.
+- Крейт `harness/crates/tools` с модулем на каждый tool-набор и тестами в конце каждого модуля.
 - `harness.exe --help` печатает справку.
 - `harness.exe --prompt "..."` стартует новую сессию по конфигу.
 - `harness.exe --dump <path>` продолжает сессию из dump-файла.
-- Поведение loop / sandbox / tools / лимитов / логов совпадает с Python-эталоном (кроме формата dump: совместимость с Python-dump не требуется).
+- Поведение loop / sandbox / tools / лимитов / логов совпадает с Python-эталоном (кроме формата dump: совместимость с Python-dump не требуется; кроме новой схемы `tools` в json5 и пути к git из конфига).
 
 ## Функциональные требования
 
 ### 1. Расположение и границы
-- Новый crate: `./harness` (binary name: `harness`).
-- Эталон (read-only): `tools/harness/**`, `harness/harness.json5`, `harness/grok-4.6.json5`.
+Cargo workspace `./harness`:
+
+```
+harness/
+  Cargo.toml                          # [workspace], members = crates/*
+  harness.json5                       # основной conf (схема — см. §3)
+  grok-4.6.json5                      # файл модели (эталон формата)
+  crates/
+    harness/                          # bin crate, package/bin name: harness
+      Cargo.toml
+      src/main.rs                     # CLI entry
+      src/cli.rs
+      src/config.rs                   # загрузка/валидация json5
+      src/agent_loop.rs
+      src/agents/                     # xAI / Google
+    logger/
+      Cargo.toml                      # package name: logger
+      src/lib.rs                      # trait Logger + реализации
+    tools/
+      Cargo.toml                      # package name: tools, зависит от logger
+      src/lib.rs                      # registry + сборка модулей из конфига
+      src/sandbox.rs                  # общий access-control (не tool, без записи в conf)
+      src/fs.rs
+      src/git.rs
+      src/search.rs
+      src/terminal.rs
+      src/meta.rs
+      src/user.rs
+```
+
+- Эталон поведения (read-only): `tools/harness/**`.
+- Эталон формата модели (read-only, кроме создания недостающих model-файлов): `harness/grok-4.6.json5`.
 - Python не модифицировать.
-- `harness/*.json5` менять только если текущей схемы не хватает для обязательных полей; любое расширение — минимальное, описать в `result.md`.
+- `harness/harness.json5` **обязательно** мигрировать со схемы `tool-settings` на схему `tools` (§3). Фактические allow-list пути текущего файла сохранить, только переложить в новые ключи. Прочие `harness/*.json5` менять только если текущей схемы модели не хватает для обязательных полей; любое расширение — минимальное, описать в `result.md`.
 
 ### 2. CLI
 Интерфейс (clap или эквивалент):
@@ -46,14 +80,14 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 - Бинарник не должен требовать `invoke` для запуска.
 
 ### 3. Конфигурация
-Отдельный модуль (например `config`) отвечает за:
+Отдельный модуль бинарного крейта (например `config`) отвечает за:
 - поиск файла (`--conf` / default);
 - разбор JSON5;
 - загрузку вложенного файла модели;
 - дефолты и валидацию;
 - выдачу **типизированных** структур (не `HashMap`/`serde_json::Value` как основной контракт наружу).
 
-Схема `harness/harness.json5` (как есть):
+Целевая схема `harness/harness.json5`:
 
 ```json5
 {
@@ -63,11 +97,42 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
         "config": "grok-4.6.json5",   // путь относительно директории файла --conf
         "mode": "safe"                // "safe" | "auto-accept"
     },
-    "tool-settings": {
-        "shell": [ "r:<cmd>", "w:<cmd>" ],
-        "dirs":  [ "r:<dir>", "w:<dir>" ],
-        "files": [ "r:<file>", "w:<file>" ],
-        "available-file-extensions": [ /* пусто = все расширения */ ]
+    // ключ объекта = имя tool-модуля (harness/crates/tools/src/<name>.rs).
+    // нет ключа → модуль не регистрируется, его tools агенту недоступны.
+    // неизвестный ключ → ошибка старта.
+    "tools": {
+        "fs": {
+            "available-dirs": [
+                "w:tools/harness/agents/tools",
+                "r:WiKi/harness/rules",
+                "r:WiKi/harness/roles",
+            ],
+            "available-file-extensions": [
+                // пустой список = любые расширения
+            ],
+            "extra-scope": [
+                // точечный доступ к файлам вне available-dirs; префиксы r: / w:
+            ]
+        },
+        "git": {
+            // обязателен. Код не подставляет "git" сам.
+            "executable": "git",
+            "execution-limit": 120
+        },
+        "search": {},
+        "terminal": {
+            "cwd-list": [
+                // директории, из которых можно выполнять терминальные команды
+            ],
+            "available-commands": [
+                "findstr",
+                "cargo",
+            ],
+            "command-execution-limit": 120,
+            "invoke-execution-limit": 120
+        },
+        "meta": {},
+        "user": {}
     }
 }
 ```
@@ -77,27 +142,33 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 ```json5
 {
     "vendor": "SpaceXAI",
-    "model": "grok-4.6",
-    "iteration-limit": 50, // -1 = без лимита
-    "token-limit": -1,     // -1 = без лимита
-    "USD-limit": 0.5       // -1 = без лимита
+    "name": "Grok 4.6",
+    "token-limit": 128000,
+    "iteration-limit": 50,
+    "USD-limit": 0.5
 }
 ```
 
 Правила загрузки:
 - `cwd` в конфиге — workspace агента (tools, логи, invoke). Не путать с process-cwd.
 - Путь модели резолвить относительно директории файла `--conf`.
-- `vendor` + `model` определяют целевого агента для harness-loop.
-  - для целевая модель требует определение лимитов, которые не заданы в конфигурации, выдавать ошибку с просьбой определения целевых лимитов в конф-файле (лимиты и ограничения не должны храниться в коде).
+- `vendor` + `name` определяют целевого агента для harness-loop.
+  - если целевая модель требует лимиты, которые не заданы в конфигурации, выдавать ошибку с просьбой определить целевые лимиты в conf-файле (лимиты и ограничения не должны храниться в коде).
   - неизвестный агент → ошибка старта.
 - `mode`: `safe` → подтверждения лимитов включены; `auto-accept` → без подтверждений. Иное значение → ошибка старта.
-- Дефолты, которые Python подставляет в runtime и которых может не быть в harness.json5, необходимо прописать в conf-файле (код не должен владеть лимитами).
-  - `tool-settings.cwd` = `settings.cwd`;
-  - `tool-settings.temp-dir` = каталог текущей log-сессии;
-  - `command-execution-limit` = 120 с;
-  - `invoke-execution-limit` = 120 с.
+- Runtime-подстановки (как Python, но без словаря `tool-settings`):
+  - workspace tools = `settings.cwd`;
+  - `temp-dir` = каталог текущей log-сессии (передаётся в tools-контекст при старте loop, в json5 не хранится).
+- Лимиты исполнения команд — только из conf, без дефолтов в коде:
+  - `tools.terminal.command-execution-limit`, `tools.terminal.invoke-execution-limit` обязательны, если модуль `terminal` включён;
+  - `tools.git.execution-limit` и `tools.git.executable` обязательны, если модуль `git` включён.
+- Объект `tools`:
+  - порядок ключей не важен;
+  - значение каждого ключа — объект настроек этого модуля (пустой объект `{}` допустим, если модулю нечего конфигурировать);
+  - отсутствие ключа = модуль выключен;
+  - неизвестное имя модуля → ошибка старта.
 
-Для известных моделей создать файлы конфигурации с лимитами в ./harness/<model-name.json5> (как в Python, с override из файла модели):
+Для известных моделей создать файлы конфигурации с лимитами в `./harness/<model-name>.json5` (как в Python, с override из файла модели):
 
 | name | api model | tls default | usd default | rpm | tpm | rpd |
 |---|---|---|---|---|---|---|
@@ -108,21 +179,28 @@ harness.exe [--conf <path>] --dump "<path to dump file>"
 
 Файл модели перекрывает `token-limit` / `USD-limit` / `iteration-limit`. Для Google `limit_usd` в runtime всегда `-1`, `consumed_usd` всегда `0.0` (как `GoogleAI` в Python).
 
+Миграция текущего `harness/harness.json5`:
+- блок `tool-settings` удалить;
+- `tool-settings.dirs` → `tools.fs.available-dirs`;
+- `tool-settings.files` → `tools.fs.extra-scope`;
+- `tool-settings.available-file-extensions` → `tools.fs.available-file-extensions`;
+- `tool-settings.shell` (`r:cmd` / `w:cmd`) → `tools.terminal.available-commands` (имена **без** префиксов `r:`/`w:`);
+- `tools.terminal.cwd-list` заполнить осознанно (в Python cwd команд проверялся через `dirs`; теперь это отдельный список);
+- добавить `tools.git.executable` (обязательный путь/имя бинаря git);
+- включить остальные модули (`search`, `meta`, `user`) пустыми объектами, если они нужны для паритета с Python-эталоном.
+
 ### 4. Базовая архитектура (сохранить)
 Слои те же, что в Python, в idiomatic Rust (traits + composition, не классы ради классов):
 
 ```
 CLI → config → AgentLoop → Agent (xAI | Google)
-                           ↘ Logger
-                           ↘ ToolRegistry (категории tools)
+                           ↘ Logger (crate logger, Arc<dyn Logger>)
+                           ↘ ToolRegistry (crate tools: fs | git | search | terminal | meta | user)
 ```
 
 Контракты:
 
-**Logger** (`ILogger` / `DoubleLogger`):
-- `log_line(message)` / `log_str(message)` дублируют вывод в stdout и в `log.md`.
-- `log_line` гарантирует ведущий `\n`, если его нет.
-- Цепочка вызовов может быть в Rust не fluent — поведение записи сохранить.
+**Logger** — см. §5 (крейт `logger`). В loop и во все tool-модули передаётся один и тот же экземпляр (`Arc<dyn Logger>`).
 
 **Agent** (trait, эталон `IAgent`):
 - `vendor`, `model`, `tokens_limit`, `consumed_tokens`, `limit_usd`, `consumed_usd`;
@@ -131,7 +209,7 @@ CLI → config → AgentLoop → Agent (xAI | Google)
 - `dump_session(path)`, `reload_session(path)`.
 
 **AgentLoop** (эталон `tools/harness/agent_loop.py`):
-- Создаёт logger, tools, агента по vendor.
+- Создаёт logger, tools-registry, агента по vendor.
 - Каталог сессии: `{cwd}/{paths.log-folder}/{YYYY-MM-DD HH-MM}_{vendor}_{model}/` (`mkdir -p`), внутри `log.md` и `dump.json`.
 - При `--dump`: `reload_session(source_dump)`, стартовый prompt = `None`. Новый log-каталог всё равно создаётся; новый `dump.json` пишется туда (как в Python).
 - Шапка лога: agent, iteration/token/usd limits, start time, опционально `continue from dump`.
@@ -152,67 +230,122 @@ Dump — внутренний JSON агента (usage + history + pending tool 
 
 Логирование итерации агента сохранить по смыслу: user prompt / reasoning / agent content / tool calls (success/fail) в markdown-блоках.
 
-### 5. Tools: подключаемые категории
-Не переносить монолит `DefaultTools`. Каждая категория — отдельный модуль, регистрируемый в registry.
+### 5. Крейт логирования (`harness/crates/logger`)
+Логирование — отдельный крейт. Loop, агенты и каждый tool-модуль получают логгер снаружи, сами файлы/`println!` для журнала сессии не открывают.
 
-Registry:
-- собирает descriptors всех категорий (`name`, `description`, JSON Schema parameters) — это `tools.list` для агента;
-- `call(name, args) -> String` диспатчит в категорию;
+Интерфейс (адекватный стартовый контракт; при необходимости будет поправлен отдельно):
+
+```rust
+/// Потокобезопасный журнал сессии harness.
+///
+/// Реализации дублируют запись туда, куда нужно вызывающему коду
+/// (stdout+файл, только память в тестах и т.д.).
+pub trait Logger: Send + Sync {
+    /// Записать фрагмент как есть, без принудительного перевода строки.
+    fn log_str(&self, message: &str);
+
+    /// Записать строку. Если `message` не начинается с `\n`, префикс `\n` добавляется.
+    fn log_line(&self, message: &str);
+}
+```
+
+Обязательные реализации в том же крейте:
+- `DoubleLogger` — эталон Python `DoubleLogger`: создаёт/touch файл, каждая запись идёт в stdout **и** в файл (`log.md`). Конструктор принимает путь к файлу лога.
+- `NullLogger` — no-op для unit-тестов tools.
+
+Правила:
+- Цепочка вызовов в Rust **не** fluent: методы возвращают `()`. Поведение записи — 1:1 с Python.
+- В tools/loop логгер хранить как `Arc<dyn Logger>` (гетерогенная передача в модули).
+- Исключения, которые **не** идут через `Logger` (как в Python):
+  - стриминг stdout дочернего процесса (`run_shell` / `run_invoke`);
+  - progress-сводка `find_str` / `find_str_by_regex` с перезаписью предыдущих строк.
+- Крейт не знает про агентов и tools: только trait + реализации.
+
+### 6. Tools: один набор — один модуль — одна запись в конфиге
+Не переносить монолит `DefaultTools`.
+
+Крейт `harness/crates/tools`:
+- каждый tool-набор — файл `src/<name>.rs`;
+- в **конце каждого** такого файла — `#[cfg(test)] mod tests` с минимальными unit-тестами, гарантирующими работоспособность набора;
+- имя модуля = ключ в `settings.tools`;
+- внутренние модули без ключа в conf допустимы только как инфраструктура (`sandbox`, хелперы запуска процессов). Они не экспортируют tools агенту.
+
+Registry (`src/lib.rs`):
+- по объекту `tools` из конфига создаёт и регистрирует только включённые модули;
+- собирает descriptors всех модулей (`name`, `description`, JSON Schema parameters) — это `tools.list` для агента;
+- `call(name, args) -> String` диспатчит в модуль-владелец;
 - неизвестное имя → ошибка `tool '<name>' not available`;
-- добавление категории не должно требовать правок `AgentLoop` / агентов (только точка сборки registry).
+- добавление набора: новый `src/<name>.rs` + ветка в точке сборки registry. `AgentLoop` / агенты не трогать.
 
-Общий sandbox (эталон `_check_access` / `_check_extensions` / `_is_allowed`):
+Контекст, который loop передаёт в крейт tools при сборке:
+- `cwd` агента, `temp-dir` сессии, `Arc<dyn Logger>`, `safe_mode` не нужен tools (подтверждения лимитов — в loop; `request_*` всегда спрашивают пользователя, как в Python).
+
+**Sandbox** (`src/sandbox.rs`, общий, за `Mutex`):
+- инициализируется из `tools.fs` (если ключа `fs` нет — пустые списки);
 - `w:` включает `r:`;
-- директории — по префиксу `abspath`;
-- файлы — точное совпадение `abspath`;
+- директории (`available-dirs`) — по префиксу `abspath`;
+- файлы (`extra-scope`) — точное совпадение `abspath`;
 - пустой `available-file-extensions` = любые расширения;
-- `request_*_access_for` мутирует allow-list в runtime → sandbox за `Mutex`/`RefCell`.
+- `request_*_access_for` мутирует allow-list в runtime;
+- git / search / fs / user работают с **одним** sandbox.
 
-Категории и состав (имена, schema, тексты ошибок, коды возврата — 1:1 с Python + `tool_help.md`):
+Категории (имена tools, schema, тексты ошибок, коды возврата — 1:1 с Python + `tool_help.md`):
 
-1. **fs** — `read_file`, `write_file`, `create_file`, `remove_file`, `move_file`, `list_folder`, `create_folder`, `remove_folder`, `move_folder`.
-2. **git** — `is_file_under_git`, `get_file_diff`, `apply_diff_patch`, `discard_file_changes` (через бинарь `git`, не `git2`).
-3. **search** — `find_str`, `find_str_by_regex` (прогресс-сводка в stdout с перезаписью предыдущей, формат как в Python).
-4. **shell** — `run_shell`, `run_invoke`.
-5. **meta** — `list_available_file_extension`, `list_available_r_dir`, `list_available_w_dir`, `list_available_r_file`, `list_available_w_file`, `list_available_shell_commands`.
-6. **user** — `ask_user`, `request_read_access_for`, `request_write_access_for`, `request_command_shell_execution`.
+1. **fs** (`fs.rs`, ключ `tools.fs`) — `read_file`, `write_file`, `create_file`, `remove_file`, `move_file`, `list_folder`, `create_folder`, `remove_folder`, `move_folder`.
+   - настройки: `available-dirs`, `available-file-extensions`, `extra-scope`.
+2. **git** (`git.rs`, ключ `tools.git`) — `is_file_under_git`, `get_file_diff`, `apply_diff_patch`, `discard_file_changes`.
+   - через бинарь из `tools.git.executable` (`Command::new(executable)`), **не** `git2`, **не** хардкод `"git"`.
+   - timeout = `tools.git.execution-limit`.
+   - функционал 1:1 с Python, новое не придумывать.
+3. **search** (`search.rs`, ключ `tools.search`) — `find_str`, `find_str_by_regex` (прогресс-сводка в stdout с перезаписью предыдущей, формат как в Python). Доступ к файлам — через общий sandbox.
+4. **terminal** (`terminal.rs`, ключ `tools.terminal`) — `run_shell`, `run_invoke`.
+   - `available-commands` — имена команд без префиксов `r:`/`w:`.
+   - `cwd-list` — разрешённые cwd для `run_shell` (проверка по префиксу `abspath`, отдельно от `fs.available-dirs`).
+   - `run_shell`: команда должна быть в `available-commands`, cwd — в `cwd-list`; `cmd = command + " " + arguments`; `arguments` в schema не required — отсутствие трактовать как `""`.
+5. **meta** (`meta.rs`, ключ `tools.meta`) — `list_available_file_extension`, `list_available_r_dir`, `list_available_w_dir`, `list_available_r_file`, `list_available_w_file`, `list_available_shell_commands`. Читает текущее состояние sandbox и terminal-whitelist.
+6. **user** (`user.rs`, ключ `tools.user`) — `ask_user`, `request_read_access_for`, `request_write_access_for`, `request_command_shell_execution`.
 
 Ключевые инварианты эталона (не «улучшать», если не сломано):
 - `write_file` создаёт parent dirs; `create_file` — нет, существующий файл очищает.
 - `list_folder`: `depth` приходит строкой; `0` — пустой результат; сначала dirs (рекурсия `depth-1`), затем files; имена сортированы.
-- `apply_diff_patch`: цели из заголовков unified diff; все цели требуют `w`; патч во временный файл в `temp-dir` с завершающим `\n`; `git apply --ignore-whitespace --ignore-space-change --recount` из `settings.cwd`.
-- git-команды (`ls-files` / `diff HEAD` / `checkout HEAD`) выполняются с `cwd = settings.cwd` и путём как пришёл в tool.
-- `run_shell`: whitelist; `w:`-команда требует `w` на `cwd`, иначе `r`; `cmd = command + " " + arguments`; `arguments` в schema не required — отсутствие трактовать как `""`; вывод стримить в stdout сразу; timeout `command-execution-limit`; decode `utf-8` → `oem` → `cp1251`; пустой вывод → `(command finished without output)`.
-- `run_invoke`: **не** через whitelist. Команда:
+- `apply_diff_patch`: цели из заголовков unified diff; все цели требуют `w`; патч во временный файл в `temp-dir` с завершающим `\n`; `git apply --ignore-whitespace --ignore-space-change --recount` из `settings.cwd`, программа = `tools.git.executable`.
+- git-команды (`ls-files` / `diff HEAD` / `checkout HEAD`) выполняются с `cwd = settings.cwd` и путём как пришёл в tool; argv = `[executable, ...]`.
+- `run_shell`: вывод стримить в stdout сразу; timeout `command-execution-limit`; decode `utf-8` → `oem` → `cp1251`; пустой вывод → `(command finished without output)`.
+- `run_invoke`: **не** через whitelist команд. Команда:
   - Windows: `{cwd}/.venv/Scripts/python.exe -m invoke {command}`;
   - Unix: `{cwd}/.venv/bin/python -m invoke {command}`;
   - cwd процесса invoke = `settings.cwd`; timeout `invoke-execution-limit`.
-- `request_command_shell_execution` при согласии запускает команду один раз, **не** добавляя в whitelist.
-- Согласие доступа: `y`/`yes`/`д`/`да`. Существующая директория → prefix-list, иначе file-list; `w` добавляет и в `r`.
+- `request_command_shell_execution` при согласии запускает команду один раз, **не** добавляя в `available-commands`.
+- Согласие доступа: `y`/`yes`/`д`/`да`. Существующая директория → prefix-list sandbox, иначе extra-scope; `w` добавляет и в `r`.
 - После `call` логировать результат так же, как `DefaultTools.call` (особые случаи `apply_diff_patch` / `read_file` / `write_file`).
 - Короткие description tools — как в `default_tools.py` (агенту уходит schema+description, не `tool_help.md`). `verbosity_help` в CLI-tools не экспортировать.
 
-### 6. Код и зависимости
-- Idiomatic Rust: traits, статический dispatch где возможно; `dyn` — для гетерогенного списка категорий.
+### 7. Код и зависимости
+- Idiomatic Rust: traits, статический dispatch где возможно; `dyn` — для гетерогенного списка tool-модулей и для `Logger`.
 - Комментарий-шапка у каждого модуля; rustdoc на публичных типах/функциях/трейтах.
-- `Cargo.toml`: короткий комментарий над каждой зависимостью, зачем она; висячие не оставлять.
-- Секреты и лимиты не хардкодить — только конфиг / файлы ключей / CLI.
+- `Cargo.toml` (workspace и каждого крейта): короткий комментарий над каждой зависимостью, зачем она; висячие не оставлять.
+- Секреты, лимиты и путь к git не хардкодить — только конфиг / файлы ключей / CLI.
 - Рефакторинг после рабочего минимума: `WiKi/harness/rules/refactoring-base.md` + `WiKi/harness/rules/refactoring-rust.md`.
 - Этап-1: прямой рабочий код + unit-тесты на нетривиальную логику. Этап-2: рефакторинг. Оба этапа в одном прогоне задачи.
 
 Минимальные тесты (без живых LLM-вызовов):
-- парсинг json5 + вложенный model-файл + дефолты;
+- парсинг json5 + вложенный model-файл + дефолты + объект `tools` (включён/выключен модуль, неизвестный ключ);
 - CLI: xor `--prompt`/`--dump`, default `--conf`, `--help`;
 - sandbox: prefix dir / exact file / w⊃r / extensions;
-- registry: dispatch по имени, unknown tool;
-- git patch path extraction;
-- взаимное исключение CLI-аргументов.
-- unit-тесты для каждого tools.
+- registry: dispatch по имени, unknown tool, сборка только из ключей conf;
+- git: path extraction патча; вызов идёт в `executable` из конфига (не в хардкод);
+- взаимное исключение CLI-аргументов;
+- unit-тесты **в конце каждого** tool-модуля.
 
 ## Scope
 Создать:
-- `harness/Cargo.toml`
-- `harness/src/**` (CLI, config, logger, agent_loop, agents, tools-категории, tests)
+- `harness/Cargo.toml` (workspace)
+- `harness/crates/harness/**` (CLI, config, logger-wiring, agent_loop, agents)
+- `harness/crates/logger/**`
+- `harness/crates/tools/**` (registry, sandbox, fs, git, search, terminal, meta, user + tests в конце модулей)
+
+Обновить:
+- `harness/harness.json5` — миграция `tool-settings` → `tools` (§3)
 
 Читать как эталон, не менять:
 - `tools/harness/__init__.py`
@@ -222,29 +355,28 @@ Registry:
 - `tools/harness/agents/tools/default_tools.py`
 - `tools/harness/agents/tools/i_tools.py`
 - `tools/harness/agents/tools/tool_help.md`
-- `harness/harness.json5`
-- `harness/grok-4.6.json5`
+- `harness/grok-4.6.json5` (кроме создания соседних model-файлов по таблице)
 - `WiKi/harness/rules/refactoring-base.md`
 - `WiKi/harness/rules/refactoring-rust.md`
-
-Менять `harness/*.json5` только при нехватке обязательного поля.
 
 Не входит:
 - удаление Python-harness;
 - совместимость dump с Python;
-- новые tools / новые vendor;
-- GUI / TUI.
+- новые tools / новые vendor сверх перечисленных модулей;
+- GUI / TUI;
+- хардкод пути `git` / лимитов в коде.
 
 ## Проверка корректности решения
-1. `cargo test` в `tools/harness-rs` — зелёный.
-2. `cargo run -- --help` — справка, код 0.
+1. `cargo test --workspace` в `./harness` — зелёный (включая тесты в конце каждого tool-модуля).
+2. `cargo run -p harness -- --help` — справка, код 0.
 3. Без `--prompt`/`--dump` — ненулевой код и понятная ошибка.
 4. `--prompt` вместе с `--dump` — ненулевой код.
-5. Ручной шаг (если есть ключ):  
-   `harness.exe --conf harness/harness.json5 --prompt "ping"`  
-   → создан `.log/<date>_<vendor>_<model>/` с `log.md` и `dump.json`; в логе шапка, итерации, finish/stats.  
+5. Конфиг без `tools.git.executable` при включённом `git` — ошибка старта (не молчаливый fallback на `"git"`).
+6. Ручной шаг (если есть ключ):
+   `harness.exe --conf harness/harness.json5 --prompt "ping"`
+   → создан `.log/<date>_<vendor>_<model>/` с `log.md` и `dump.json`; в логе шапка, итерации, finish/stats.
    Повтор с `--dump <тот dump.json>` — в логе `continue from dump`, история восстановлена.
-6. Живой вызов LLM для merge не обязателен, если пункты 1–4 зелёные и модули агента покрыты разбором ответа/tool-call на фикстурах. Если живой вызов делается — не жечь лимиты: один короткий prompt.
+7. Живой вызов LLM для merge не обязателен, если пункты 1–5 зелёные и модули агента покрыты разбором ответа/tool-call на фикстурах. Если живой вызов делается — не жечь лимиты: один короткий prompt.
 
 # Дополнительные указания
 1. Экономь токены: читай минимум необходимого; правки вноси через patch.
