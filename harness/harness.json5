@@ -1,0 +1,38 @@
+{
+    "cwd": "C:/MyLife/Game-deck-generator",
+    "paths": {
+        "log-folder": ".log"
+    },
+
+    "agent-setting": {
+        // path to ai-model configuration file
+        "config": "grok-4.6.json5",
+        "mode": "safe", // "auto-accept"
+    },
+
+
+    "tool-settings": {
+        "shell": [
+            "r:findstr",
+        ],
+        dirs: [
+            // minimal scope
+            "w:tools/harness/agents/tools",
+            // minimal scope
+            "w:WiKi/dev-plan/phase-IV/15 implement run invoke tool",
+            // rules and roles
+            "r:WiKi/harness/rules",
+            "r:WiKi/harness/roles",
+        ],
+        "files": [
+        ],
+        "available-file-extensions": [
+            // empty list meant allow all extensions
+            // ".md",
+            // ".py",
+        ]
+    },
+
+    // target prompt like entry point
+    "prompt": "Есть задача: см. WiKi/dev-plan/phase-IV/15 implement run invoke tool/todo.md",
+}

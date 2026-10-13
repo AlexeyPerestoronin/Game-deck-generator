@@ -20,7 +20,7 @@
         dirs: [
             // minimal scope
             "r:tools/harness",
-            "r:projects/deck_gen_wasm",
+            "r:harness",
             // task dir
             "w:WiKi/dev-plan/phase-v/8 implement harness-loop via rust",
             // rules and roles
@@ -28,6 +28,7 @@
             "r:WiKi/harness/roles",
         ],
         "files": [
+            "r:WiKi/templates/development.md",
         ],
         "available-file-extensions": [
             // empty list meant allow all extensions
